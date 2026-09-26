@@ -1,3 +1,4 @@
+import io
 import os
 import sqlite3
 import traceback
@@ -7,6 +8,8 @@ from flask import Blueprint, abort, g, make_response, redirect, render_template,
 from .auth import login_required
 from .db import get_db, mysql_style_error
 from .devices import issue_device_token
+from .personalize import get_flag
+from . import billing
 from . import flags
 
 bp = Blueprint("customer", __name__)
@@ -40,18 +43,18 @@ def dashboard():
     # to this account, however they got here, sees the flag -- that's the
     # whole exercise, and matches how every other flag in this app is
     # delivered to whatever session happens to trigger it.
-    sessionid_flag = flags.SESSIONID_TEACH if g.user["email"] == flags.SESSIONID_ACCOUNT_EMAIL else None
+    sessionid_flag = get_flag(flags.SESSIONID_TEACH, g.participant_id) if g.user["email"] == flags.SESSIONID_ACCOUNT_EMAIL else None
 
     resp = make_response(render_template(
         "dashboard.html", user=g.user, meters=meters, device_tokens=device_tokens,
-        sessionid_flag=sessionid_flag, sxss_title_flag=flags.SXSS_TEACH,
+        sessionid_flag=sessionid_flag, sxss_title_flag=get_flag(flags.SXSS_TEACH, g.participant_id),
     ))
     # NOTE: no X-Frame-Options / CSP frame-ancestors on this response --
     # the Recharge link on this page is embeddable in an invisible iframe
     # on another site. Missing security headers teach instance, delivered
     # via a response header (matching the exercise instance on /login)
     # rather than a page comment.
-    resp.headers["X-Lab-Flag"] = flags.HEADERS_TEACH
+    resp.headers["X-Lab-Flag"] = get_flag(flags.HEADERS_TEACH, g.participant_id)
     return resp
 
 
@@ -100,7 +103,7 @@ def recharge():
     try:
         amount_paid = float(request.form.get("amount_paid", 0) or 0)
     except ValueError:
-        tb = traceback.format_exc() + f"\n# improper error handling instance: {flags.INFOLEAK_TEACH}"
+        tb = traceback.format_exc() + f"\n# improper error handling instance: {get_flag(flags.INFOLEAK_TEACH, g.participant_id)}"
         return render_template("error_debug.html", traceback=tb), 500
 
     # NOTE: if a units_credited value is present at all, it's trusted
@@ -109,7 +112,7 @@ def recharge():
     # only shows up when someone crafts the request directly.
     raw_override = request.form.get("units_credited")
     units_credited = float(raw_override) if raw_override not in (None, "") else round(amount_paid / RECHARGE_RATE, 2)
-    buslogic_flag = flags.BUSLOGIC_TEACH if raw_override not in (None, "") else None
+    buslogic_flag = get_flag(flags.BUSLOGIC_TEACH, g.participant_id) if raw_override not in (None, "") else None
 
     db = get_db()
     db.execute("UPDATE meters SET balance = balance + ? WHERE id = ?", (units_credited, meter["id"]))
@@ -142,7 +145,7 @@ def solar():
     # anything past that in one submission is well outside what's
     # physically plausible, and nothing here checks for it. Business logic
     # exercise instance.
-    buslogic_flag = flags.BUSLOGIC_EXERCISE if exported_kwh > 1000 else None
+    buslogic_flag = get_flag(flags.BUSLOGIC_EXERCISE, g.participant_id) if exported_kwh > 1000 else None
 
     db = get_db()
     db.execute("UPDATE meters SET balance = balance + ? WHERE id = ?", (credit_amount, meter["id"]))
@@ -179,14 +182,25 @@ def usage():
     sql = f"SELECT reading_kwh, source, recorded_at FROM readings WHERE meter_id = {meter_id} AND recorded_at LIKE '%{query}%'"
 
     db = get_db()
+    sqli_flag = None
     try:
         results = db.execute(sql).fetchall()
         db_error = None
+        # SQLi bonus sentinel detection -- see app/flags.py's module
+        # docstring for why this is a sentinel check rather than the flag
+        # being the exfiltrated data itself. Scans every column of every
+        # row rather than one specific column, since which SELECT
+        # position the decoy row's sentinel lands in depends on the
+        # exact UNION payload a participant wrote.
+        if results and any(
+            flags.SQLI_BONUS_SENTINEL in str(value) for row in results for value in tuple(row)
+        ):
+            sqli_flag = get_flag(flags.SQLI_BONUS, g.participant_id)
     except sqlite3.OperationalError as e:
         results = None
-        db_error = mysql_style_error(e) + f"\n-- improper error handling teach instance: {flags.ERRHANDLING_TEACH}"
+        db_error = mysql_style_error(e) + f"\n-- improper error handling teach instance: {get_flag(flags.ERRHANDLING_TEACH, g.participant_id)}"
 
-    return render_template("usage.html", query=query, results=results, db_error=db_error)
+    return render_template("usage.html", query=query, results=results, db_error=db_error, sqli_flag=sqli_flag)
 
 
 @bp.route("/support", methods=["GET", "POST"])
@@ -197,8 +211,8 @@ def support():
         subject = request.form.get("subject", "")
         description = request.form.get("description", "")
         db.execute(
-            "INSERT INTO tickets (user_id, subject, description) VALUES (?, ?, ?)",
-            (g.user["id"], subject, description),
+            "INSERT INTO tickets (user_id, subject, description, participant_id) VALUES (?, ?, ?, ?)",
+            (g.user["id"], subject, description, g.participant_id),
         )
         db.commit()
 
@@ -252,4 +266,17 @@ def download_bill():
 
     if not os.path.isfile(full_path):
         abort(404)
+
+    # Ben Osei's bill (MTR-1002/<period>.pdf) is the one that carries the
+    # TRAVERSAL_TEACH flag. It's regenerated here, in memory, with a flag
+    # personalized to whoever's asking, rather than served from the
+    # static placeholder scripts/generate_bills.py baked in at image
+    # build time -- see app/billing.py for why. normpath'd comparison so
+    # this still matches regardless of which traversal sequence a
+    # participant used to reach it.
+    ben_bill_path = os.path.normpath(os.path.join(BILLS_DIR, billing.BEN_METER_CODE, f"{billing.BILL_PERIOD}.pdf"))
+    if full_path == ben_bill_path:
+        pdf_bytes = billing.draw_ben_bill_pdf(get_flag(flags.TRAVERSAL_TEACH, g.participant_id))
+        return send_file(io.BytesIO(pdf_bytes), mimetype="application/pdf", download_name=f"{billing.BILL_PERIOD}.pdf")
+
     return send_file(full_path, mimetype="application/pdf")

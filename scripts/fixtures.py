@@ -84,23 +84,17 @@ SQLI_FLAG_ACCOUNTS = [
     ("svc-alarms@internal.wattzgoat.example", "Alarms Sync Service"),
 ]
 
-# The flags themselves -- must match app.flags.SQLI_TEACH / SQLI_EXERCISE
-# exactly (duplicated here for the same reason as the rest of this file).
-# SQLI_TEACH_FLAG_VALUE is planted as a fake meter's meter_code (reachable
-# via a UNION targeting `meters`, the table the /admin/meters page's own
-# query already reads); SQLI_EXERCISE_FLAG_VALUE is planted as a fake
-# alarm's message (reachable via a UNION targeting `alarms`, likewise the
-# table /admin/alarms already reads). Neither fake row is owned by a
-# 'customer'/'admin' account, and both admin pages' normal (non-injected)
-# queries exclude rows owned by a 'service' account -- see app/admin.py --
-# so these are invisible without actually injecting.
-SQLI_TEACH_FLAG_VALUE = "FLAG{IRON_SENTINEL}"
-SQLI_EXERCISE_FLAG_VALUE = "FLAG{OBSIDIAN_RAVEN}"
-# Must match app.flags.SQLI_BONUS exactly. Planted as a fake reading row
-# (see seed.py) reachable via a UNION targeting `readings` -- the table
-# /usage's own vulnerable query already reads -- with no WHERE needed at
-# all, since the fake row sits alongside the real ones once UNIONed in.
-SQLI_BONUS_FLAG_VALUE = "FLAG{COLD_TRAIL}"
+# Sentinel markers, not flag values -- must match app.flags.SQLI_TEACH_SENTINEL
+# / SQLI_EXERCISE_SENTINEL / SQLI_BONUS_SENTINEL exactly (duplicated here
+# for the same reason as the rest of this file). Server-side detection of
+# one of these in a query's results is what triggers computing and
+# displaying a real, personalized flag (see app/admin.py, app/customer.py) --
+# the planted row itself no longer carries a flag string, which is what
+# makes per-participant SQLi flags possible despite UNION SQLi returning
+# identical row data to whoever runs the query (see app/flags.py).
+SQLI_TEACH_FLAG_VALUE = "__WG_SENTINEL_SQLI_TEACH__"
+SQLI_EXERCISE_FLAG_VALUE = "__WG_SENTINEL_SQLI_EXERCISE__"
+SQLI_BONUS_FLAG_VALUE = "__WG_SENTINEL_SQLI_BONUS__"
 
 # Dedicated, undisclosed account for the relocated predictable-session-ID
 # flag. No meter, nothing else notable -- must match
@@ -120,6 +114,8 @@ SESSIONID_ACCOUNT_BASELINE_TOKEN = "100000"
 BILL_PERIOD = "2026-09"
 BILL_AMOUNTS = [42.17, 38.90, 51.05, 29.60, 47.33, 33.10, 55.82, 40.25]
 TRAVERSAL_FLAG_METER = "MTR-1002"  # Ben Osei
-# Must match app.flags.TRAVERSAL_TEACH exactly (duplicated here for the
-# same reason as the rest of this file -- scripts/ can't import app/).
+# No longer used by generate_bills.py -- Ben's bill is regenerated at
+# request time with a personalized flag instead of one baked in at image
+# build time (see app/billing.py, app/customer.py:download_bill()). Left
+# here only as a record of the flag category this fixture data supports.
 TRAVERSAL_FLAG_VALUE = "FLAG{WRONG_DOOR}"

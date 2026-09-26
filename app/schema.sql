@@ -89,13 +89,19 @@ CREATE TABLE solar_exports (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- support tickets -- stored XSS exercise instance
+-- Support tickets -- stored XSS exercise instance
 CREATE TABLE tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
     subject TEXT NOT NULL,
     description TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'open',
+    -- Which participant (see lab_meta below / app/personalize.py) authored
+    -- this ticket, if any -- NULL for anything not created through the
+    -- normal /support flow. Used only to gate the indirect-injection AI
+    -- assistant flag to the same participant who planted it, not to
+    -- restrict who can view the ticket itself.
+    participant_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -108,10 +114,25 @@ CREATE TABLE alarms (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- flag redemption tracking for the /progress page
+-- flag redemption tracking for the /progress page -- one row per
+-- (flag_key, participant_id) pair, not per flag_key alone, since flag
+-- VALUES are now personalized per participant (see app/personalize.py)
+-- and only the stable key identifies which of the 37 flags this is.
 CREATE TABLE flag_redemptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    flag_code TEXT UNIQUE NOT NULL,
+    flag_key TEXT NOT NULL,
+    participant_id TEXT NOT NULL,
     redeemed_by TEXT,
-    redeemed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    redeemed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(flag_key, participant_id)
+);
+
+-- Single-row-per-key settings table. Currently holds one row: the random
+-- secret personalized flag values are derived from (see
+-- app/personalize.py). Regenerated at seed time and again on every
+-- /ops/__reset_lab__ run, so flag values also rotate on a lab reset, not
+-- just at first boot.
+CREATE TABLE lab_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
 );

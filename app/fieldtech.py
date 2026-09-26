@@ -1,7 +1,8 @@
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, g, jsonify, render_template, request
 
 from . import flags
 from .db import get_db
+from .personalize import get_flag
 
 bp = Blueprint("fieldtech", __name__)
 
@@ -57,5 +58,5 @@ def meter_lookup_api():
             "account_created_at": row["owner_created_at"],
         },
         "balance": row["balance"],
-        "flag": flags.FIELDTECH_LOOKUP,
+        "flag": get_flag(flags.FIELDTECH_LOOKUP, g.participant_id),
     })

@@ -21,12 +21,26 @@ picked or reordered.
 import base64
 import json
 import os
+import re
+import secrets
 from urllib.parse import urlparse
 
 import pytest
 import requests
 
 BASE_URL = os.environ.get("WATTZGOAT_BASE_URL", "https://127.0.0.1:5000")
+
+# Phase 3: flags are personalized per participant_id (see
+# app/personalize.py), assigned via a cookie on first visit. Every
+# account fixture below shares this ONE value rather than letting each
+# requests.Session pick up its own -- this suite models a single
+# participant moving between accounts over the course of a class (submit
+# a ticket as a customer, summarize it as admin, etc.), which is also
+# what several flags (TROJAN_MEMO in particular) actually require to work
+# at all.
+PARTICIPANT_ID = secrets.token_hex(8)
+
+FLAG_RE = re.compile(r"FLAG\{[A-Z_]+\}")
 
 # Seeded accounts (see scripts/seed.py / the instructor guide's roster).
 # Reused deliberately across test files to mirror how a real participant
@@ -77,7 +91,39 @@ def plaintext_base_url():
 def _new_session() -> requests.Session:
     s = requests.Session()
     s.verify = False  # self-signed lab cert
+    s.cookies.set("wg_pid", PARTICIPANT_ID)
     return s
+
+
+def extract_flag(text: str) -> str:
+    m = FLAG_RE.search(text)
+    assert m, f"no FLAG{{...}} pattern found in response text: {text[:300]!r}"
+    return m.group(0)
+
+
+def redeem_flag(session: requests.Session, base_url: str, flag_value: str) -> bool:
+    """POSTs a flag to /progress and reports whether it was accepted.
+    This is the real ground truth for a personalized flag being correct
+    -- there's no static string to compare against anymore, so "the app
+    itself accepted this submission" is what a test asserts instead."""
+    resp = session.post(f"{base_url}/progress", data={"flag": flag_value}, timeout=10)
+    assert resp.status_code == 200
+    return "Correct!" in resp.text
+
+
+@pytest.fixture(scope="session")
+def extract_flag_fn():
+    return extract_flag
+
+
+@pytest.fixture(scope="session")
+def redeem_flag_fn():
+    return redeem_flag
+
+
+@pytest.fixture(scope="session")
+def participant_id():
+    return PARTICIPANT_ID
 
 
 @pytest.fixture(scope="session")

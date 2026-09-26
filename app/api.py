@@ -4,6 +4,7 @@ from . import flags
 from .auth import login_required
 from .db import get_db
 from .devices import verify_device_token
+from .personalize import get_flag
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -41,9 +42,9 @@ def patch_account():
 
     result = {"updated": list(updates.keys())}
     if "billing_rate" in updates:
-        result["flag"] = flags.MASSASSIGN_EXERCISE
+        result["flag"] = get_flag(flags.MASSASSIGN_EXERCISE, g.participant_id)
     if "role" in updates and updates["role"] == "admin" and was_customer:
-        result["role_flag"] = flags.ROLE_ESCALATION_BONUS
+        result["role_flag"] = get_flag(flags.ROLE_ESCALATION_BONUS, g.participant_id)
     return jsonify(result)
 
 
@@ -83,7 +84,7 @@ def meter_readings(meter_id):
         "readings": [dict(r) for r in readings],
     }
     if is_idor:
-        response["flag"] = flags.IDOR_TEACH
+        response["flag"] = get_flag(flags.IDOR_TEACH, g.participant_id)
     return jsonify(response)
 
 
@@ -120,10 +121,10 @@ def telemetry():
     result = {"status": "ok"}
     if used_none_alg:
         # Insecure JWT exercise instance.
-        result["flag"] = flags.JWT_EXERCISE
+        result["flag"] = get_flag(flags.JWT_EXERCISE, g.participant_id)
     # Same routes served unencrypted on port 5001 as on HTTPS 5000 (see
     # run.py) -- plaintext transmission exercise instance: this Bearer
     # token and the reading it authorizes went out in the clear.
     if request.environ.get("SERVER_PORT") == "5001":
-        result["plaintext_flag"] = flags.PLAINTEXT_EXERCISE
+        result["plaintext_flag"] = get_flag(flags.PLAINTEXT_EXERCISE, g.participant_id)
     return jsonify(result)

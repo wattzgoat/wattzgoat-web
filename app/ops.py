@@ -1,11 +1,13 @@
 import glob
 import os
 import shutil
+import sqlite3
 import tempfile
 
 from flask import Blueprint, abort, current_app, jsonify, redirect, request, url_for
 
 from . import assistant, auth
+from .personalize import regenerate_lab_secret
 
 bp = Blueprint("ops", __name__, url_prefix="/ops")
 
@@ -63,6 +65,18 @@ def reset_lab():
     # flight, which was its own smaller version of the same problem.
     for aux in glob.glob(db_path + "-*"):
         os.remove(aux)
+
+    # Rotate the personalization secret on the now-live DB -- this is
+    # what makes flag VALUES change on every reset, not just at first
+    # boot (the file swap above alone would restore the same secret that
+    # was baked into seed.db at the original seeding pass). A short-lived
+    # connection of its own, not g.db, since this runs outside normal
+    # request-scoped DB access.
+    fresh_conn = sqlite3.connect(db_path)
+    try:
+        regenerate_lab_secret(fresh_conn)
+    finally:
+        fresh_conn.close()
 
     # The attempt counters behind the rate-limiting flags live in memory, so
     # they have to be cleared by hand -- otherwise the very next failed

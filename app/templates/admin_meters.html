@@ -2,6 +2,11 @@
 {% block title %}Meter fleet — WattzGOAT Admin{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-semibold mb-4">Meter fleet</h1>
+{% if sqli_flag %}
+<div class="bg-amber-50 border border-amber-300 text-amber-900 text-sm rounded p-3 mb-4 font-mono">
+  Unexpected row detected in these results — injection confirmed: {{ sqli_flag }}
+</div>
+{% endif %}
 <form method="get" class="flex gap-2 mb-6">
   <input name="q" value="{{ query or '' }}" placeholder="Search by meter code or owner email" class="flex-1 border rounded px-3 py-2">
   <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm">Search</button>

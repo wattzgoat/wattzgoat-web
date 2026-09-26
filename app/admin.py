@@ -4,6 +4,7 @@ from flask import Blueprint, g, redirect, render_template, request, url_for
 
 from .auth import login_required, weak_hash
 from .db import get_db
+from .personalize import get_flag
 from . import flags
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -22,11 +23,11 @@ def dashboard():
     # NOTE: there's no "change password" flow anywhere in this app for
     # admin accounts -- the seeded default is the only password they'll
     # ever have. Weak passwords exercise instance.
-    weakpw_flag = flags.WEAKPW_EXERCISE if g.user["password_hash"] == weak_hash("changeme") else None
+    weakpw_flag = get_flag(flags.WEAKPW_EXERCISE, g.participant_id) if g.user["password_hash"] == weak_hash("changeme") else None
     # Sensitive information disclosure teach instance: this account's own
     # dashboard confirms whoever's here followed the credential leaked on
     # the login page to somewhere real.
-    devadmin_flag = flags.DEVADMIN_LEAK if g.user["email"] == flags.DEVADMIN_ACCOUNT_EMAIL else None
+    devadmin_flag = get_flag(flags.DEVADMIN_LEAK, g.participant_id) if g.user["email"] == flags.DEVADMIN_ACCOUNT_EMAIL else None
     return render_template(
         "admin_dashboard.html", user=g.user, stats=stats, weakpw_flag=weakpw_flag, devadmin_flag=devadmin_flag
     )
@@ -57,7 +58,10 @@ def meters():
             "ORDER BY meters.id"
         )
     rows = db.execute(sql).fetchall()
-    return render_template("admin_meters.html", meters=rows, query=query)
+    sqli_flag = None
+    if rows and any(flags.SQLI_TEACH_SENTINEL in str(value) for row in rows for value in tuple(row)):
+        sqli_flag = get_flag(flags.SQLI_TEACH, g.participant_id)
+    return render_template("admin_meters.html", meters=rows, query=query, sqli_flag=sqli_flag)
 
 
 @bp.route("/meters/<int:meter_id>")
@@ -95,7 +99,7 @@ def disconnect_meter(meter_id):
     db.commit()
 
     if is_escalation:
-        return render_template("privesc_done.html", action="disconnected", flag=flags.PRIVESC_TEACH)
+        return render_template("privesc_done.html", action="disconnected", flag=get_flag(flags.PRIVESC_TEACH, g.participant_id))
     return redirect(request.referrer or url_for("admin.meters"))
 
 
@@ -111,7 +115,7 @@ def reconnect_meter(meter_id):
     db.commit()
 
     if is_escalation:
-        return render_template("privesc_done.html", action="reconnected", flag=flags.PRIVESC_TEACH)
+        return render_template("privesc_done.html", action="reconnected", flag=get_flag(flags.PRIVESC_TEACH, g.participant_id))
     return redirect(request.referrer or url_for("admin.meters"))
 
 
@@ -139,7 +143,10 @@ def alarms():
             "ORDER BY alarms.created_at DESC"
         )
     rows = db.execute(sql).fetchall()
-    return render_template("admin_alarms.html", alarms=rows, query=query)
+    sqli_flag = None
+    if rows and any(flags.SQLI_EXERCISE_SENTINEL in str(value) for row in rows for value in tuple(row)):
+        sqli_flag = get_flag(flags.SQLI_EXERCISE, g.participant_id)
+    return render_template("admin_alarms.html", alarms=rows, query=query, sqli_flag=sqli_flag)
 
 
 @bp.route("/users")
@@ -161,7 +168,7 @@ def tickets():
         "FROM tickets JOIN users ON users.id = tickets.user_id "
         "ORDER BY tickets.created_at DESC"
     ).fetchall()
-    return render_template("admin_tickets.html", tickets=rows, sxss_meta_flag=flags.SXSS_EXERCISE)
+    return render_template("admin_tickets.html", tickets=rows, sxss_meta_flag=get_flag(flags.SXSS_EXERCISE, g.participant_id))
 
 
 @bp.route("/diagnostics", methods=["GET", "POST"])
@@ -185,7 +192,7 @@ def diagnostics():
             )
             output = result.stdout + result.stderr
             if any(sep in host for sep in (";", "&&", "|", "\n", "`", "$(")):
-                output += f"\n\n# security misconfiguration exercise instance: {flags.CMDINJECT_EXERCISE}"
+                output += f"\n\n# security misconfiguration exercise instance: {get_flag(flags.CMDINJECT_EXERCISE, g.participant_id)}"
         except subprocess.TimeoutExpired:
             output = "(timed out)"
     return render_template("admin_diagnostics.html", output=output, host=host)

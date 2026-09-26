@@ -8,6 +8,12 @@
   <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm">Search</button>
 </form>
 
+{% if sqli_flag %}
+<div class="bg-amber-50 border border-amber-300 text-amber-900 text-sm rounded p-3 mb-4 font-mono">
+  Unexpected row detected in these results — injection confirmed: {{ sqli_flag }}
+</div>
+{% endif %}
+
 {% if db_error %}
 {# Raw DB error shown to the page on purpose -- improper error handling teach instance. #}
 <div class="bg-red-50 text-red-800 text-sm rounded p-3 font-mono whitespace-pre-wrap">Search failed: {{ db_error }}</div>

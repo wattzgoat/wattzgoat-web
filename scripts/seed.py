@@ -8,6 +8,7 @@ relies on that to decide whether seeding is needed.
 import argparse
 import hashlib
 import os
+import secrets
 import sqlite3
 import sys
 from datetime import datetime, timedelta, timezone
@@ -135,6 +136,14 @@ def build(conn: sqlite3.Connection) -> None:
             "INSERT INTO bills (user_id, period, amount, pdf_filename) VALUES (?, ?, ?, ?)",
             (owner_id, BILL_PERIOD, amount, f"{meter_code}/{BILL_PERIOD}.pdf"),
         )
+
+    # Personalized-flag secret (see app/personalize.py) -- regenerated
+    # again on every /ops/__reset_lab__ run, this is just the starting
+    # value for a freshly seeded DB.
+    cur.execute(
+        "INSERT INTO lab_meta (key, value) VALUES ('flag_secret', ?)",
+        (secrets.token_hex(32),),
+    )
 
     conn.commit()
 

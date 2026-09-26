@@ -11,6 +11,7 @@ from flask import Blueprint, g, redirect, render_template, request, url_for
 
 from . import flags
 from .db import get_db
+from .personalize import get_flag
 
 bp = Blueprint("auth", __name__)
 
@@ -104,7 +105,7 @@ def flag_session_reuse(resp):
     # below) -- broken authentication bonus instance. Delivered as a
     # non-HttpOnly cookie, same as the XSS flags.
     if g.get("session_reused"):
-        resp.set_cookie("flag_session_reuse", flags.SESSIONREUSE_BONUS)
+        resp.set_cookie("flag_session_reuse", get_flag(flags.SESSIONREUSE_BONUS, g.participant_id))
     return resp
 
 
@@ -117,7 +118,7 @@ def flag_missing_hsts(resp):
     # /login response. Real HSTS is still genuinely absent app-wide; this
     # header doesn't pretend to be HSTS, it's just where the flag rides.
     if request.path == "/login":
-        resp.headers["X-Lab-Flag"] = flags.HEADERS_EXERCISE
+        resp.headers["X-Lab-Flag"] = get_flag(flags.HEADERS_EXERCISE, g.participant_id)
     return resp
 
 
@@ -155,7 +156,7 @@ def signup():
     db.commit()
 
     if len(password) < 4:
-        return render_template("signup.html", weak_password_flag=flags.WEAKPW_TEACH)
+        return render_template("signup.html", weak_password_flag=get_flag(flags.WEAKPW_TEACH, g.participant_id))
     return redirect(url_for("auth.login"))
 
 
@@ -171,7 +172,7 @@ RATE_LIMIT_THRESHOLD = 5
 def login():
     if request.method == "GET":
         notice = "Lab reset to its seeded state." if request.args.get("reset") else None
-        return render_template("login.html", notice=notice, plaintext_flag=flags.PLAINTEXT_TEACH)
+        return render_template("login.html", notice=notice, plaintext_flag=get_flag(flags.PLAINTEXT_TEACH, g.participant_id))
 
     email = request.form.get("email", "")
     password = request.form.get("password", "")
@@ -184,14 +185,14 @@ def login():
         _login_attempts[email] += 1
         # NOTE: no lockout at any attempt count -- lack of rate limiting
         # teach instance.
-        ratelimit_flag = flags.RATELIMIT_TEACH if _login_attempts[email] >= RATE_LIMIT_THRESHOLD else None
+        ratelimit_flag = get_flag(flags.RATELIMIT_TEACH, g.participant_id) if _login_attempts[email] >= RATE_LIMIT_THRESHOLD else None
         error = "Invalid username" if user is None else "Invalid password"
         return render_template(
             "login.html",
             error=error,
-            errhandling_flag=flags.ERRHANDLING_EXERCISE,
+            errhandling_flag=get_flag(flags.ERRHANDLING_EXERCISE, g.participant_id),
             ratelimit_flag=ratelimit_flag,
-            plaintext_flag=flags.PLAINTEXT_TEACH,
+            plaintext_flag=get_flag(flags.PLAINTEXT_TEACH, g.participant_id),
         ), 401
 
     _login_attempts.pop(email, None)
@@ -210,7 +211,7 @@ def login():
     # reflected instance on /usage would incidentally hand over both
     # stored-XSS flags too, without ever touching either vulnerable page.
     if user["role"] == "customer":
-        resp.set_cookie("flag_reflected_xss", flags.RXSS_TEACH)
+        resp.set_cookie("flag_reflected_xss", get_flag(flags.RXSS_TEACH, g.participant_id))
 
     return resp
 
@@ -241,7 +242,7 @@ def forgot_password():
     user = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
 
     _reset_attempts[email] += 1
-    ratelimit_flag = flags.RATELIMIT_EXERCISE if _reset_attempts[email] >= RATE_LIMIT_THRESHOLD else None
+    ratelimit_flag = get_flag(flags.RATELIMIT_EXERCISE, g.participant_id) if _reset_attempts[email] >= RATE_LIMIT_THRESHOLD else None
 
     if user is None:
         # Confirms account existence AND echoes the raw email back
@@ -256,7 +257,7 @@ def forgot_password():
             "forgot_password.html",
             not_found_email=email,
             ratelimit_flag=ratelimit_flag,
-            rxss_title_flag=flags.RXSS_EXERCISE,
+            rxss_title_flag=get_flag(flags.RXSS_EXERCISE, g.participant_id),
         )
 
     token = make_reset_token(email)
@@ -293,5 +294,5 @@ def reset_password():
     # authentication exercise instance.
     is_stale = issued_at is not None and (time.time() - issued_at) > 3600
     if is_stale:
-        return render_template("reset_password_done.html", oldtoken_flag=flags.OLDTOKEN_EXERCISE)
+        return render_template("reset_password_done.html", oldtoken_flag=get_flag(flags.OLDTOKEN_EXERCISE, g.participant_id))
     return redirect(url_for("auth.login"))
