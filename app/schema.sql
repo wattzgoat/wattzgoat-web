@@ -47,6 +47,9 @@ CREATE TABLE meters (
     meter_code TEXT UNIQUE NOT NULL,
     user_id INTEGER NOT NULL REFERENCES users(id),
     nickname TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'disconnected')),
+    balance REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
     -- Which participant (see app/personalize.py) last set this nickname,
     -- if any. Multiple participants can share the same seeded customer
     -- account, and the nickname itself is genuinely shared state once
@@ -55,10 +58,13 @@ CREATE TABLE meters (
     -- current value, not to whoever happens to view the dashboard
     -- afterward. NULL until someone actually changes it via
     -- customer.update_nickname().
-    nickname_set_by TEXT,
-    status TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'disconnected')),
-    balance REAL NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    --
+    -- Deliberately placed LAST, not inserted between existing columns --
+    -- the SQLi teach instance's UNION payload depends on meters.*'s exact
+    -- column order (see app/admin.py:meters(), the instructor guide).
+    -- Appending keeps that a one-column addition to the payload rather
+    -- than a full reshuffle every time this table gains a field.
+    nickname_set_by TEXT
 );
 
 -- telemetry from the meter simulators + the field-correction IDOR chain
