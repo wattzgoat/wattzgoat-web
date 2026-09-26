@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — WattzGOAT — {{ sxss_title_flag }}{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-1">Welcome, {{ user['name'] }}</h1>
+<p class="text-gray-600 mb-8">Here's what's connected to your account.</p>
+
+{% if sessionid_flag %}
+<div class="bg-amber-50 border border-amber-300 text-amber-900 rounded-lg p-4 mb-6 text-sm">
+  You're viewing this account's dashboard through a session that wasn't issued to you by logging in —
+  insecure cryptography teach instance: {{ sessionid_flag }}
+</div>
+{% endif %}
+
+{% for meter in meters %}
+<div class="bg-white rounded-lg p-6 shadow-sm mb-4" data-meter-card data-meter-id="{{ meter['id'] }}">
+  <div class="flex items-start justify-between">
+    <div>
+      {# |safe on purpose -- stored XSS teach instance (nickname is unescaped). #}
+      <h2 class="text-lg font-semibold">{{ meter['nickname']|safe }}</h2>
+      <p class="text-sm text-gray-500">{{ meter['meter_code'] }}</p>
+    </div>
+    <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-100 text-green-700' if meter['status'] == 'connected' else 'bg-red-100 text-red-700' }}">
+      {{ meter['status'] }}
+    </span>
+  </div>
+  <p class="mt-4 text-2xl font-semibold">${{ "%.2f"|format(meter['balance']) }}</p>
+  <p class="text-sm text-gray-500">prepaid balance</p>
+
+  <div class="mt-4 border-t pt-4">
+    <div class="flex items-center justify-between mb-2">
+      <p class="text-xs text-gray-500">Recent readings · <span data-last-reading>no data yet</span></p>
+      <button
+        class="text-xs bg-white border rounded px-3 py-1 hover:bg-gray-50"
+        data-sync-button
+        data-meter-code="{{ meter['meter_code'] }}"
+        data-device-token="{{ device_tokens[meter['id']] }}">
+        Sync now
+      </button>
+    </div>
+    <canvas data-reading-chart height="60"></canvas>
+  </div>
+
+  <form method="post" action="{{ url_for('customer.update_nickname', meter_id=meter['id']) }}" class="mt-4 flex gap-2">
+    <input name="nickname" placeholder="Rename this meter" value="{{ meter['nickname'] }}" class="flex-1 border rounded px-3 py-1.5 text-sm">
+    <button class="bg-[#14181C] text-white rounded px-4 py-1.5 text-sm">Save</button>
+  </form>
+</div>
+{% else %}
+<p class="text-gray-500">No meters on this account yet.</p>
+{% endfor %}
+
+<div class="flex gap-3 mt-6">
+  <a href="{{ url_for('customer.recharge') }}" class="bg-[#F4B41A] text-[#14181C] font-medium rounded px-4 py-2 text-sm">Recharge balance</a>
+  <a href="{{ url_for('customer.solar') }}" class="bg-white border rounded px-4 py-2 text-sm">Report solar export</a>
+  <a href="{{ url_for('customer.usage') }}" class="bg-white border rounded px-4 py-2 text-sm">Search usage</a>
+  <a href="{{ url_for('customer.account') }}" class="bg-white border rounded px-4 py-2 text-sm">Account settings</a>
+</div>
+
+<script>
+async function loadReadings(card) {
+  const meterId = card.dataset.meterId;
+  const res = await fetch(`/api/meters/${meterId}/readings`);
+  if (!res.ok) return;
+  const data = await res.json();
+  const readings = data.readings.slice().reverse();
+
+  const lastEl = card.querySelector('[data-last-reading]');
+  if (readings.length) {
+    const last = readings[readings.length - 1];
+    lastEl.textContent = `${last.reading_kwh} kWh at ${last.recorded_at}`;
+  } else {
+    lastEl.textContent = 'no data yet';
+  }
+
+  const canvas = card.querySelector('[data-reading-chart]');
+  const existing = Chart.getChart(canvas);
+  if (existing) existing.destroy();
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: readings.map(r => r.recorded_at),
+      datasets: [{
+        data: readings.map(r => r.reading_kwh),
+        borderColor: '#F4B41A',
+        backgroundColor: 'rgba(244,180,26,0.15)',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 0,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { x: { display: false }, y: { display: false } },
+    },
+  });
+}
+
+document.querySelectorAll('[data-meter-card]').forEach(loadReadings);
+setInterval(() => document.querySelectorAll('[data-meter-card]').forEach(loadReadings), 15000);
+
+document.querySelectorAll('[data-sync-button]').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const token = btn.dataset.deviceToken;
+    const reading = Math.round(Math.random() * 250) / 100;
+    await fetch('/api/telemetry', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ reading_kwh: reading }),
+    });
+    loadReadings(btn.closest('[data-meter-card]'));
+  });
+});
+</script>
+{% endblock %}

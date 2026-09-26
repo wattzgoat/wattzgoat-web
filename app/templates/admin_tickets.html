@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Tickets — WattzGOAT Admin{% endblock %}
+{% block head_extra %}
+<meta name="wg-ctx" content="{{ sxss_meta_flag }}">
+{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Support tickets</h1>
+<div class="space-y-4">
+{% for t in tickets %}
+<div class="bg-white rounded-lg p-5 shadow-sm">
+  <div class="flex items-start justify-between mb-2">
+    {# |safe on purpose -- stored XSS exercise instance (the customer's own /support view escapes normally). #}
+    <h2 class="font-semibold">{{ t['subject']|safe }}</h2>
+    <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-yellow-100 text-yellow-700' if t['status']=='open' else 'bg-gray-100 text-gray-600' }}">{{ t['status'] }}</span>
+  </div>
+  <p class="text-xs text-gray-500 mb-3">{{ t['customer_name'] }} &lt;{{ t['customer_email'] }}&gt; · {{ t['created_at'] }}</p>
+  <div class="text-sm text-gray-700">{{ t['description']|safe }}</div>
+</div>
+{% else %}
+<p class="text-gray-500">No tickets yet.</p>
+{% endfor %}
+</div>
+{% endblock %}

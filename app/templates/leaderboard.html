@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Solar Leaderboard — WattzGOAT{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto mt-8 bg-white rounded-lg p-6 shadow-sm">
+  <h1 class="text-xl font-semibold mb-1">Top solar exporters</h1>
+  <p class="text-sm text-gray-500 mb-6">See how your community's solar exports stack up this month.</p>
+  <ol id="board" class="text-sm divide-y"></ol>
+</div>
+<script>
+fetch('/api/leaderboard').then(r => r.json()).then(data => {
+  const board = document.getElementById('board');
+  data.forEach((row, i) => {
+    const li = document.createElement('li');
+    li.className = 'py-2 flex justify-between';
+    li.innerHTML = '<span>#' + (i + 1) + ' ' + row.name + '</span><span>' + row.total_exported_kwh.toFixed(1) + ' kWh</span>';
+    board.appendChild(li);
+  });
+});
+</script>
+{% endblock %}

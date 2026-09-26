@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Bills — WattzGOAT{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Bills</h1>
+<div class="bg-white rounded-lg shadow-sm overflow-hidden">
+<table class="w-full text-sm">
+<thead class="bg-gray-50 text-left text-gray-500">
+<tr><th class="px-4 py-2">Period</th><th class="px-4 py-2">Amount</th><th class="px-4 py-2"></th></tr>
+</thead>
+<tbody class="divide-y">
+{% for b in bills %}
+<tr>
+<td class="px-4 py-2">{{ b['period'] }}</td>
+<td class="px-4 py-2">${{ "%.2f"|format(b['amount']) }}</td>
+<td class="px-4 py-2"><a href="{{ url_for('customer.download_bill', path=b['pdf_filename']) }}" class="underline text-xs">Download PDF</a></td>
+</tr>
+{% else %}
+<tr><td colspan="3" class="px-4 py-6 text-center text-gray-500">No bills yet.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

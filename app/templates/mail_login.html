@@ -1,0 +1,25 @@
+{% extends "mail_base.html" %}
+{% block title %}Sign in — Mail{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto mt-16 bg-white border rounded-lg p-8 shadow-sm">
+  <div class="flex justify-center mb-6">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2"/>
+      <path d="M3 7l9 6 9-6"/>
+    </svg>
+  </div>
+  <h1 class="text-xl font-semibold text-center mb-1">Sign in</h1>
+  <p class="text-sm text-gray-500 text-center mb-6">to continue to Mail</p>
+  <form method="post" class="space-y-4">
+    <div>
+      <label class="block text-sm mb-1">Email</label>
+      <input name="email" type="email" required class="w-full border rounded px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Password</label>
+      <input name="password" type="password" class="w-full border rounded px-3 py-2">
+    </div>
+    <button class="w-full bg-[#4F46E5] text-white rounded py-2 font-medium">Sign in</button>
+  </form>
+</div>
+{% endblock %}

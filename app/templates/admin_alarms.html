@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Alarms — WattzGOAT Admin{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Alarms &amp; events</h1>
+<form method="get" class="flex gap-2 mb-6">
+  <input name="q" value="{{ query or '' }}" placeholder="Search by type or message" class="flex-1 border rounded px-3 py-2">
+  <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm">Search</button>
+</form>
+<div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+<table class="w-full text-sm">
+<thead class="bg-gray-50 text-left text-gray-500">
+<tr><th class="px-4 py-2">Meter</th><th class="px-4 py-2">Type</th><th class="px-4 py-2">Message</th><th class="px-4 py-2">When</th></tr>
+</thead>
+<tbody class="divide-y">
+{% for a in alarms %}
+<tr>
+<td class="px-4 py-2 whitespace-nowrap">{{ a['meter_code'] }}</td>
+<td class="px-4 py-2 whitespace-nowrap">{{ a['type'] }}</td>
+<td class="px-4 py-2">{{ a['message'] }}</td>
+<td class="px-4 py-2 whitespace-nowrap text-gray-500">{{ a['created_at'] }}</td>
+</tr>
+{% else %}
+<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No alarms match.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

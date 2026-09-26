@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ meter['meter_code'] }} — WattzGOAT Admin{% endblock %}
+{% block content %}
+<a href="{{ url_for('admin.meters') }}" class="text-sm text-gray-500 hover:text-gray-900">&larr; Back to fleet</a>
+<div class="bg-white rounded-lg p-6 shadow-sm mt-3">
+  <div class="flex items-start justify-between">
+    <div>
+      <h1 class="text-xl font-semibold">{{ meter['meter_code'] }}</h1>
+      <p class="text-sm text-gray-500">{{ meter['owner_name'] }} &lt;{{ meter['owner_email'] }}&gt;</p>
+    </div>
+    <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-100 text-green-700' if meter['status']=='connected' else 'bg-red-100 text-red-700' }}">{{ meter['status'] }}</span>
+  </div>
+  <p class="mt-4 text-lg font-semibold">${{ "%.2f"|format(meter['balance']) }}</p>
+
+  <form method="post" action="{{ url_for('admin.disconnect_meter' if meter['status']=='connected' else 'admin.reconnect_meter', meter_id=meter['id']) }}" class="mt-4">
+    <button class="text-sm rounded px-4 py-2 {{ 'bg-red-600 text-white' if meter['status']=='connected' else 'bg-green-600 text-white' }}">
+      {{ 'Disconnect' if meter['status']=='connected' else 'Reconnect' }}
+    </button>
+  </form>
+
+  <h2 class="text-sm font-semibold mt-6 mb-2">Recent readings</h2>
+  {% if readings %}
+  <ul class="text-sm divide-y border rounded">
+    {% for r in readings %}
+    <li class="px-3 py-2 flex justify-between"><span>{{ r['recorded_at'] }}</span><span>{{ r['reading_kwh'] }} kWh ({{ r['source'] }})</span></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-sm text-gray-500">No readings yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

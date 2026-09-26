@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Admin — WattzGOAT{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Operator console</h1>
+{% if weakpw_flag %}
+<div class="bg-yellow-50 text-yellow-800 text-sm rounded p-3 mb-6">
+  Weak passwords exercise instance: {{ weakpw_flag }}
+</div>
+{% endif %}
+{% if devadmin_flag %}
+<div class="bg-yellow-50 text-yellow-800 text-sm rounded p-3 mb-6">
+  Sensitive information disclosure teach instance: {{ devadmin_flag }}
+</div>
+{% endif %}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  <div class="bg-white rounded-lg p-4 shadow-sm">
+    <p class="text-2xl font-semibold">{{ stats.meter_count }}</p>
+    <p class="text-sm text-gray-500">meters</p>
+  </div>
+  <div class="bg-white rounded-lg p-4 shadow-sm">
+    <p class="text-2xl font-semibold">{{ stats.connected_count }}</p>
+    <p class="text-sm text-gray-500">connected</p>
+  </div>
+  <div class="bg-white rounded-lg p-4 shadow-sm">
+    <p class="text-2xl font-semibold">{{ stats.customer_count }}</p>
+    <p class="text-sm text-gray-500">customers</p>
+  </div>
+  <div class="bg-white rounded-lg p-4 shadow-sm">
+    <p class="text-2xl font-semibold">{{ stats.open_tickets }}</p>
+    <p class="text-sm text-gray-500">open tickets</p>
+  </div>
+</div>
+<div class="flex gap-3">
+  <a href="{{ url_for('admin.meters') }}" class="bg-[#F4B41A] text-[#14181C] font-medium rounded px-4 py-2 text-sm">View meter fleet</a>
+  <a href="{{ url_for('admin.alarms') }}" class="bg-white border rounded px-4 py-2 text-sm">View alarms</a>
+  <a href="{{ url_for('admin.tickets') }}" class="bg-white border rounded px-4 py-2 text-sm">Support tickets</a>
+</div>
+{% endblock %}

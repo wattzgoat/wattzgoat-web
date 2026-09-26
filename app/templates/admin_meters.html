@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Meter fleet — WattzGOAT Admin{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Meter fleet</h1>
+<form method="get" class="flex gap-2 mb-6">
+  <input name="q" value="{{ query or '' }}" placeholder="Search by meter code or owner email" class="flex-1 border rounded px-3 py-2">
+  <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm">Search</button>
+</form>
+<div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+<table class="w-full text-sm">
+<thead class="bg-gray-50 text-left text-gray-500">
+<tr><th class="px-4 py-2">Meter</th><th class="px-4 py-2">Owner</th><th class="px-4 py-2">Status</th><th class="px-4 py-2">Balance</th><th class="px-4 py-2"></th></tr>
+</thead>
+<tbody class="divide-y">
+{% for m in meters %}
+<tr>
+<td class="px-4 py-2 whitespace-nowrap">{{ m['meter_code'] }}</td>
+<td class="px-4 py-2 whitespace-nowrap">{{ m['owner_name'] }} &lt;{{ m['owner_email'] }}&gt;</td>
+<td class="px-4 py-2">
+  <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-green-100 text-green-700' if m['status']=='connected' else 'bg-red-100 text-red-700' }}">{{ m['status'] }}</span>
+</td>
+<td class="px-4 py-2">${{ "%.2f"|format(m['balance']) }}</td>
+<td class="px-4 py-2"><a href="{{ url_for('admin.meter_detail', meter_id=m['id']) }}" class="underline text-xs">View</a></td>
+</tr>
+{% else %}
+<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">No meters match.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

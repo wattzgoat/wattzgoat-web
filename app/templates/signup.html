@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Create account — WattzGOAT{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto mt-12 bg-white rounded-lg p-8 shadow-sm">
+  <h1 class="text-2xl font-semibold mb-6">Create your account</h1>
+  {% if weak_password_flag %}
+  <div class="bg-green-50 text-green-800 text-sm rounded p-3 mb-4">
+    Account created with a password under 4 characters, no complexity check stopped it --
+    weak passwords teach instance: {{ weak_password_flag }}
+  </div>
+  {% endif %}
+  <form method="post" class="space-y-4">
+    <div>
+      <label for="name" class="block text-sm mb-1">Full name</label>
+      <input id="name" name="name" type="text" required class="w-full border rounded px-3 py-2">
+    </div>
+    <div>
+      <label for="email" class="block text-sm mb-1">Email</label>
+      <input id="email" name="email" type="text" required class="w-full border rounded px-3 py-2">
+    </div>
+    <div>
+      <label for="password" class="block text-sm mb-1">Password</label>
+      <input id="password" name="password" type="password" required class="w-full border rounded px-3 py-2">
+    </div>
+    <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Create account</button>
+  </form>
+  <p class="text-sm text-gray-500 mt-4">
+    Already have an account? <a href="{{ url_for('auth.login') }}" class="underline">Log in</a>
+  </p>
+</div>
+{% endblock %}

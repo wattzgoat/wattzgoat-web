@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Index of {{ rel_path }} — WattzGOAT{% endblock %}
+{% block content %}
+<h1 class="text-lg font-semibold mb-4 font-mono">Index of {{ rel_path }}</h1>
+<div class="bg-white rounded-lg shadow-sm p-4">
+  <ul class="font-mono text-sm space-y-1">
+    <li><a href="{{ url_for('customer.download_bill', path=parent) }}" class="text-blue-700 underline">../</a></li>
+    {% for entry in entries %}
+    <li>
+      <a href="{{ url_for('customer.download_bill', path=(rel_path + '/' + entry) if rel_path != '.' else entry) }}" class="text-blue-700 underline">{{ entry }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

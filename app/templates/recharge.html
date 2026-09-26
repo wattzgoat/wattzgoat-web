@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Recharge — WattzGOAT{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Recharge balance</h1>
+
+{% if credited is defined %}
+<div class="bg-green-50 text-green-800 text-sm rounded p-3 mb-6">
+  ${{ "%.2f"|format(credited) }} credited. New balance: ${{ "%.2f"|format(meter['balance']) }}
+  {% if buslogic_flag %}
+  <br><span class="text-xs">units_credited was trusted directly instead of being recomputed from amount_paid — business logic teach instance: {{ buslogic_flag }}</span>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="max-w-sm bg-white rounded-lg p-6 shadow-sm">
+  {% if meter %}
+  <p class="text-sm text-gray-500 mb-4">{{ meter['nickname'] }} · current balance ${{ "%.2f"|format(meter['balance']) }}</p>
+  <form method="post" class="space-y-4">
+    <div>
+      <label class="block text-sm mb-1">Amount to add to your balance ($)</label>
+      <input name="amount_paid" type="text" step="0.01" min="0" required class="w-full border rounded px-3 py-2">
+    </div>
+    <button id="confirm-recharge" class="w-full bg-[#F4B41A] text-[#14181C] rounded py-2 font-medium">Confirm recharge</button>
+  </form>
+  {% else %}
+  <p class="text-gray-500">No meter on this account.</p>
+  {% endif %}
+</div>
+{% endblock %}

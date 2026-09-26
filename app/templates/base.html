@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}WattzGOAT{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+{% block head_extra %}{% endblock %}
+</head>
+<body class="bg-[#F2EFE9] text-[#14181C] min-h-screen" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<header class="bg-[#14181C] text-white px-6 py-4 flex items-center gap-3">
+<a href="{{ url_for(('admin.dashboard' if g.user['role'] == 'admin' else 'customer.dashboard') if g.user else 'auth.login') }}" class="flex items-center gap-3 hover:opacity-90">
+  <svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true">
+    <path d="M60 4 L20 56 L42 56 L34 96 L80 40 L52 40 Z" fill="#F4B41A"/>
+  </svg>
+  <span class="font-semibold text-lg">Wattz<span class="text-[#F4B41A] font-bold">GOAT</span></span>
+</a>
+  {% if g.user %}
+  <nav class="ml-8 flex gap-4 text-sm text-gray-300">
+    {% if g.user['role'] == 'customer' %}
+    <a href="{{ url_for('customer.dashboard') }}" class="hover:text-white">Dashboard</a>
+    <a href="{{ url_for('customer.usage') }}" class="hover:text-white">Usage</a>
+    <a href="{{ url_for('customer.recharge') }}" class="hover:text-white">Recharge</a>
+    <a href="{{ url_for('customer.solar') }}" class="hover:text-white">Solar</a>
+    <a href="{{ url_for('customer.bills') }}" class="hover:text-white">Bills</a>
+    <a href="{{ url_for('customer.account') }}" class="hover:text-white">Account</a>
+    <a href="{{ url_for('customer.support') }}" class="hover:text-white">Support</a>
+    <a href="{{ url_for('progress.progress') }}" class="hover:text-white">Progress</a>
+    {% else %}
+    <a href="{{ url_for('admin.dashboard') }}" class="hover:text-white">Overview</a>
+    <a href="{{ url_for('admin.meters') }}" class="hover:text-white">Meters</a>
+    <a href="{{ url_for('admin.alarms') }}" class="hover:text-white">Alarms</a>
+    <a href="{{ url_for('admin.tickets') }}" class="hover:text-white">Tickets</a>
+    <a href="{{ url_for('admin.users') }}" class="hover:text-white">Users</a>
+    <a href="{{ url_for('progress.progress') }}" class="hover:text-white">Progress</a>
+    <a href="{{ url_for('leaderboard.leaderboard_page') }}" class="hover:text-white">Solar Leaderboard</a>
+    <form method="post" action="{{ url_for('ops.reset_lab') }}" onsubmit="return confirm('Reset the entire lab to its seeded state?');">
+      <button type="submit" class="hover:text-white text-red-300">Reset Lab</button>
+    </form>
+    {% endif %}
+  </nav>
+  <span class="ml-auto text-sm text-gray-400">{{ g.user['name'] }}</span>
+  <form method="post" action="{{ url_for('auth.logout') }}">
+    <button class="text-sm text-gray-300 hover:text-white underline">Log out</button>
+  </form>
+  {% else %}
+  <nav class="ml-auto flex gap-4 text-sm text-gray-300">
+    <a href="{{ url_for('leaderboard.leaderboard_page') }}" class="hover:text-white">Solar Leaderboard</a>
+  </nav>
+  {% endif %}
+</header>
+<main class="max-w-4xl mx-auto px-6 py-10">
+{% block content %}{% endblock %}
+</main>
+{% if g.user %}
+{% include "_assistant_widget.html" %}
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,27 @@
+{% extends "mail_base.html" %}
+{% block title %}Inbox — Mail{% endblock %}
+{% block content %}
+<div class="bg-white border rounded-lg overflow-hidden">
+  <h1 class="text-base font-semibold px-4 py-3 border-b">Inbox</h1>
+  {% if emails %}
+  <ul class="divide-y">
+    {% for e in emails %}
+    <li>
+      <a href="{{ url_for('mail.view_email', email_id=e['id']) }}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
+        <span class="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center text-sm font-medium shrink-0">
+          {{ e['sender_name'][0] }}
+        </span>
+        <span class="flex-1 min-w-0">
+          <span class="block text-sm font-medium truncate">{{ e['sender_name'] }}</span>
+          <span class="block text-sm text-gray-600 truncate">{{ e['subject'] }}</span>
+        </span>
+        <span class="text-xs text-gray-400 shrink-0">{{ e['created_at'] }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-sm text-gray-500 px-4 py-10 text-center">No messages.</p>
+  {% endif %}
+</div>
+{% endblock %}

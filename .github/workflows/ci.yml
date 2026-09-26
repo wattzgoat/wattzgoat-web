@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t wattzgoat:ci .
+
+      - name: Start container
+        run: |
+          docker run -d --name wattzgoat-ci -p 5000:5000 -p 5001:5001 wattzgoat:ci
+          # Give entrypoint.sh time to generate certs, seed the DB, and
+          # boot both listeners before we start hitting it.
+          for i in $(seq 1 30); do
+            if curl -sk https://127.0.0.1:5000/login -o /dev/null; then
+              echo "App is up"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements-dev.txt
+
+      - name: Run tests
+        env:
+          WATTZGOAT_BASE_URL: https://127.0.0.1:5000
+        run: pytest tests/ -v
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker logs wattzgoat-ci
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f wattzgoat-ci || true
+
+  publish:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}

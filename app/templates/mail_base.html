@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Mail{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='mail-favicon.svg') }}">
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='mail-favicon.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<header class="bg-white border-b px-6 py-3 flex items-center gap-3">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="14" rx="2"/>
+    <path d="M3 7l9 6 9-6"/>
+  </svg>
+  <span class="font-semibold text-lg">Mail</span>
+  {% if mailbox %}
+  <span class="ml-4 text-sm text-gray-500 truncate">{{ mailbox }}</span>
+  <form method="post" action="{{ url_for('mail.logout') }}" class="ml-auto">
+    <button class="text-sm text-gray-500 hover:text-gray-900 underline">Sign out</button>
+  </form>
+  {% endif %}
+</header>
+<main class="max-w-2xl mx-auto px-4 py-6">
+{% block content %}{% endblock %}
+</main>
+</body>
+</html>

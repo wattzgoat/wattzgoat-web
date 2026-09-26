@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Support — WattzGOAT{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Support</h1>
+
+<div class="bg-white rounded-lg p-6 shadow-sm mb-8">
+  <h2 class="font-semibold mb-4">New request</h2>
+  <form method="post" class="space-y-4">
+    <div>
+      <label class="block text-sm mb-1">Subject</label>
+      <input name="subject" required class="w-full border rounded px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Description</label>
+      <textarea name="description" rows="4" required class="w-full border rounded px-3 py-2"></textarea>
+    </div>
+    <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm font-medium">Submit</button>
+  </form>
+</div>
+
+<h2 class="font-semibold mb-3">Your requests</h2>
+<div class="space-y-3">
+{% for t in tickets %}
+<div class="bg-white rounded-lg p-4 shadow-sm">
+  <div class="flex items-center justify-between mb-1">
+    <span class="font-medium text-sm">{{ t['subject'] }}</span>
+    <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-yellow-100 text-yellow-700' if t['status']=='open' else 'bg-gray-100 text-gray-600' }}">{{ t['status'] }}</span>
+  </div>
+  <p class="text-sm text-gray-600">{{ t['description'] }}</p>
+  <p class="text-xs text-gray-400 mt-2">{{ t['created_at'] }}</p>
+</div>
+{% else %}
+<p class="text-gray-500 text-sm">No requests yet.</p>
+{% endfor %}
+</div>
+{% endblock %}

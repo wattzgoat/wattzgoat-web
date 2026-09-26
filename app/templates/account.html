@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Account — WattzGOAT{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Account settings</h1>
+
+<div class="max-w-md bg-white rounded-lg p-6 shadow-sm">
+  <div id="status" class="text-sm mb-4 hidden"></div>
+  <form id="account-form" class="space-y-4">
+    <div>
+      <label class="block text-sm mb-1">Full name</label>
+      <input name="name" value="{{ user['name'] }}" class="w-full border rounded px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Service address</label>
+      <input name="address_service" value="{{ user['address_service'] or '' }}" class="w-full border rounded px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Billing address</label>
+      <input name="address_billing" value="{{ user['address_billing'] or '' }}" class="w-full border rounded px-3 py-2">
+    </div>
+    <input type="hidden" name="billing_rate" value="{{ user['billing_rate'] }}">
+    <input type="hidden" name="role" value="{{ user['role'] }}">
+    <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Save changes</button>
+  </form>
+</div>
+
+<script>
+document.getElementById('account-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const payload = Object.fromEntries(form.entries());
+  const res = await fetch('/api/account', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const status = document.getElementById('status');
+  status.classList.remove('hidden');
+  status.textContent = res.ok ? 'Saved.' : 'Something went wrong.';
+  status.className = res.ok ? 'text-sm mb-4 text-green-700' : 'text-sm mb-4 text-red-600';
+});
+</script>
+{% endblock %}

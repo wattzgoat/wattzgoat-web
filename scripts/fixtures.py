@@ -1,0 +1,125 @@
+"""Fixture data shared between scripts/seed.py (writes DB rows at container
+startup) and scripts/generate_bills.py (writes PDF files at image build
+time). Keeping this in one place is what keeps the two in sync -- the PDF
+filenames generate_bills.py writes are exactly what seed.py later points
+the bills table at.
+"""
+
+CUSTOMERS = [
+    # (email, password, name, service_address, billing_address)
+    ("alice.nguyen@example.com", "alice123", "Alice Nguyen", "12 Birch St, Springvale", "12 Birch St, Springvale"),
+    ("ben.osei@example.com", "ben123", "Ben Osei", "48 Oak Ave, Riverton", "48 Oak Ave, Riverton"),
+    ("carla.reyes@example.com", "carla123", "Carla Reyes", "7 Maple Ct, Riverton", "PO Box 220, Riverton"),
+    ("devon.hale@example.com", "devon123", "Devon Hale", "301 Cedar Rd, Springvale", "301 Cedar Rd, Springvale"),
+    ("elena.popov@example.com", "elena123", "Elena Popov", "9 Willow Way, Fairfield", "9 Willow Way, Fairfield"),
+    ("farid.khan@example.com", "farid123", "Farid Khan", "56 Elm St, Fairfield", "56 Elm St, Fairfield"),
+    ("grace.oduya@example.com", "grace123", "Grace Oduya", "18 Poplar Ln, Riverton", "18 Poplar Ln, Riverton"),
+    ("harun.demir@example.com", "harun123", "Harun Demir", "77 Spruce Dr, Springvale", "77 Spruce Dr, Springvale"),
+]
+
+# Weak passwords, never rotated -- "admin accounts never forced off their
+# default password" weak-passwords exercise instance.
+ADMINS = [
+    ("ops1@wattzgoat.example", "changeme", "Priya Shah"),
+    ("ops2@wattzgoat.example", "changeme", "Marcus Webb"),
+    # Left over from staging and advertised in an HTML comment on the login
+    # page. Deliberately NOT "changeme" so it doesn't trip the weak-password
+    # flag -- it's a credential-leak finding, not a flag.
+    ("devadmin@wattzgoat.example", "Dev@2024!", "Dev Admin"),
+]
+
+# One meter per pre-populated customer, same order as CUSTOMERS -- a
+# self-signed-up account (via /signup) intentionally gets none. Meter codes
+# are deterministic (MTR-1001.. in CUSTOMERS order) since they're also the
+# bill directory names generate_bills.py writes at build time.
+METER_NICKNAMES = [
+    "Garage sub-panel", "Main house meter", "Workshop meter", "Guest suite meter",
+    "Basement meter", "Rental unit meter", "Pool house meter", "Barn meter",
+]
+
+# Starting balances, same order as CUSTOMERS -- mostly a flat normal
+# balance, but Carla (low, <$5) and Elena (negative, this prepaid model
+# allows it and deducts it from the next recharge) are seeded on purpose
+# so the admin assistant's low/negative-balance skills have something real
+# to show from the moment the lab starts, without waiting on other
+# exercises to move balances around first.
+METER_BALANCES = [25.0, 25.0, 3.50, 25.0, -8.20, 25.0, 25.0, 25.0]
+
+METER_CODES = [f"MTR-{1000 + i}" for i in range(1, len(CUSTOMERS) + 1)]
+
+# Backfilled account-creation ages (hours before seed time), same order as
+# CUSTOMERS -- feeds the admin assistant's "users created in the last N
+# hours" skill. Deliberately a mix of very old and very recent so the
+# query returns a believable, non-empty answer at any N an admin might
+# try, from the moment the lab is seeded.
+CUSTOMER_CREATED_HOURS_AGO = [4380, 2160, 720, 168, 48, 20, 5, 1]
+
+# A handful of realistic-looking alarm/event rows so /admin/alarms has
+# something to search -- (meter offset from the seeded list, type, message).
+ALARM_SEEDS = [
+    (0, "tamper", "Enclosure tamper switch triggered"),
+    (1, "comms_failure", "No check-in for 6 hours"),
+    (2, "outage", "Loss of supply detected"),
+    (3, "voltage", "Sustained under-voltage on phase A"),
+    (4, "tamper", "Magnetic field anomaly detected near meter"),
+    (5, "comms_failure", "Firmware heartbeat missed 3 times"),
+]
+
+# Two hidden 'service' accounts, not real logins -- their password hashes
+# are what the UNION-based SQL injection exercises are really after (weak
+# MD5 hashing, discoverable this way as a second path alongside category
+# 2's own dedicated instances). Their names are plain and unremarkable on
+# purpose: earlier builds put each flag directly in this row's `name`
+# field, but since a no-WHERE `UNION SELECT ... FROM users--` returns every
+# row in the table regardless of which admin page issued it, that let
+# either page's payload return BOTH flags at once. The flags now live
+# instead as fake, otherwise-invisible rows in `meters` and `alarms`
+# themselves (see seed.py), so following the meters-page technique reaches
+# into `meters` and never touches `alarms` at all, and vice versa -- a
+# participant who deliberately unions a *different* table than the one
+# taught for that page can still cross over, which is fine, real UNION
+# SQLi really does let you read any table you can name.
+SQLI_FLAG_ACCOUNTS = [
+    ("svc-meters@internal.wattzgoat.example", "Meters Sync Service"),
+    ("svc-alarms@internal.wattzgoat.example", "Alarms Sync Service"),
+]
+
+# The flags themselves -- must match app.flags.SQLI_TEACH / SQLI_EXERCISE
+# exactly (duplicated here for the same reason as the rest of this file).
+# SQLI_TEACH_FLAG_VALUE is planted as a fake meter's meter_code (reachable
+# via a UNION targeting `meters`, the table the /admin/meters page's own
+# query already reads); SQLI_EXERCISE_FLAG_VALUE is planted as a fake
+# alarm's message (reachable via a UNION targeting `alarms`, likewise the
+# table /admin/alarms already reads). Neither fake row is owned by a
+# 'customer'/'admin' account, and both admin pages' normal (non-injected)
+# queries exclude rows owned by a 'service' account -- see app/admin.py --
+# so these are invisible without actually injecting.
+SQLI_TEACH_FLAG_VALUE = "FLAG{IRON_SENTINEL}"
+SQLI_EXERCISE_FLAG_VALUE = "FLAG{OBSIDIAN_RAVEN}"
+# Must match app.flags.SQLI_BONUS exactly. Planted as a fake reading row
+# (see seed.py) reachable via a UNION targeting `readings` -- the table
+# /usage's own vulnerable query already reads -- with no WHERE needed at
+# all, since the fake row sits alongside the real ones once UNIONed in.
+SQLI_BONUS_FLAG_VALUE = "FLAG{COLD_TRAIL}"
+
+# Dedicated, undisclosed account for the relocated predictable-session-ID
+# flag. No meter, nothing else notable -- must match
+# app.flags.SESSIONID_ACCOUNT_EMAIL exactly (duplicated here rather than
+# imported since scripts/ and app/ are separate top-level packages, same
+# pattern as the flag strings above already being duplicated by hand).
+# The password is random and is never meant to be typed in by a
+# participant -- this account is only ever reached by guessing/walking its
+# session token, never by logging in directly.
+SESSIONID_ACCOUNT = ("fieldrelay@wattzgoat.example", "n0t-f0r-hum4n-use-88x2", "Field Relay Unit")
+SESSIONID_ACCOUNT_BASELINE_TOKEN = "100000"
+
+# One PDF bill per customer, meter_code in the same order as CUSTOMERS.
+# Ben Osei's (index 1, MTR-1002) is the one that carries the directory
+# traversal flag -- reachable by requesting his path while logged in as
+# anyone else. Period/amount are just fixture flavor.
+BILL_PERIOD = "2026-09"
+BILL_AMOUNTS = [42.17, 38.90, 51.05, 29.60, 47.33, 33.10, 55.82, 40.25]
+TRAVERSAL_FLAG_METER = "MTR-1002"  # Ben Osei
+# Must match app.flags.TRAVERSAL_TEACH exactly (duplicated here for the
+# same reason as the rest of this file -- scripts/ can't import app/).
+TRAVERSAL_FLAG_VALUE = "FLAG{WRONG_DOOR}"
