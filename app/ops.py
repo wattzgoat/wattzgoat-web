@@ -6,7 +6,7 @@ import tempfile
 
 from flask import Blueprint, abort, current_app, jsonify, redirect, request, url_for
 
-from . import assistant, auth
+from . import assistant, auth, flags, hardening
 from .personalize import regenerate_lab_secret
 
 bp = Blueprint("ops", __name__, url_prefix="/ops")
@@ -92,3 +92,36 @@ def reset_lab():
         resp.delete_cookie("wgs_session")
         return resp
     return jsonify({"status": "reset"})
+
+
+# Phase 6: the toggle mechanism this app.db-level endpoint drives is
+# app/hardening.py; this route is the ONLY way to flip a toggle until
+# Phase 7's trainer dashboard exists (nothing else writes to
+# hardening_state yet). Same trust boundary as reset_lab above -- ordinary
+# admin login, no extra token -- for the same reason: this only ever
+# affects the single isolated instance it's running in. Also what the e2e
+# test suite (tests/hardening/) uses to exercise each hardened branch
+# against a real running instance, since tests talk HTTP to the app, not
+# the DB file directly.
+@bp.route("/__set_hardening__", methods=["POST"])
+@auth.login_required(role="admin")
+def set_hardening():
+    flag_key = request.form.get("flag_key") or (request.get_json(silent=True) or {}).get("flag_key")
+    hardened_raw = request.form.get("hardened")
+    if hardened_raw is None:
+        hardened_raw = (request.get_json(silent=True) or {}).get("hardened")
+
+    if flag_key not in flags.VALID_KEYS:
+        abort(400, f"unknown flag_key: {flag_key!r}")
+
+    hardened = str(hardened_raw).strip().lower() in ("1", "true", "yes", "on")
+    hardening.set_hardened(flag_key, hardened)
+    return jsonify({"flag_key": flag_key, "hardened": hardened})
+
+
+# Read-only companion to the above -- lets the trainer dashboard (Phase 7)
+# and tests confirm current state without guessing from side effects.
+@bp.route("/__hardening_status__", methods=["GET"])
+@auth.login_required(role="admin")
+def hardening_status():
+    return jsonify(hardening.all_states())

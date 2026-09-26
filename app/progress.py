@@ -1,9 +1,10 @@
-from flask import Blueprint, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, g, redirect, render_template, request, url_for
 
 from .auth import login_required
 from .db import get_db
 from .flags import CATALOG, REMEDIATION
 from .personalize import get_flag
+from . import hardening
 
 bp = Blueprint("progress", __name__)
 
@@ -19,6 +20,17 @@ def _expected_flags_for(participant_id: str) -> dict[str, str]:
 @bp.route("/progress", methods=["GET", "POST"])
 @login_required()
 def progress():
+    # Phase 6: a HARDENING_MODE=all instance disables flag redemption
+    # entirely rather than leaving it up and letting every submission
+    # fail -- per the project owner's call, a working /progress on a
+    # fully-hardened reference instance would just confuse participants
+    # ("is this broken, or is nothing here findable on purpose?").
+    # Disabled as a flat 404, not a message -- this route genuinely isn't
+    # part of what a hardened instance offers, same as it isn't wired
+    # into base.html's nav for one either (see base.html).
+    if hardening.FORCE_ALL:
+        abort(404)
+
     db = get_db()
     message = None
 

@@ -9,6 +9,11 @@
     Weak passwords: {{ weak_password_flag }}
   </div>
   {% endif %}
+  {% if error %}
+  {# Phase 6: shown only on WEAKPW_TEACH's hardened branch (see
+     auth.py:signup()) -- the vulnerable branch never sets this. #}
+  <div class="bg-red-50 text-red-800 text-sm rounded p-3 mb-4">{{ error }}</div>
+  {% endif %}
   <form method="post" class="space-y-4">
     <div>
       <label for="name" class="block text-sm mb-1">Full name</label>

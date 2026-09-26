@@ -28,4 +28,16 @@ if [ ! -f "$DB_PATH" ]; then
   cp "$DB_PATH" "$SEED_DB_PATH"
 fi
 
+# Phase 6: set HARDENING_MODE=all on a container's env to make it a
+# standalone, fully-hardened reference instance -- every flag's hardened
+# branch forced True at the app level (app/hardening.py), independent of
+# hardening_state (never even queried in this mode). Same image, same
+# INSTANCE_HOST-style env-var-selected-role pattern as everything else
+# here -- no separate Docker image or build step needed. Leave unset (the
+# default) for an ordinary participant-facing instance, where hardening is
+# instead a live, per-flag DB toggle -- see /ops/__set_hardening__.
+if [ "${HARDENING_MODE:-}" = "all" ]; then
+  echo "HARDENING_MODE=all -- this instance is a standalone hardened reference (see app/hardening.py); /progress is disabled on it"
+fi
+
 exec python run.py

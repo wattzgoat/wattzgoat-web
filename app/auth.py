@@ -10,6 +10,7 @@ from functools import wraps
 from flask import Blueprint, g, redirect, render_template, request, url_for
 
 from . import flags
+from . import hardening
 from .db import get_db
 from .personalize import get_flag
 
@@ -142,8 +143,19 @@ def flag_missing_hsts(resp):
     # headers themselves) onto a small custom header sent alongside every
     # /login response. Real HSTS is still genuinely absent app-wide; this
     # header doesn't pretend to be HSTS, it's just where the flag rides.
+    #
+    # Phase 6: hardened branch adds the actual missing headers instead of
+    # just withholding the flag -- X-Content-Type-Options plus a real
+    # Strict-Transport-Security, matching the remediation note in
+    # flags.py word for word ("Add HSTS, X-Content-Type-Options, and a
+    # real Content-Security-Policy app-wide").
     if request.path == "/login":
-        resp.headers["X-Lab-Flag"] = get_flag(flags.HEADERS_EXERCISE, g.participant_id)
+        if hardening.is_hardened(flags.HEADERS_EXERCISE):
+            resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            resp.headers["X-Content-Type-Options"] = "nosniff"
+            resp.headers["Content-Security-Policy"] = "default-src 'self'"
+        else:
+            resp.headers["X-Lab-Flag"] = get_flag(flags.HEADERS_EXERCISE, g.participant_id)
     return resp
 
 
@@ -173,6 +185,19 @@ def signup():
 
     # NOTE: no length/complexity check on purpose -- "weak passwords" teach
     # instance.
+    #
+    # Phase 6: hardened branch rejects the signup outright and re-renders
+    # the form with an error, reusing the exact same is_weak_password()
+    # policy WEAKPW_CHANGE already enforces on the password-change form
+    # (see customer.py:change_password()) rather than inventing a second,
+    # possibly-inconsistent rule -- one real policy, applied everywhere
+    # it should have been applied all along.
+    if hardening.is_hardened(flags.WEAKPW_TEACH) and is_weak_password(password):
+        return render_template(
+            "signup.html",
+            error="Password is too weak -- use at least 7 characters, mixing case, letters, and numbers.",
+        )
+
     db = get_db()
     db.execute(
         "INSERT INTO users (email, password_hash, role, name) VALUES (?, ?, 'customer', ?)",
@@ -180,7 +205,7 @@ def signup():
     )
     db.commit()
 
-    if is_weak_password(password):
+    if is_weak_password(password) and not hardening.is_hardened(flags.WEAKPW_TEACH):
         return render_template("signup.html", weak_password_flag=get_flag(flags.WEAKPW_TEACH, g.participant_id))
     return redirect(url_for("auth.login"))
 

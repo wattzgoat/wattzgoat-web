@@ -7,6 +7,7 @@ from .auth import login_required, weak_hash
 from .db import get_db
 from .personalize import get_flag
 from . import flags
+from . import hardening
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -58,19 +59,43 @@ def meters():
     # JOIN condition, not the WHERE clause, specifically so a UNION's
     # trailing `--` (which only truncates the WHERE clause) doesn't need
     # to account for it -- the exact same technique as before still works.
-    if query:
-        sql = (
-            "SELECT meters.*, users.name AS owner_name, users.email AS owner_email "
-            "FROM meters JOIN users ON users.id = meters.user_id AND users.role != 'service' "
-            f"WHERE meters.meter_code LIKE '%{query}%' OR users.email LIKE '%{query}%'"
-        )
+    # Phase 6: hardened branch is a genuinely different code path, not a
+    # gate in front of the same one -- a real parameterized query, so a
+    # UNION payload in `query` is bound as a literal LIKE pattern (a
+    # string almost never matches by coincidence) instead of being
+    # spliced into the SQL text. The sentinel check below still runs
+    # unconditionally either way; it just never finds anything to trip
+    # on once the query itself can't be broken out of.
+    if hardening.is_hardened(flags.SQLI_TEACH):
+        if query:
+            sql = (
+                "SELECT meters.*, users.name AS owner_name, users.email AS owner_email "
+                "FROM meters JOIN users ON users.id = meters.user_id AND users.role != 'service' "
+                "WHERE meters.meter_code LIKE ? OR users.email LIKE ?"
+            )
+            rows = db.execute(sql, (f"%{query}%", f"%{query}%")).fetchall()
+        else:
+            sql = (
+                "SELECT meters.*, users.name AS owner_name, users.email AS owner_email "
+                "FROM meters JOIN users ON users.id = meters.user_id AND users.role != 'service' "
+                "ORDER BY meters.id"
+            )
+            rows = db.execute(sql).fetchall()
     else:
-        sql = (
-            "SELECT meters.*, users.name AS owner_name, users.email AS owner_email "
-            "FROM meters JOIN users ON users.id = meters.user_id AND users.role != 'service' "
-            "ORDER BY meters.id"
-        )
-    rows = db.execute(sql).fetchall()
+        if query:
+            sql = (
+                "SELECT meters.*, users.name AS owner_name, users.email AS owner_email "
+                "FROM meters JOIN users ON users.id = meters.user_id AND users.role != 'service' "
+                f"WHERE meters.meter_code LIKE '%{query}%' OR users.email LIKE '%{query}%'"
+            )
+        else:
+            sql = (
+                "SELECT meters.*, users.name AS owner_name, users.email AS owner_email "
+                "FROM meters JOIN users ON users.id = meters.user_id AND users.role != 'service' "
+                "ORDER BY meters.id"
+            )
+        rows = db.execute(sql).fetchall()
+
     sqli_flag = None
     if rows and any(flags.SQLI_TEACH_SENTINEL in str(value) for row in rows for value in tuple(row)):
         sqli_flag = get_flag(flags.SQLI_TEACH, g.participant_id)

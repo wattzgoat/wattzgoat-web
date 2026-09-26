@@ -4,6 +4,7 @@ import sqlite3
 import traceback
 
 from flask import Blueprint, abort, g, make_response, redirect, render_template, request, send_file, url_for
+from markupsafe import escape
 
 from .auth import login_required, weak_hash, is_weak_password
 from .db import get_db, mysql_style_error
@@ -11,6 +12,7 @@ from .devices import issue_device_token
 from .personalize import get_flag
 from . import billing
 from . import flags
+from . import hardening
 
 bp = Blueprint("customer", __name__)
 
@@ -63,7 +65,16 @@ def dashboard():
     # on another site. Missing security headers teach instance, delivered
     # via a response header (matching the exercise instance on /login)
     # rather than a page comment.
-    resp.headers["X-Lab-Flag"] = get_flag(flags.HEADERS_TEACH, g.participant_id)
+    #
+    # Phase 6: hardened branch sets the actual missing headers (a real
+    # fix, not a stub) and stops emitting the flag header entirely --
+    # this instance's whole "vulnerability" IS the header's absence, so
+    # fixing that also removes the one place the flag rode.
+    if hardening.is_hardened(flags.HEADERS_TEACH):
+        resp.headers["X-Frame-Options"] = "DENY"
+        resp.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
+    else:
+        resp.headers["X-Lab-Flag"] = get_flag(flags.HEADERS_TEACH, g.participant_id)
     return resp
 
 
@@ -138,13 +149,31 @@ def change_password():
     # CSRF category for how this becomes a remote, no-session-needed
     # takeover, chained off this same gap.
     new_password = request.form.get("new_password", "")
+
+    # Phase 6: WEAKPW_CHANGE's hardened branch rejects the new password
+    # outright and never writes it, reusing the same is_weak_password()
+    # policy as WEAKPW_TEACH's hardened branch on signup (auth.py) --
+    # independent of PWCHANGE_TEACH/CSRF_TEACH's own toggles, which stay
+    # whatever they're separately set to. A real app would refuse a
+    # policy-violating password regardless of what else is or isn't
+    # fixed on this same form.
+    if hardening.is_hardened(flags.WEAKPW_CHANGE) and is_weak_password(new_password):
+        return render_template(
+            "account.html", user=g.user,
+            error="New password is too weak -- use at least 7 characters, mixing case, letters, and numbers.",
+        )
+
     db = get_db()
     db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (weak_hash(new_password), g.user["id"]))
     db.commit()
 
     # Weak passwords instance: same missing length/complexity check as
     # signup, just on a different form.
-    weakpw_flag = get_flag(flags.WEAKPW_CHANGE, g.participant_id) if is_weak_password(new_password) else None
+    weakpw_flag = (
+        get_flag(flags.WEAKPW_CHANGE, g.participant_id)
+        if is_weak_password(new_password) and not hardening.is_hardened(flags.WEAKPW_CHANGE)
+        else None
+    )
     pwchange_flag = get_flag(flags.PWCHANGE_TEACH, g.participant_id)
     # CSRF teach instance: no anti-CSRF token on this form at all, so a
     # forged cross-origin submission works just as well as a real one --
@@ -277,7 +306,17 @@ def usage():
         results = None
         db_error = mysql_style_error(e) + f"\n-- improper error handling: {get_flag(flags.ERRHANDLING_TEACH, g.participant_id)}"
 
-    return render_template("usage.html", query=query, results=results, db_error=db_error, sqli_flag=sqli_flag)
+    # Phase 6: RXSS_TEACH's hardened branch escapes the echoed query
+    # before it ever reaches the template -- the template's |safe stays
+    # in place either way (see usage.html), so the escaping has to happen
+    # here, not there, or a hardened *and* vulnerable toggle would render
+    # identically. markupsafe.escape() produces a Markup instance, so
+    # |safe on an already-escaped value is a no-op, not a second layer of
+    # escaping.
+    query_display = escape(query) if hardening.is_hardened(flags.RXSS_TEACH) else query
+    return render_template(
+        "usage.html", query=query_display, results=results, db_error=db_error, sqli_flag=sqli_flag
+    )
 
 
 @bp.route("/support", methods=["GET", "POST"])

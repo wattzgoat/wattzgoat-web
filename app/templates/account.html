@@ -34,6 +34,12 @@
 
 <div class="max-w-md bg-white rounded-lg p-6 shadow-sm">
   <h2 class="text-lg font-semibold mb-4">Change password</h2>
+  {% if error %}
+  {# Phase 6: shown only on WEAKPW_CHANGE's hardened branch (see
+     customer.py:change_password()) -- the vulnerable branch never sets
+     this, and the password is never written when it's shown. #}
+  <div class="bg-red-50 text-red-800 text-sm rounded p-3 mb-4">{{ error }}</div>
+  {% endif %}
   {% if password_changed %}
   <p class="text-green-700 text-sm mb-3">Password updated.</p>
   {% if weakpw_flag %}

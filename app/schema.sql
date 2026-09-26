@@ -152,3 +152,25 @@ CREATE TABLE lab_meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+-- Phase 6: hardening-mode toggle state. One row per flag_key that's ever
+-- been flipped to hardened -- a key with NO row here is implicitly
+-- vulnerable (see app/hardening.py:is_hardened()'s default), so a
+-- freshly seeded DB needs zero rows here and every instance starts fully
+-- vulnerable with no seed data required for this table at all.
+--
+-- Lives in the same app.db that /ops/__reset_lab__ wholesale-swaps back
+-- to seed.db's contents (see app/ops.py) -- so a lab reset also resets
+-- every hardening toggle back to vulnerable, for free, via the exact
+-- same file-swap mechanism that already resets everything else in this
+-- DB. No extra reset-lab code needed for this table specifically.
+--
+-- Not consulted at all when the app is booted with HARDENING_MODE=all
+-- (see app/hardening.py) -- that mode is a whole separate, standalone
+-- hardened container/port and short-circuits before ever querying this
+-- table, so it works even against a DB that predates this table's
+-- existence.
+CREATE TABLE hardening_state (
+    flag_key TEXT PRIMARY KEY,
+    hardened INTEGER NOT NULL DEFAULT 0
+);

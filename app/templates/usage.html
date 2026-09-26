@@ -28,7 +28,12 @@
     {% endfor %}
   </ul>
   {% else %}
-  {# |safe on purpose -- reflected XSS teach instance. #}
+  {# |safe on purpose -- reflected XSS teach instance. Phase 6: the
+     hardened/vulnerable branch is decided in customer.py:usage(), not
+     here -- `query` arrives pre-escaped (markupsafe.escape()) when
+     RXSS_TEACH is hardened, so |safe on an already-escaped Markup value
+     is a no-op either way. Don't try to branch on hardening state
+     inside this template instead. #}
   <p class="text-gray-500 text-sm">No results found for: {{ query|safe }}</p>
   {% endif %}
 {% endif %}
