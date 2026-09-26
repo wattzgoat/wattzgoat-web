@@ -6,6 +6,7 @@ CREATE TABLE users (
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('customer', 'admin', 'service')),
     name TEXT NOT NULL,
+    phone TEXT,
     address_service TEXT,
     address_billing TEXT,
     billing_rate REAL NOT NULL DEFAULT 0.28,

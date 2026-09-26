@@ -20,3 +20,14 @@ def test_weakpw_exercise_admin_default_password(ops1_admin, base_url, extract_fl
     assert resp.status_code == 200
     flag = extract_flag_fn(resp.text)
     assert redeem_flag_fn(ops1_admin, base_url, flag)
+
+
+def test_weakpw_change(alice, base_url, extract_flag_fn, redeem_flag_fn):
+    # Reuses the shared alice fixture's already-authenticated session --
+    # changing the account's password this way doesn't invalidate that
+    # session's own cookie, and nothing later in the suite re-logs-in as
+    # alice by username/password, so this is safe to run mid-suite.
+    resp = alice.post(f"{base_url}/account/password", data={"new_password": "x"}, timeout=10)
+    assert resp.status_code == 200
+    flag = extract_flag_fn(resp.text)
+    assert redeem_flag_fn(alice, base_url, flag)

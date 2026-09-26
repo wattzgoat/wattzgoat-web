@@ -45,6 +45,7 @@ SXSS_TEACH = "SXSS_TEACH"
 SXSS_EXERCISE = "SXSS_EXERCISE"
 WEAKPW_TEACH = "WEAKPW_TEACH"
 WEAKPW_EXERCISE = "WEAKPW_EXERCISE"
+WEAKPW_CHANGE = "WEAKPW_CHANGE"
 RATELIMIT_TEACH = "RATELIMIT_TEACH"
 RATELIMIT_EXERCISE = "RATELIMIT_EXERCISE"
 INFOLEAK_TEACH = "INFOLEAK_TEACH"
@@ -56,6 +57,7 @@ ROLE_ESCALATION_BONUS = "ROLE_ESCALATION_BONUS"
 PRIVESC_TEACH = "PRIVESC_TEACH"
 OLDTOKEN_EXERCISE = "OLDTOKEN_EXERCISE"
 SESSIONREUSE_BONUS = "SESSIONREUSE_BONUS"
+PWCHANGE_TEACH = "PWCHANGE_TEACH"
 TRAVERSAL_TEACH = "TRAVERSAL_TEACH"
 CMDINJECT_EXERCISE = "CMDINJECT_EXERCISE"
 SESSIONID_TEACH = "SESSIONID_TEACH"
@@ -86,6 +88,7 @@ CATALOG = [
     (SXSS_EXERCISE, "Stored XSS", "Support ticket"),
     (WEAKPW_TEACH, "Weak passwords", "Signup"),
     (WEAKPW_EXERCISE, "Weak passwords", "Admin account"),
+    (WEAKPW_CHANGE, "Weak passwords", "Change password"),
     (RATELIMIT_TEACH, "Lack of rate limiting", "Login"),
     (RATELIMIT_EXERCISE, "Lack of rate limiting", "Password reset"),
     (DEVADMIN_LEAK, "Sensitive information disclosure", "Admin dashboard"),
@@ -96,6 +99,7 @@ CATALOG = [
     (PRIVESC_TEACH, "Broken authentication", "Meter control"),
     (OLDTOKEN_EXERCISE, "Broken authentication", "Password reset"),
     (SESSIONREUSE_BONUS, "Broken authentication", "Logout"),
+    (PWCHANGE_TEACH, "Broken authentication", "Change password"),
     (TRAVERSAL_TEACH, "Security misconfiguration", "Bill download"),
     (CMDINJECT_EXERCISE, "Security misconfiguration", "Diagnostics"),
     (SESSIONID_TEACH, "Insecure cryptography", "Another account"),
@@ -116,8 +120,8 @@ CATALOG = [
 
 VALID_KEYS = {key for key, _, _ in CATALOG}
 
-assert len(CATALOG) == 37
-assert len(VALID_KEYS) == 37, "flag keys must be unique"
+assert len(CATALOG) == 39
+assert len(VALID_KEYS) == 39, "flag keys must be unique"
 
 # One-line remediation note shown on /progress after a correct
 # submission -- what a developer would actually do to fix this class of
@@ -134,6 +138,7 @@ REMEDIATION = {
     SXSS_EXERCISE: "Admin-facing views need the same output escaping as customer-facing ones.",
     WEAKPW_TEACH: "Enforce a minimum length/complexity policy server-side at signup.",
     WEAKPW_EXERCISE: "Force a password change on first login for default/shared admin credentials.",
+    WEAKPW_CHANGE: "Apply the same password policy to the change-password form as to signup.",
     RATELIMIT_TEACH: "Add a lockout or exponential backoff after repeated failed logins.",
     RATELIMIT_EXERCISE: "Rate-limit password-reset requests the same way login attempts should be.",
     DEVADMIN_LEAK: "Remove debug/staging credentials from source before anything ships.",
@@ -144,6 +149,7 @@ REMEDIATION = {
     PRIVESC_TEACH: "Require the correct role, not just any valid session, on privileged actions.",
     OLDTOKEN_EXERCISE: "Check and enforce a reset token's expiry server-side, not just cosmetically.",
     SESSIONREUSE_BONUS: "Invalidate a session token server-side on logout, not just the browser's cookie.",
+    PWCHANGE_TEACH: "Require re-entry of the current password before accepting a new one for a sensitive account action.",
     TRAVERSAL_TEACH: "Resolve and validate the final path stays inside the intended directory before serving it.",
     CMDINJECT_EXERCISE: "Never shell out with unsanitized input -- use a safe API instead of string-built commands.",
     SESSIONID_TEACH: "Use a cryptographically random, unguessable session token.",

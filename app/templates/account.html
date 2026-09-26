@@ -3,12 +3,20 @@
 {% block content %}
 <h1 class="text-2xl font-semibold mb-6">Account settings</h1>
 
-<div class="max-w-md bg-white rounded-lg p-6 shadow-sm">
+<div class="max-w-md bg-white rounded-lg p-6 shadow-sm mb-6">
   <div id="status" class="text-sm mb-4 hidden"></div>
   <form id="account-form" class="space-y-4">
     <div>
       <label class="block text-sm mb-1">Full name</label>
       <input name="name" value="{{ user['name'] }}" class="w-full border rounded px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Email</label>
+      <input value="{{ user['email'] }}" disabled class="w-full border rounded px-3 py-2 bg-gray-50 text-gray-500">
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Phone</label>
+      <input name="phone" value="{{ user['phone'] or '' }}" placeholder="(555) 555-0100" class="w-full border rounded px-3 py-2">
     </div>
     <div>
       <label class="block text-sm mb-1">Service address</label>
@@ -21,6 +29,26 @@
     <input type="hidden" name="billing_rate" value="{{ user['billing_rate'] }}">
     <input type="hidden" name="role" value="{{ user['role'] }}">
     <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Save changes</button>
+  </form>
+</div>
+
+<div class="max-w-md bg-white rounded-lg p-6 shadow-sm">
+  <h2 class="text-lg font-semibold mb-4">Change password</h2>
+  {% if password_changed %}
+  <p class="text-green-700 text-sm mb-3">Password updated.</p>
+  {% if weakpw_flag %}
+  <!-- {{ weakpw_flag }} -->
+  {% endif %}
+  {% if pwchange_flag %}
+  <!-- {{ pwchange_flag }} -->
+  {% endif %}
+  {% endif %}
+  <form method="post" action="{{ url_for('customer.change_password') }}" class="space-y-4">
+    <div>
+      <label class="block text-sm mb-1">New password</label>
+      <input name="new_password" type="password" required class="w-full border rounded px-3 py-2">
+    </div>
+    <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Update password</button>
   </form>
 </div>
 

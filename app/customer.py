@@ -5,7 +5,7 @@ import traceback
 
 from flask import Blueprint, abort, g, make_response, redirect, render_template, request, send_file, url_for
 
-from .auth import login_required
+from .auth import login_required, weak_hash
 from .db import get_db, mysql_style_error
 from .devices import issue_device_token
 from .personalize import get_flag
@@ -84,11 +84,37 @@ def update_nickname(meter_id):
 
 
 @bp.route("/account", methods=["GET"])
-@login_required(role="customer")
+@login_required()
 def account():
-    # Saving happens client-side via PATCH /api/account (app/api.py) --
-    # that's where the mass-assignment bug actually lives, not here.
+    # Saving profile fields happens client-side via PATCH /api/account
+    # (app/api.py) -- that's where the mass-assignment bug lives. Open to
+    # any logged-in role now, not just customers -- admins get the same
+    # page (see base.html's nav) so the password-change flow below
+    # applies uniformly to both.
     return render_template("account.html", user=g.user)
+
+
+@bp.route("/account/password", methods=["POST"])
+@login_required()
+def change_password():
+    # Broken authentication teach instance: no current-password field on
+    # this form at all, for either role -- any active session, however it
+    # was obtained, can fully take over the account by setting a new
+    # password. Submitting this form at all demonstrates the missing
+    # check; it doesn't require any special trickery to notice. See the
+    # CSRF category for how this becomes a remote, no-session-needed
+    # takeover, chained off this same gap.
+    new_password = request.form.get("new_password", "")
+    db = get_db()
+    db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (weak_hash(new_password), g.user["id"]))
+    db.commit()
+
+    # Weak passwords instance: same missing length/complexity check as
+    # signup, just on a different form.
+    weakpw_flag = get_flag(flags.WEAKPW_CHANGE, g.participant_id) if len(new_password) < 4 else None
+    pwchange_flag = get_flag(flags.PWCHANGE_TEACH, g.participant_id)
+
+    return render_template("account.html", user=g.user, password_changed=True, weakpw_flag=weakpw_flag, pwchange_flag=pwchange_flag)
 
 
 @bp.route("/recharge", methods=["GET", "POST"])

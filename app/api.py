@@ -16,7 +16,7 @@ bp = Blueprint("api", __name__, url_prefix="/api")
 # instance. `role` is the same story, one level worse -- a customer who
 # sets their own role to 'admin' this way gets real admin access, the
 # broken-access-control bonus third instance.
-ACCOUNT_PATCHABLE_FIELDS = {"name", "address_service", "address_billing", "billing_rate", "role"}
+ACCOUNT_PATCHABLE_FIELDS = {"name", "phone", "address_service", "address_billing", "billing_rate", "role"}
 
 
 @bp.route("/account", methods=["PATCH"])
