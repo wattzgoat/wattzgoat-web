@@ -6,7 +6,7 @@
   {% if weak_password_flag %}
   <div class="bg-green-50 text-green-800 text-sm rounded p-3 mb-4">
     Account created with a password under 4 characters, no complexity check stopped it --
-    weak passwords teach instance: {{ weak_password_flag }}
+    Weak passwords: {{ weak_password_flag }}
   </div>
   {% endif %}
   <form method="post" class="space-y-4">

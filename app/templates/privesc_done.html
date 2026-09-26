@@ -5,7 +5,7 @@
   <h1 class="text-xl font-semibold mb-2">Meter {{ action }}</h1>
   <p class="text-sm text-gray-600 mb-4">
     That succeeded even though this account doesn't own that meter and isn't an admin —
-    broken authentication / privilege escalation teach instance:
+    Broken authentication:
     <span class="font-mono">{{ flag }}</span>
   </p>
   <a href="{{ url_for('customer.dashboard') }}" class="underline text-sm">Back to dashboard</a>

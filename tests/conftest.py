@@ -119,6 +119,38 @@ def redeem_flag(session: requests.Session, base_url: str, flag_value: str) -> bo
     return "Correct!" in resp.text or "Already redeemed" in resp.text
 
 
+def extract_all_flags(text: str) -> list:
+    return FLAG_RE.findall(text)
+
+
+def checklist_status(session: requests.Session, base_url: str, category: str, name: str) -> bool:
+    """Reads /progress directly and reports whether the specific
+    (category, name) row is marked solved. More robust than plain
+    extraction for responses that can legitimately carry more than one
+    valid flag at once (e.g. the account page after a password change) --
+    this confirms the SPECIFIC category under test actually fired, rather
+    than just that some valid-looking flag was accepted somewhere."""
+    resp = session.get(f"{base_url}/progress", timeout=10)
+    assert resp.status_code == 200
+    pattern = re.compile(
+        re.escape(category) + r"</td>\s*<td[^>]*>\s*" + re.escape(name) + r"\s*</td>\s*<td[^>]*>\s*<span[^>]*>(solved|locked)</span>",
+        re.DOTALL,
+    )
+    m = pattern.search(resp.text)
+    assert m, f"couldn't find a checklist row for category={category!r}, name={name!r}"
+    return m.group(1) == "solved"
+
+
+@pytest.fixture(scope="session")
+def extract_all_flags_fn():
+    return extract_all_flags
+
+
+@pytest.fixture(scope="session")
+def checklist_status_fn():
+    return checklist_status
+
+
 @pytest.fixture(scope="session")
 def extract_flag_fn():
     return extract_flag

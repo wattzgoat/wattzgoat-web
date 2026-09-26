@@ -4,12 +4,12 @@
 <h1 class="text-2xl font-semibold mb-6">Operator console</h1>
 {% if weakpw_flag %}
 <div class="bg-yellow-50 text-yellow-800 text-sm rounded p-3 mb-6">
-  Weak passwords exercise instance: {{ weakpw_flag }}
+  Weak passwords: {{ weakpw_flag }}
 </div>
 {% endif %}
 {% if devadmin_flag %}
 <div class="bg-yellow-50 text-yellow-800 text-sm rounded p-3 mb-6">
-  Sensitive information disclosure teach instance: {{ devadmin_flag }}
+  Sensitive information disclosure: {{ devadmin_flag }}
 </div>
 {% endif %}
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">

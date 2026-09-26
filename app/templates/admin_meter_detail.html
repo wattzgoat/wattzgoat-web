@@ -18,6 +18,15 @@
     </button>
   </form>
 
+  <h2 class="text-sm font-semibold mt-6 mb-2">Firmware update</h2>
+  <form method="post" action="{{ url_for('admin.upload_firmware', meter_id=meter['id']) }}" enctype="multipart/form-data" class="flex gap-2 items-center">
+    <input type="file" name="firmware" required class="text-sm">
+    <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm">Upload</button>
+  </form>
+  <p class="text-xs text-gray-400 mt-1">
+    <a href="{{ url_for('admin.firmware_canary') }}" class="underline">View firmware canary</a>
+  </p>
+
   <h2 class="text-sm font-semibold mt-6 mb-2">Recent readings</h2>
   {% if readings %}
   <ul class="text-sm divide-y border rounded">

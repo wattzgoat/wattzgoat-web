@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Firmware uploaded — WattzGOAT Admin{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto mt-12 bg-white rounded-lg p-8 shadow-sm text-center">
+  <h1 class="text-xl font-semibold mb-2">Firmware uploaded</h1>
+  <p class="text-sm text-gray-600 mb-4">
+    Saved <span class="font-mono">{{ filename }}</span> for {{ meter_code }}, no type, size, or path check stopped it.
+  </p>
+  {% if flag %}
+  <p class="text-sm text-gray-600 mb-4">Insecure file upload: {{ flag }}</p>
+  {% endif %}
+  <a href="{{ url_for('admin.meters') }}" class="underline text-sm">Back to fleet</a>
+</div>
+{% endblock %}

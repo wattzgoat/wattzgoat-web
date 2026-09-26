@@ -68,6 +68,10 @@ BUSLOGIC_TEACH = "BUSLOGIC_TEACH"
 BUSLOGIC_EXERCISE = "BUSLOGIC_EXERCISE"
 ERRHANDLING_TEACH = "ERRHANDLING_TEACH"
 ERRHANDLING_EXERCISE = "ERRHANDLING_EXERCISE"
+CSRF_TEACH = "CSRF_TEACH"
+CSRF_EXERCISE = "CSRF_EXERCISE"
+FILEUPLOAD_TEACH = "FILEUPLOAD_TEACH"
+FILEUPLOAD_EXERCISE = "FILEUPLOAD_EXERCISE"
 
 # Category 15 -- Bonus: Simulated AI Assistant. See app/assistant.py.
 ASSISTANT_SYSPROMPT_LEAK = "ASSISTANT_SYSPROMPT_LEAK"
@@ -111,6 +115,10 @@ CATALOG = [
     (ERRHANDLING_TEACH, "Improper error handling", "Usage search"),
     (ERRHANDLING_EXERCISE, "Improper error handling", "Login"),
     (INFOLEAK_TEACH, "Improper error handling", "Recharge"),
+    (CSRF_TEACH, "CSRF", "Change password"),
+    (CSRF_EXERCISE, "CSRF", "Meter nickname"),
+    (FILEUPLOAD_TEACH, "Insecure file upload", "Firmware update"),
+    (FILEUPLOAD_EXERCISE, "Insecure file upload", "Firmware update"),
     (ASSISTANT_SYSPROMPT_LEAK, "Bonus — Simulated AI Assistant", "Chat widget"),
     (ASSISTANT_DIRECT_ACTION, "Bonus — Simulated AI Assistant", "Chat widget"),
     (ASSISTANT_DIRECT_DATALEAK, "Bonus — Simulated AI Assistant", "Chat widget"),
@@ -120,8 +128,8 @@ CATALOG = [
 
 VALID_KEYS = {key for key, _, _ in CATALOG}
 
-assert len(CATALOG) == 39
-assert len(VALID_KEYS) == 39, "flag keys must be unique"
+assert len(CATALOG) == 43
+assert len(VALID_KEYS) == 43, "flag keys must be unique"
 
 # One-line remediation note shown on /progress after a correct
 # submission -- what a developer would actually do to fix this class of
@@ -161,6 +169,10 @@ REMEDIATION = {
     ERRHANDLING_TEACH: "Catch DB errors and return a generic message -- never the raw driver error.",
     ERRHANDLING_EXERCISE: "Use one identical error message for both cases, so login failures don't reveal which part was wrong.",
     INFOLEAK_TEACH: "Never render a raw traceback to the client, even during active development.",
+    CSRF_TEACH: "Require a per-session anti-CSRF token on any state-changing request, especially sensitive ones like a password change.",
+    CSRF_EXERCISE: "Anti-CSRF tokens belong on every state-changing form, not just the ones that feel high-stakes.",
+    FILEUPLOAD_TEACH: "Validate file type, size, and content server-side; never trust the client's claimed type or extension.",
+    FILEUPLOAD_EXERCISE: "Generate the stored filename server-side; never use a client-supplied filename to build a file path.",
     ASSISTANT_SYSPROMPT_LEAK: "Treat the system prompt as sensitive; don't let user input cause it to be echoed back.",
     ASSISTANT_DIRECT_ACTION: "Don't let a chat message alone authorize a real action outside the caller's own scope.",
     ASSISTANT_DIRECT_DATALEAK: "Apply the same access-control checks to assistant-mediated data access as to the API directly.",

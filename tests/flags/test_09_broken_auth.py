@@ -52,8 +52,14 @@ def test_pwchange_teach(alice, base_url, extract_flag_fn, redeem_flag_fn):
     # ALSO present when the password is weak. Using a strong one here
     # keeps this response unambiguous (only pwchange_flag appears), so
     # extraction can't accidentally grab the other test's
-    # already-claimed WEAKPW_CHANGE flag instead.
-    resp = alice.post(f"{base_url}/account/password", data={"new_password": "Str0ngP@ssw0rd-2026!"}, timeout=10)
+    # already-claimed WEAKPW_CHANGE flag instead. Same reasoning for the
+    # explicit Origin header -- see test_05's comment on the same pattern.
+    resp = alice.post(
+        f"{base_url}/account/password",
+        data={"new_password": "Str0ngP@ssw0rd-2026!"},
+        headers={"Origin": base_url},
+        timeout=10,
+    )
     assert resp.status_code == 200
     flag = extract_flag_fn(resp.text)
     assert redeem_flag_fn(alice, base_url, flag)

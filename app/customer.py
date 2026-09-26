@@ -80,7 +80,40 @@ def update_nickname(meter_id):
         (nickname, g.participant_id, meter_id, g.user["id"]),
     )
     db.commit()
-    return redirect(url_for("customer.dashboard"))
+
+    resp = make_response(redirect(url_for("customer.dashboard")))
+    if _is_cross_origin(request):
+        # CSRF exercise instance: same missing-token gap as the password
+        # form, on a lower-stakes action -- this route redirects rather
+        # than rendering a page, so the flag rides on a response header
+        # instead of visible page text, same technique as the missing-
+        # headers category's own header-delivered flags. Needs Burp/
+        # devtools to see, which is realistic: a CSRF PoC is usually
+        # confirmed by inspecting the actual request/response, not by
+        # eyeballing the page the victim's browser lands on.
+        resp.headers["X-Lab-Flag"] = get_flag(flags.CSRF_EXERCISE, g.participant_id)
+    return resp
+
+
+def _is_cross_origin(req) -> bool:
+    # CSRF detection, not blocking -- keeps these routes exploitable while
+    # letting the app recognize how they were exploited. A legitimate
+    # in-app form submission carries an Origin header matching this app's
+    # own origin (modern browsers send Origin on same-origin POSTs too,
+    # not just cross-origin). A hosted attacker page -- or a local
+    # file:// PoC, which gets Origin: null and no Referer at all -- won't
+    # match. This is a real, standard CSRF defense technique (Origin/
+    # Referer checking), used here for detection instead of prevention.
+    own_origin = req.host_url.rstrip("/")
+    origin = req.headers.get("Origin")
+    if origin is not None:
+        return origin != own_origin
+    referer = req.headers.get("Referer")
+    if referer is not None:
+        return not referer.startswith(own_origin)
+    # Neither header present at all -- most consistent with a file://
+    # PoC page, where browsers suppress Referer entirely.
+    return True
 
 
 @bp.route("/account", methods=["GET"])
@@ -113,8 +146,17 @@ def change_password():
     # signup, just on a different form.
     weakpw_flag = get_flag(flags.WEAKPW_CHANGE, g.participant_id) if len(new_password) < 4 else None
     pwchange_flag = get_flag(flags.PWCHANGE_TEACH, g.participant_id)
+    # CSRF teach instance: no anti-CSRF token on this form at all, so a
+    # forged cross-origin submission works just as well as a real one --
+    # combined with the missing current-password check above, that's a
+    # full remote account takeover from a hosted page or a local HTML
+    # file, no session-riding trickery beyond a plain auto-submitting form.
+    csrf_flag = get_flag(flags.CSRF_TEACH, g.participant_id) if _is_cross_origin(request) else None
 
-    return render_template("account.html", user=g.user, password_changed=True, weakpw_flag=weakpw_flag, pwchange_flag=pwchange_flag)
+    return render_template(
+        "account.html", user=g.user, password_changed=True,
+        weakpw_flag=weakpw_flag, pwchange_flag=pwchange_flag, csrf_flag=csrf_flag,
+    )
 
 
 @bp.route("/recharge", methods=["GET", "POST"])
@@ -233,7 +275,7 @@ def usage():
             sqli_flag = get_flag(flags.SQLI_BONUS, g.participant_id)
     except sqlite3.OperationalError as e:
         results = None
-        db_error = mysql_style_error(e) + f"\n-- improper error handling teach instance: {get_flag(flags.ERRHANDLING_TEACH, g.participant_id)}"
+        db_error = mysql_style_error(e) + f"\n-- improper error handling: {get_flag(flags.ERRHANDLING_TEACH, g.participant_id)}"
 
     return render_template("usage.html", query=query, results=results, db_error=db_error, sqli_flag=sqli_flag)
 

@@ -60,7 +60,7 @@ def draw_ben_bill_pdf(flag: str) -> bytes:
 
     c.setFont("Helvetica", 8)
     c.setFillGray(0.6)
-    c.drawString(72, 72, f"Security misconfiguration teach instance: {flag}")
+    c.drawString(72, 72, f"Security misconfiguration: {flag}")
 
     c.showPage()
     c.save()

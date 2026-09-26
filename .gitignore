@@ -9,3 +9,4 @@ data/
 node_modules/
 build/dist/
 .env
+app/firmware/

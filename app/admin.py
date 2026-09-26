@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 from flask import Blueprint, g, redirect, render_template, request, url_for
@@ -8,6 +9,18 @@ from .personalize import get_flag
 from . import flags
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+# Intended firmware storage: FIRMWARE_DIR/<meter_code>/<filename>. canary.txt
+# sits one level up, directly inside FIRMWARE_DIR -- reachable via exactly
+# "../canary.txt" from within any meter's own subfolder, mirroring the
+# bill-download traversal's simplicity (MTR-1004/../MTR-1002/...). It's a
+# small, dedicated, harmless target purpose-built for this exercise, not a
+# real app file -- so a participant's traversal has a real, visible,
+# non-destructive thing to prove impact against (see admin.firmware_canary
+# below), rather than something that could break the rest of the app for
+# everyone on a shared instance.
+FIRMWARE_DIR = os.path.join(os.path.dirname(__file__), "firmware")
+CANARY_PATH = os.path.normpath(os.path.join(FIRMWARE_DIR, "canary.txt"))
 
 
 @bp.route("/")
@@ -81,6 +94,56 @@ def meter_detail(meter_id):
         (meter_id,),
     ).fetchall()
     return render_template("admin_meter_detail.html", meter=meter, readings=readings)
+
+
+@bp.route("/meters/<int:meter_id>/firmware", methods=["POST"])
+@login_required(role="admin")
+def upload_firmware(meter_id):
+    db = get_db()
+    meter = db.execute("SELECT meter_code FROM meters WHERE id = ?", (meter_id,)).fetchone()
+    if meter is None:
+        return redirect(url_for("admin.meters"))
+
+    uploaded = request.files.get("firmware")
+    if uploaded is None or uploaded.filename == "":
+        return redirect(url_for("admin.meter_detail", meter_id=meter_id))
+
+    # Insecure file upload teach instance: no restriction at all on file
+    # type, extension, or size -- whatever gets sent, gets saved.
+    #
+    # Insecure file upload exercise instance: the save path is built
+    # directly from the client-supplied filename (uploaded.filename),
+    # completely unsanitized -- no secure_filename()-style cleanup, no
+    # check that the resolved path stays inside the intended per-meter
+    # folder. A filename like "../canary.txt" walks the save location
+    # right out of that folder.
+    save_path = os.path.normpath(os.path.join(FIRMWARE_DIR, meter["meter_code"], uploaded.filename))
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    uploaded.save(save_path)
+
+    fileupload_flag = None
+    intended_dir = os.path.normpath(os.path.join(FIRMWARE_DIR, meter["meter_code"]))
+    if save_path == CANARY_PATH:
+        fileupload_flag = get_flag(flags.FILEUPLOAD_EXERCISE, g.participant_id)
+    elif os.path.dirname(save_path) == intended_dir:
+        fileupload_flag = get_flag(flags.FILEUPLOAD_TEACH, g.participant_id)
+
+    return render_template("firmware_uploaded.html", meter_code=meter["meter_code"], filename=uploaded.filename, flag=fileupload_flag)
+
+
+@bp.route("/firmware-canary")
+@login_required(role="admin")
+def firmware_canary():
+    # Visible proof the traversal write actually landed somewhere real --
+    # a small, dedicated, harmless target (see FIRMWARE_DIR/CANARY_PATH
+    # above), not a live app file that overwriting would actually break
+    # for other people on a shared instance.
+    try:
+        with open(CANARY_PATH, "r", errors="replace") as f:
+            content = f.read()
+    except FileNotFoundError:
+        content = "(untouched -- nothing has overwritten this file yet)"
+    return render_template("firmware_canary.html", content=content)
 
 
 @bp.route("/meters/<int:meter_id>/disconnect", methods=["POST"])

@@ -37,10 +37,13 @@
   {% if password_changed %}
   <p class="text-green-700 text-sm mb-3">Password updated.</p>
   {% if weakpw_flag %}
-  <!-- {{ weakpw_flag }} -->
+  <p class="text-sm text-gray-600 mb-3">Weak passwords: {{ weakpw_flag }}</p>
   {% endif %}
   {% if pwchange_flag %}
   <!-- {{ pwchange_flag }} -->
+  {% endif %}
+  {% if csrf_flag %}
+  <p class="text-sm text-gray-600 mb-3">CSRF: {{ csrf_flag }}</p>
   {% endif %}
   {% endif %}
   <form method="post" action="{{ url_for('customer.change_password') }}" class="space-y-4">

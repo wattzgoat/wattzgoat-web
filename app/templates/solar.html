@@ -8,7 +8,7 @@
 <div class="bg-green-50 text-green-800 text-sm rounded p-3 mb-6">
   ${{ "%.2f"|format(credited) }} credited. New balance: ${{ "%.2f"|format(meter['balance']) }}
   {% if buslogic_flag %}
-  <br><span class="text-xs">No plausibility check on claimed export — business logic exercise instance: {{ buslogic_flag }}</span>
+  <br><span class="text-xs">No plausibility check on claimed export — Business logic flaws: {{ buslogic_flag }}</span>
   {% endif %}
 </div>
 {% endif %}
