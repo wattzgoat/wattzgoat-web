@@ -58,9 +58,20 @@ def base_url():
 
 @pytest.fixture(scope="session")
 def plaintext_base_url():
-    """Same host, the deliberate unencrypted mirror on port 5001."""
+    """The deliberate unencrypted mirror. Defaults to base_url's port + 1,
+    matching the container's own internal 5000 (HTTPS) / 5001 (plaintext)
+    pair as preserved by CI's `docker run -p 5000:5000 -p 5001:5001` and
+    a plain local `docker run`. This can't be reliably inferred for other
+    port schemes -- e.g. this project's own Portainer convention maps
+    HTTPS/plaintext pairs 10 apart (4581/4591) -- so set
+    WATTZGOAT_PLAINTEXT_URL explicitly for those deployments rather than
+    relying on a guessed offset."""
+    override = os.environ.get("WATTZGOAT_PLAINTEXT_URL")
+    if override:
+        return override
     parsed = urlparse(BASE_URL)
-    return f"http://{parsed.hostname}:5001"
+    https_port = parsed.port or 443
+    return f"http://{parsed.hostname}:{https_port + 1}"
 
 
 def _new_session() -> requests.Session:
