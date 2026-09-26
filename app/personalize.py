@@ -118,4 +118,13 @@ def get_flag(flag_key: str, participant_id: str) -> str:
     digest = hmac.new(secret.encode(), f"{flag_key}:{participant_id}".encode(), hashlib.sha256).digest()
     adjective = _ADJECTIVES[digest[0] % len(_ADJECTIVES)]
     noun = _NOUNS[digest[1] % len(_NOUNS)]
-    return f"FLAG{{{adjective}_{noun}}}"
+    # The word pair alone is only ~5,500 possible combinations -- far too
+    # small a space once you multiply 37 keys by any realistic number of
+    # participants (the birthday paradox makes an accidental collision
+    # between two unrelated (key, participant) pairs a real, observed
+    # event, not a theoretical edge case). The word pair stays for
+    # readability/flavor; this 4-byte hex suffix (32 bits, ~4.3 billion
+    # values) is what actually keeps every (key, participant) pair
+    # distinct at any real class size.
+    suffix = digest[2:6].hex().upper()
+    return f"FLAG{{{adjective}_{noun}_{suffix}}}"

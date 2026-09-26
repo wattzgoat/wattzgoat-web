@@ -40,7 +40,7 @@ BASE_URL = os.environ.get("WATTZGOAT_BASE_URL", "https://127.0.0.1:5000")
 # at all.
 PARTICIPANT_ID = secrets.token_hex(8)
 
-FLAG_RE = re.compile(r"FLAG\{[A-Z_]+\}")
+FLAG_RE = re.compile(r"FLAG\{[A-Z0-9_]+\}")
 
 # Seeded accounts (see scripts/seed.py / the instructor guide's roster).
 # Reused deliberately across test files to mirror how a real participant
