@@ -23,6 +23,7 @@ def create_app() -> Flask:
     from .assistant import bp as assistant_bp
     from .fieldtech import bp as fieldtech_bp
     from .leaderboard import bp as leaderboard_bp
+    from .pages import bp as pages_bp
 
     if os.path.exists(app.config["DB_PATH"]):
         init_counters(app.config["DB_PATH"])
@@ -37,6 +38,7 @@ def create_app() -> Flask:
     app.register_blueprint(assistant_bp)
     app.register_blueprint(fieldtech_bp)
     app.register_blueprint(leaderboard_bp)
+    app.register_blueprint(pages_bp)
 
     @app.route("/")
     def index():

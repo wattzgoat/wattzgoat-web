@@ -3,35 +3,62 @@
 {% block content %}
 <!-- TODO(dev): remove before release. Temp admin for staging:
      devadmin@wattzgoat.example / Dev@2024! -->
-<div class="max-w-sm mx-auto mt-12 bg-white rounded-lg p-8 shadow-sm">
-  <h1 class="text-2xl font-semibold mb-6">Log in</h1>
-  {% if notice %}
-  <p class="text-green-700 text-sm mb-3">{{ notice }}</p>
-  {% endif %}
-  {% if error %}
-  <p class="text-red-600 text-sm mb-1">{{ error }}</p>
-  {% if errhandling_flag %}
-  <!-- {{ errhandling_flag }} -->
-  {% endif %}
-  {% if ratelimit_flag %}
-  <!-- {{ ratelimit_flag }} -->
-  {% endif %}
-  {% endif %}
-  <form method="post" class="space-y-4">
-    <input type="hidden" name="_lab_flag" value="{{ plaintext_flag }}">
-    <div>
-      <label for="email" class="block text-sm mb-1">Email</label>
-      <input id="email" name="email" type="text" required class="w-full border rounded px-3 py-2">
-    </div>
-    <div>
-      <label for="password" class="block text-sm mb-1">Password</label>
-      <input id="password" name="password" type="password" required class="w-full border rounded px-3 py-2">
-      <a href="{{ url_for('auth.forgot_password') }}" class="text-xs text-gray-500 underline">Forgot password?</a>
-    </div>
-    <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Log in</button>
-  </form>
-  <p class="text-sm text-gray-500 mt-4">
-    New here? <a href="{{ url_for('auth.signup') }}" class="underline">Create an account</a>
-  </p>
+<div class="grid lg:grid-cols-2 gap-10 items-center mt-6">
+
+  <div class="order-2 lg:order-1">
+    <span class="inline-block text-xs font-semibold tracking-wide text-[#F4B41A] bg-[#14181C] rounded-full px-3 py-1 mb-4">
+      WATTZGOAT SMARTMETER X1
+    </span>
+    <h1 class="text-3xl font-bold leading-tight mb-3">Powering homes.<br>Educating testers.</h1>
+    <p class="text-gray-600 mb-6">
+      The SmartMeter X1 gives your household real-time usage tracking, solar export crediting, and
+      cloud-connected diagnostics — all from one dashboard your whole family can log into, and
+      apparently so can everyone else's.
+    </p>
+    <ul class="space-y-3 mb-8 text-sm text-gray-700">
+      <li class="flex gap-2"><span class="text-[#F4B41A]">&#9679;</span> Real-time kWh usage, updated every 20–40 seconds</li>
+      <li class="flex gap-2"><span class="text-[#F4B41A]">&#9679;</span> Automatic solar export crediting, no cap required</li>
+      <li class="flex gap-2"><span class="text-[#F4B41A]">&#9679;</span> Remote diagnostics your field techs will love</li>
+    </ul>
+    <blockquote class="border-l-4 border-[#F4B41A] pl-4 text-sm text-gray-600 italic mb-2">
+      "Since switching to WattzGOAT, our outage response time improved by 40%. Our incident
+      response time, less so."
+    </blockquote>
+    <p class="text-xs text-gray-400">— Utility Director, City of Fictional Springs</p>
+    <p class="text-xs text-gray-400 mt-4">Trusted by 12,000+ fictional households.</p>
+  </div>
+
+  <div class="order-1 lg:order-2 max-w-sm w-full mx-auto bg-white rounded-lg p-8 shadow-sm">
+    <h2 class="text-2xl font-semibold mb-6">Log in</h2>
+    {% if notice %}
+    <p class="text-green-700 text-sm mb-3">{{ notice }}</p>
+    {% endif %}
+    {% if error %}
+    <p class="text-red-600 text-sm mb-1">{{ error }}</p>
+    {% if errhandling_flag %}
+    <!-- {{ errhandling_flag }} -->
+    {% endif %}
+    {% if ratelimit_flag %}
+    <!-- {{ ratelimit_flag }} -->
+    {% endif %}
+    {% endif %}
+    <form method="post" class="space-y-4">
+      <input type="hidden" name="_lab_flag" value="{{ plaintext_flag }}">
+      <div>
+        <label for="email" class="block text-sm mb-1">Email</label>
+        <input id="email" name="email" type="text" required class="w-full border rounded px-3 py-2">
+      </div>
+      <div>
+        <label for="password" class="block text-sm mb-1">Password</label>
+        <input id="password" name="password" type="password" required class="w-full border rounded px-3 py-2">
+        <a href="{{ url_for('auth.forgot_password') }}" class="text-xs text-gray-500 underline">Forgot password?</a>
+      </div>
+      <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Log in</button>
+    </form>
+    <p class="text-sm text-gray-500 mt-4">
+      New here? <a href="{{ url_for('auth.signup') }}" class="underline">Create an account</a>
+    </p>
+  </div>
+
 </div>
 {% endblock %}

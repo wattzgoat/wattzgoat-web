@@ -55,6 +55,85 @@
 <main class="max-w-4xl mx-auto px-6 py-10">
 {% block content %}{% endblock %}
 </main>
+<footer class="max-w-4xl mx-auto px-6 py-8 text-xs text-gray-400 border-t border-gray-200 mt-8">
+  <p>WattzGOAT Corp™ — a fictional utility, provided entirely for security training purposes.</p>
+  <p class="mt-1">
+    <a href="{{ url_for('pages.terms') }}" class="underline hover:text-gray-600">Terms of Service</a>
+    &middot;
+    <a href="{{ url_for('pages.privacy') }}" class="underline hover:text-gray-600">Privacy Policy</a>
+  </p>
+</footer>
+
+<!-- Real, serious safety notice -- not part of the in-universe flavor
+     content above. Shown once per browser via localStorage; a blocking
+     overlay is deliberate here, unlike the dismissible cookie banner
+     below. -->
+<div id="wg-disclaimer" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-xl">
+    <h2 class="text-lg font-bold text-red-700 mb-3">⚠ Intentionally Vulnerable Application</h2>
+    <p class="text-sm text-gray-700 mb-3">
+      WattzGOAT is deliberately insecure, built for hands-on security training. It contains real, working
+      vulnerabilities, including remote code execution, by design.
+    </p>
+    <ul class="text-sm text-gray-700 list-disc pl-5 mb-4 space-y-1">
+      <li>Never deploy this on a public-facing network or the open internet.</li>
+      <li>Never enter real personal, financial, or credential information.</li>
+      <li>Use only in an isolated lab environment.</li>
+    </ul>
+    <button id="wg-disclaimer-ack" class="w-full bg-[#14181C] text-white rounded py-2 font-medium">
+      I Understand — Enter Lab
+    </button>
+  </div>
+</div>
+
+<!-- Lightweight, in-universe cookie banner -- separate from the real
+     disclaimer above on purpose: this one's a joke, that one isn't. -->
+<div id="wg-cookie-banner" class="fixed bottom-0 inset-x-0 bg-[#14181C] text-gray-200 text-sm px-4 py-3 hidden z-40">
+  <div class="max-w-4xl mx-auto flex flex-wrap items-center gap-3">
+    <p class="flex-1">
+      WattzGOAT uses cookies, some of which are load-bearing.
+      <a href="{{ url_for('pages.privacy') }}" class="underline">Learn more</a>.
+    </p>
+    <button id="wg-cookie-ack" class="bg-[#F4B41A] text-[#14181C] rounded px-3 py-1.5 font-medium text-xs">
+      Accept
+    </button>
+  </div>
+</div>
+
+<script>
+(function () {
+  try {
+    var disclaimer = document.getElementById('wg-disclaimer');
+    var cookieBanner = document.getElementById('wg-cookie-banner');
+
+    if (!localStorage.getItem('wg_disclaimer_ack')) {
+      disclaimer.classList.remove('hidden');
+      disclaimer.classList.add('flex');
+    } else if (!localStorage.getItem('wg_cookie_ack')) {
+      // Cookie banner waits until the safety notice is dismissed, so
+      // they never compete for attention on first visit.
+      cookieBanner.classList.remove('hidden');
+    }
+
+    document.getElementById('wg-disclaimer-ack').addEventListener('click', function () {
+      localStorage.setItem('wg_disclaimer_ack', '1');
+      disclaimer.classList.add('hidden');
+      disclaimer.classList.remove('flex');
+      if (!localStorage.getItem('wg_cookie_ack')) {
+        cookieBanner.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('wg-cookie-ack').addEventListener('click', function () {
+      localStorage.setItem('wg_cookie_ack', '1');
+      cookieBanner.classList.add('hidden');
+    });
+  } catch (e) {
+    // localStorage unavailable (privacy mode, etc.) -- fail open rather
+    // than block the page.
+  }
+})();
+</script>
 {% if g.user %}
 {% include "_assistant_widget.html" %}
 {% endif %}
