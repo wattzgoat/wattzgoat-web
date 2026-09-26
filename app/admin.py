@@ -168,7 +168,15 @@ def tickets():
         "FROM tickets JOIN users ON users.id = tickets.user_id "
         "ORDER BY tickets.created_at DESC"
     ).fetchall()
-    return render_template("admin_tickets.html", tickets=rows, sxss_meta_flag=get_flag(flags.SXSS_EXERCISE, g.participant_id))
+    # Stored XSS exercise instance: personalized to whoever submitted the
+    # most recent ticket, not to whoever's currently viewing as admin --
+    # same reasoning as SXSS_TEACH's nickname_set_by (see
+    # customer.py:dashboard()). rows[0] is the newest ticket given the
+    # ORDER BY above; participant_id is NULL for anything not created
+    # through the normal /support flow.
+    newest_submitter = rows[0]["participant_id"] if rows else None
+    sxss_meta_flag = get_flag(flags.SXSS_EXERCISE, newest_submitter) if newest_submitter else None
+    return render_template("admin_tickets.html", tickets=rows, sxss_meta_flag=sxss_meta_flag)
 
 
 @bp.route("/diagnostics", methods=["GET", "POST"])

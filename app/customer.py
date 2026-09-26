@@ -45,9 +45,18 @@ def dashboard():
     # delivered to whatever session happens to trigger it.
     sessionid_flag = get_flag(flags.SESSIONID_TEACH, g.participant_id) if g.user["email"] == flags.SESSIONID_ACCOUNT_EMAIL else None
 
+    # Stored XSS teach instance: the flag is personalized to whoever
+    # actually set the exploited nickname (nickname_set_by), not to
+    # whoever's currently viewing the dashboard -- multiple participants
+    # can share a seeded customer account, and the nickname itself stays
+    # genuinely shared state once set, but a later viewer shouldn't get
+    # credit for someone else's earlier work just by loading the page.
+    nickname_setter = next((m["nickname_set_by"] for m in meters if m["nickname_set_by"]), None)
+    sxss_title_flag = get_flag(flags.SXSS_TEACH, nickname_setter) if nickname_setter else None
+
     resp = make_response(render_template(
         "dashboard.html", user=g.user, meters=meters, device_tokens=device_tokens,
-        sessionid_flag=sessionid_flag, sxss_title_flag=get_flag(flags.SXSS_TEACH, g.participant_id),
+        sessionid_flag=sessionid_flag, sxss_title_flag=sxss_title_flag,
     ))
     # NOTE: no X-Frame-Options / CSP frame-ancestors on this response --
     # the Recharge link on this page is embeddable in an invisible iframe
@@ -67,8 +76,8 @@ def update_nickname(meter_id):
     nickname = request.form.get("nickname", "")
     db = get_db()
     db.execute(
-        "UPDATE meters SET nickname = ? WHERE id = ? AND user_id = ?",
-        (nickname, meter_id, g.user["id"]),
+        "UPDATE meters SET nickname = ?, nickname_set_by = ? WHERE id = ? AND user_id = ?",
+        (nickname, g.participant_id, meter_id, g.user["id"]),
     )
     db.commit()
     return redirect(url_for("customer.dashboard"))

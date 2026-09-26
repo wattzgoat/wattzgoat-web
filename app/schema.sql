@@ -47,6 +47,15 @@ CREATE TABLE meters (
     meter_code TEXT UNIQUE NOT NULL,
     user_id INTEGER NOT NULL REFERENCES users(id),
     nickname TEXT NOT NULL DEFAULT '',
+    -- Which participant (see app/personalize.py) last set this nickname,
+    -- if any. Multiple participants can share the same seeded customer
+    -- account, and the nickname itself is genuinely shared state once
+    -- set (that's the realistic part of stored XSS worth keeping) -- but
+    -- the SXSS_TEACH flag is personalized to whoever actually caused the
+    -- current value, not to whoever happens to view the dashboard
+    -- afterward. NULL until someone actually changes it via
+    -- customer.update_nickname().
+    nickname_set_by TEXT,
     status TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'disconnected')),
     balance REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))

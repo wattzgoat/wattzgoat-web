@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Tickets — WattzGOAT Admin{% endblock %}
 {% block head_extra %}
-<meta name="wg-ctx" content="{{ sxss_meta_flag }}">
+<meta name="wg-ctx" content="{{ sxss_meta_flag or '' }}">
 {% endblock %}
 {% block content %}
 <h1 class="text-2xl font-semibold mb-4">Support tickets</h1>
