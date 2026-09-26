@@ -88,7 +88,7 @@ INERT_XSS_MARKERS = ("<script", "<img", "<svg")
 
 METER_CODE_RE = re.compile(r"MTR-\d+", re.I)
 METER_NUM_RE = re.compile(r"meter\s*(?:id\s*)?#?\s*(\d+)", re.I)
-EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 HOURS_RE = re.compile(r"(\d+)\s*hours?", re.I)
 TICKET_ID_RE = re.compile(r"ticket\s*#?\s*(\d+)", re.I)
 
