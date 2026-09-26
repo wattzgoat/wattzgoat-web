@@ -29,7 +29,7 @@ COPY --from=assets /assets/dist/tailwind.css ./app/static/css/tailwind.css
 COPY --from=assets /assets/dist/chart.umd.min.js ./app/static/vendor/chart.umd.min.js
 COPY scripts ./scripts
 COPY run.py entrypoint.sh ./
-RUN chmod +x entrypoint.sh
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 # Bills are static per-customer fixtures -- generated once here, not at
 # container startup, since they never differ per instance.
