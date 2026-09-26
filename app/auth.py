@@ -34,6 +34,31 @@ def weak_hash(password: str) -> str:
     return hashlib.md5(password.encode()).hexdigest()
 
 
+def is_weak_password(password: str) -> bool:
+    """Shared weak-password policy check -- used by both signup
+    (WEAKPW_TEACH) and account password changes (WEAKPW_CHANGE), so the
+    two stay in sync rather than drifting apart as separate copies.
+
+    Flags a password as weak if ANY of:
+    - under 7 characters
+    - entirely alphabetic (no digits, no symbols)
+    - entirely numeric (no letters, no symbols)
+    - alphanumeric (letters + digits, no symbols) but single-case --
+      no mix of upper and lower case anywhere
+    """
+    if len(password) < 7:
+        return True
+    if password.isalpha():
+        return True
+    if password.isdigit():
+        return True
+    if password.isalnum():
+        letters = [c for c in password if c.isalpha()]
+        if letters and (all(c.islower() for c in letters) or all(c.isupper() for c in letters)):
+            return True
+    return False
+
+
 def init_counters(db_path: str) -> None:
     """Resume the session counter from the DB's existing high-water mark.
     Without this, a container restart resets it to its starting value
@@ -155,7 +180,7 @@ def signup():
     )
     db.commit()
 
-    if len(password) < 4:
+    if is_weak_password(password):
         return render_template("signup.html", weak_password_flag=get_flag(flags.WEAKPW_TEACH, g.participant_id))
     return redirect(url_for("auth.login"))
 

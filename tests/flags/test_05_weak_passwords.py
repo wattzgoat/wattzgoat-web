@@ -4,10 +4,14 @@ import time
 def test_weakpw_teach_signup(anon_session, alice, base_url, extract_flag_fn, redeem_flag_fn):
     # Unique throwaway account each run so repeated CI runs against the
     # same instance (no reset in between) don't collide on a duplicate email.
+    #
+    # "abc12345" specifically exercises the single-case-alphanumeric rule
+    # (8 chars, so not caught by length alone) rather than just
+    # re-confirming a trivially-short password is weak.
     email = f"weakpw-test-{int(time.time())}@wattzgoat.example"
     resp = anon_session.post(
         f"{base_url}/signup",
-        data={"email": email, "password": "x", "name": "Weak PW Test"},
+        data={"email": email, "password": "abc12345", "name": "Weak PW Test"},
         timeout=10,
     )
     assert resp.status_code == 200
@@ -35,7 +39,7 @@ def test_weakpw_change(alice, base_url, extract_flag_fn, redeem_flag_fn):
     # muddying this test, which is specifically about WEAKPW_CHANGE.
     resp = alice.post(
         f"{base_url}/account/password",
-        data={"new_password": "x"},
+        data={"new_password": "abc12345"},
         headers={"Origin": base_url},
         timeout=10,
     )

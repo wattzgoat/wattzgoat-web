@@ -5,7 +5,7 @@ import traceback
 
 from flask import Blueprint, abort, g, make_response, redirect, render_template, request, send_file, url_for
 
-from .auth import login_required, weak_hash
+from .auth import login_required, weak_hash, is_weak_password
 from .db import get_db, mysql_style_error
 from .devices import issue_device_token
 from .personalize import get_flag
@@ -144,7 +144,7 @@ def change_password():
 
     # Weak passwords instance: same missing length/complexity check as
     # signup, just on a different form.
-    weakpw_flag = get_flag(flags.WEAKPW_CHANGE, g.participant_id) if len(new_password) < 4 else None
+    weakpw_flag = get_flag(flags.WEAKPW_CHANGE, g.participant_id) if is_weak_password(new_password) else None
     pwchange_flag = get_flag(flags.PWCHANGE_TEACH, g.participant_id)
     # CSRF teach instance: no anti-CSRF token on this form at all, so a
     # forged cross-origin submission works just as well as a real one --
