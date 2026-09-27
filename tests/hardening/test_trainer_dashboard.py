@@ -13,31 +13,62 @@ import requests
 
 
 def _fresh_customer_session(base_url):
-    """A brand-new participant identity, logged in as Alice.
+    """A brand-new participant identity on a brand-new throwaway account.
 
-    Deliberately NOT the shared `alice` fixture. That fixture is
-    session-scoped and shares tests/conftest.py's single PARTICIPANT_ID
-    across the whole suite run -- by the time tests/hardening/ runs,
-    tests/flags/test_01_headers.py has already redeemed HEADERS_TEACH
-    with that exact alice/participant_id. Redemption is keyed by
-    participant_id (wg_pid), not by account (see app/progress.py and
-    the design reference's participant/session split), so re-redeeming
-    with the shared session here just returns "Already redeemed" and
-    doesn't move the count. This test doesn't need Alice specifically,
-    only a genuinely new participant -- see the Design Reference §7.3
-    note on preferring fresh throwaway identities over seeded/shared
-    ones where a test doesn't specifically need the seeded account's
-    role in the story.
+    Deliberately NOT the shared `alice` fixture, and deliberately NOT a
+    fresh login against alice's own seeded credentials either (an
+    earlier attempt at this did exactly that and broke, see below) --
+    this signs up its own disposable account instead, so it depends on
+    nothing any other test in the suite has done.
+
+    Why not the shared `alice` fixture: it's session-scoped and shares
+    tests/conftest.py's single PARTICIPANT_ID across the whole suite
+    run -- by the time tests/hardening/ runs, tests/flags/test_01_headers.py
+    has already redeemed HEADERS_TEACH with that exact alice/participant_id.
+    Redemption is keyed by participant_id (wg_pid), not by account (see
+    app/progress.py), so re-redeeming with the shared session here just
+    returns "Already redeemed" and doesn't move the count.
+
+    Why not a fresh login with alice's known seeded password either:
+    tests/flags/test_05_weak_passwords.py::test_weakpw_change and
+    tests/flags/test_15_csrf.py::test_csrf_teach both change Alice's
+    account password earlier in the suite (that's the point of those
+    flags) -- test_05's own comment notes "nothing later in the suite
+    re-logs-in as alice by username/password, so this is safe to run
+    mid-suite," which a fresh login here would have quietly violated.
+    Confirmed live: a fresh login with "alice123" after those two tests
+    have run returns 401, exactly the failure this produced in CI.
+
+    A throwaway signup sidesteps both problems at once -- see the
+    Design Reference §7.3 note on preferring fresh throwaway identities
+    over seeded/shared ones where a test doesn't specifically need the
+    seeded account's role in the story.
     """
+    email = f"trainer-summary-test-{secrets.token_hex(4)}@wattzgoat.example"
+    password = "FreshParticipant!2026"  # strong on purpose, so this signup
+    # succeeds the same way regardless of whether WEAKPW_TEACH happens to
+    # be hardened at the moment this runs -- this test has nothing to do
+    # with that category and shouldn't couple to its toggle state.
     s = requests.Session()
     s.verify = False
     s.cookies.set("wg_pid", secrets.token_hex(8))
-    resp = s.post(
-        f"{base_url}/login",
-        data={"email": "alice.smith@example.com", "password": "alice123"},
+    signup_resp = s.post(
+        f"{base_url}/signup",
+        data={
+            "email": email,
+            "password": password,
+            "confirm_password": password,
+            "name": "Trainer Summary Test",
+        },
         timeout=10,
     )
-    assert resp.status_code in (200, 302)
+    assert signup_resp.status_code in (200, 302)
+    # Signup redirects to /login rather than authenticating directly (see
+    # app/auth.py's signup()), so a separate login call is required.
+    login_resp = s.post(
+        f"{base_url}/login", data={"email": email, "password": password}, timeout=10
+    )
+    assert login_resp.status_code in (200, 302)
     assert "wgs_session" in s.cookies.get_dict()
     return s
 
