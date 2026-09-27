@@ -34,21 +34,33 @@ def test_ratelimit_teach_toggle(base_url, set_hardened):
 
 
 def test_ratelimit_exercise_toggle(base_url, set_hardened):
+    # NOTE: forgot_password.html's not-found branch ALWAYS embeds
+    # RXSS_EXERCISE's flag too, independent of rate limiting (see
+    # auth.py:forgot_password()) -- a naive "FLAG{ not in resp.text"
+    # check would therefore always fail regardless of whether rate
+    # limiting itself is fixed. Same baseline-diff approach as
+    # test_ratelimit_teach_toggle above, for the same reason.
     email = f"rle-vuln-{secrets.token_hex(4)}@example.com"
     s = requests.Session()
     s.verify = False
-    for _ in range(5):
+    for _ in range(4):
         resp = s.post(f"{base_url}/forgot-password", data={"email": email}, timeout=10)
-    assert "FLAG{" in resp.text
+    baseline = set(FLAG_RE.findall(resp.text))
+    resp = s.post(f"{base_url}/forgot-password", data={"email": email}, timeout=10)
+    at5 = set(FLAG_RE.findall(resp.text))
+    assert len(at5 - baseline) == 1  # RATELIMIT_EXERCISE's flag newly appears at the threshold
 
     set_hardened("RATELIMIT_EXERCISE", True)
 
     email2 = f"rle-hard-{secrets.token_hex(4)}@example.com"
     s2 = requests.Session()
     s2.verify = False
-    for _ in range(5):
+    for _ in range(4):
         resp = s2.post(f"{base_url}/forgot-password", data={"email": email2}, timeout=10)
-    assert "FLAG{" not in resp.text
+    baseline2 = set(FLAG_RE.findall(resp.text))
+    resp = s2.post(f"{base_url}/forgot-password", data={"email": email2}, timeout=10)
+    at5_hard = set(FLAG_RE.findall(resp.text))
+    assert len(at5_hard - baseline2) == 0  # no new flag at the threshold when hardened
 
     resp = s2.post(f"{base_url}/forgot-password", data={"email": email2}, timeout=10)
     assert resp.status_code == 429

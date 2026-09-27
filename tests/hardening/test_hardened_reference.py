@@ -12,9 +12,12 @@ paths need their own coverage -- a bug in the DB-toggle path wouldn't
 necessarily show up here, and vice versa.
 """
 import secrets
+import re
 
 import pytest
 import requests
+
+CSRF_TOKEN_RE = re.compile(r'name="csrf_token" value="([a-f0-9]+)"')
 
 
 pytestmark = pytest.mark.skipif(
@@ -81,9 +84,19 @@ def test_weakpw_change_rejected(hardened_base_url):
         timeout=10,
     )
     s = _login(hardened_base_url, email, "Str0ngPassw0rd")
+    # Two of THIS SAME instance's other hardened flags gate this exact
+    # route ahead of WEAKPW_CHANGE (see customer.py:change_password()):
+    # CSRF_TEACH requires a real token, and PWCHANGE_TEACH requires the
+    # correct current_password. Under HARDENING_MODE=all every flag is
+    # hardened at once, so both have to be satisfied before the weak-
+    # password check is ever reached, not just the one this test is
+    # actually about.
+    account_page = s.get(f"{hardened_base_url}/account", timeout=10)
+    m = CSRF_TOKEN_RE.search(account_page.text)
+    assert m is not None
     resp = s.post(
         f"{hardened_base_url}/account/password",
-        data={"new_password": "abc12345"},
+        data={"new_password": "abc12345", "csrf_token": m.group(1), "current_password": "Str0ngPassw0rd"},
         headers={"Origin": hardened_base_url},
         timeout=10,
     )

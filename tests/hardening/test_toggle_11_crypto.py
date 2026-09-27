@@ -1,14 +1,26 @@
+import secrets
+
 import requests
 
 
 def test_sessionid_teach_toggle(base_url, set_hardened, login_fn):
-    session, _ = login_fn("alice.nguyen@example.com", "alice123")
+    # Use a fresh signup account, not a seeded one -- the original
+    # tests/flags/ exploit suite deliberately takes over seeded accounts'
+    # passwords (that's the actual broken-authentication / PWCHANGE_TEACH
+    # exploit it's demonstrating), so hardcoding a seeded account's
+    # password here is fragile when this runs in the same session, on
+    # the same live instance, alongside that suite.
+    email = f"sessionid-test-{secrets.token_hex(4)}@example.com"
+    password = "Str0ngPassw0rd"
+    requests.post(f"{base_url}/signup", data={"email": email, "password": password, "name": "T"}, verify=False, timeout=10)
+
+    session, _ = login_fn(email, password)
     token = session.cookies.get("wgs_session")
     assert token.isdigit()  # vulnerable: sequential, guessable
 
     set_hardened("SESSIONID_TEACH", True)
 
-    session2, _ = login_fn("alice.nguyen@example.com", "alice123")
+    session2, _ = login_fn(email, password)
     token2 = session2.cookies.get("wgs_session")
     assert not token2.isdigit()  # hardened: random hex, unguessable
     assert len(token2) == 48

@@ -22,10 +22,21 @@ def test_massassign_exercise_toggle(alice, base_url, set_hardened):
 
 
 def test_role_escalation_bonus_toggle(farid, base_url, set_hardened):
-    resp = farid.patch(f"{base_url}/api/account", json={"role": "admin"}, timeout=10)
-    assert "role_flag" in resp.json()
-    # revert for hygiene before the hardened check
+    # Don't assume farid starts as 'customer' -- on a persistent, shared
+    # instance, a PRIOR run of this same test (or a manual poke) may have
+    # left the role changed if it failed before reaching its own revert
+    # line. Reset first, unconditionally, before asserting anything.
     farid.patch(f"{base_url}/api/account", json={"role": "customer"}, timeout=10)
+
+    try:
+        resp = farid.patch(f"{base_url}/api/account", json={"role": "admin"}, timeout=10)
+        assert "role_flag" in resp.json()
+    finally:
+        # Always attempt to revert, even if the assertion above failed --
+        # a plain statement after the assert (as this test had before)
+        # never runs on failure, which is how farid got stuck as admin
+        # in the first place.
+        farid.patch(f"{base_url}/api/account", json={"role": "customer"}, timeout=10)
 
     set_hardened("ROLE_ESCALATION_BONUS", True)
 

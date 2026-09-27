@@ -21,17 +21,28 @@ def test_traversal_teach_toggle(devon, base_url, set_hardened):
 
 
 def test_cmdinject_exercise_toggle(ops1_admin, base_url, set_hardened):
-    resp = ops1_admin.post(f"{base_url}/admin/diagnostics", data={"host": "127.0.0.1; echo CMDINJECT_PROOF_MARKER"}, timeout=10)
+    marker = "CMDINJECT_PROOF_MARKER"
+    resp = ops1_admin.post(f"{base_url}/admin/diagnostics", data={"host": f"127.0.0.1; echo {marker}"}, timeout=10)
     assert "FLAG{" in resp.text
 
     set_hardened("CMDINJECT_EXERCISE", True)
 
-    resp = ops1_admin.post(f"{base_url}/admin/diagnostics", data={"host": "127.0.0.1; echo CMDINJECT_PROOF_MARKER"}, timeout=10)
+    resp = ops1_admin.post(f"{base_url}/admin/diagnostics", data={"host": f"127.0.0.1; echo {marker}"}, timeout=10)
     assert resp.status_code == 200
     assert "FLAG{" not in resp.text
-    # The injected command's OWN OUTPUT never appears in the <pre> block
-    # (the semicolon-echoed value in the input's `value=` attribute is
-    # expected and harmless -- that's just the form re-showing what was
-    # submitted, not proof of execution).
+
+    # NOTE: the marker WILL still appear in the output text -- ping
+    # itself reports it failed to resolve the entire literal string
+    # (semicolon included) as one hostname, e.g. "ping: 127.0.0.1; echo
+    # CMDINJECT_PROOF_MARKER: Name or service not known". That message
+    # IS the proof the fix works: the semicolon was never interpreted by
+    # a shell, just handed to ping as a single inert argument. What
+    # would actually indicate a broken fix is the marker appearing on
+    # its OWN, bare line -- the output of a genuinely separate `echo`
+    # process actually running. Check for that specifically, not mere
+    # substring presence.
     output_start = resp.text.find("<pre")
-    assert "CMDINJECT_PROOF_MARKER" not in resp.text[output_start:]
+    output_text = resp.text[output_start:]
+    bare_lines = [line.strip() for line in output_text.splitlines()]
+    assert marker not in bare_lines  # no line is JUST the marker by itself
+    assert "Name or service not known" in output_text or "ping" in output_text.lower()
