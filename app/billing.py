@@ -1,5 +1,5 @@
 """
-Request-time bill PDF generation -- specifically for Ben Osei's bill
+Request-time bill PDF generation -- specifically for Ben Wood's bill
 (MTR-1002), the one that carries the TRAVERSAL_TEACH flag.
 
 Every other customer's bill stays a plain static file baked in at image
@@ -23,9 +23,9 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 # Must match scripts/fixtures.py's CUSTOMERS[1] / METER_CODES[1] /
-# BILL_AMOUNTS[1] and BILL_PERIOD exactly (Ben Osei, index 1) --
+# BILL_AMOUNTS[1] and BILL_PERIOD exactly (Ben Wood, index 1) --
 # duplicated here for the same reason the rest of these constants are.
-BEN_NAME = "Ben Osei"
+BEN_NAME = "Ben Wood"
 BEN_ADDRESS = "48 Oak Ave, Riverton"
 BEN_METER_CODE = "MTR-1002"
 BEN_BILL_AMOUNT = 38.90

@@ -61,7 +61,7 @@ def main() -> None:
     for (email, password, name, service_addr, billing_addr), meter_code, amount in zip(
         CUSTOMERS, METER_CODES, BILL_AMOUNTS
     ):
-        # No flag baked in at build time, even for Ben Osei's bill
+        # No flag baked in at build time, even for Ben Wood's bill
         # (TRAVERSAL_FLAG_METER) -- that one is now regenerated at
         # request time with a personalized flag (see app/billing.py,
         # app/customer.py:download_bill()). This build-time copy exists

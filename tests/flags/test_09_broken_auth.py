@@ -15,7 +15,7 @@ def test_privesc_teach(devon, base_url, extract_flag_fn, redeem_flag_fn):
 def test_oldtoken_exercise(anon_session, alice, base_url, extract_flag_fn, redeem_flag_fn):
     # ben's password isn't relied on as ben anywhere else in this suite --
     # deliberately chosen so this permanent password change is harmless.
-    token = base64.urlsafe_b64encode(b"ben.osei@example.com:1000").decode()
+    token = base64.urlsafe_b64encode(b"ben.wood@example.com:1000").decode()
     resp = anon_session.post(
         f"{base_url}/reset-password",
         data={"token": token, "password": "pwned-by-test-suite"},
@@ -27,7 +27,7 @@ def test_oldtoken_exercise(anon_session, alice, base_url, extract_flag_fn, redee
 
 
 def test_sessionreuse_bonus(login_fn, alice, base_url, redeem_flag_fn, participant_id):
-    session, _ = login_fn("carla.reyes@example.com", "carla123")
+    session, _ = login_fn("carla.clark@example.com", "carla123")
     token = session.cookies.get("wgs_session")
     assert token, "expected a wgs_session cookie after login"
 

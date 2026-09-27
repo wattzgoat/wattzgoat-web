@@ -7,14 +7,22 @@ the bills table at.
 
 CUSTOMERS = [
     # (email, password, name, service_address, billing_address)
-    ("alice.nguyen@example.com", "alice123", "Alice Nguyen", "12 Birch St, Springvale", "12 Birch St, Springvale"),
-    ("ben.osei@example.com", "ben123", "Ben Osei", "48 Oak Ave, Riverton", "48 Oak Ave, Riverton"),
-    ("carla.reyes@example.com", "carla123", "Carla Reyes", "7 Maple Ct, Riverton", "PO Box 220, Riverton"),
-    ("devon.hale@example.com", "devon123", "Devon Hale", "301 Cedar Rd, Springvale", "301 Cedar Rd, Springvale"),
-    ("elena.popov@example.com", "elena123", "Elena Popov", "9 Willow Way, Fairfield", "9 Willow Way, Fairfield"),
-    ("farid.khan@example.com", "farid123", "Farid Khan", "56 Elm St, Fairfield", "56 Elm St, Fairfield"),
-    ("grace.oduya@example.com", "grace123", "Grace Oduya", "18 Poplar Ln, Riverton", "18 Poplar Ln, Riverton"),
-    ("harun.demir@example.com", "harun123", "Harun Demir", "77 Spruce Dr, Springvale", "77 Spruce Dr, Springvale"),
+    # Phase 7: surnames deliberately short, common, easy to type from
+    # memory -- the earlier names (Nguyen, Osei, Reyes, Popov, etc.)
+    # were realistic but meant every login required copy-pasting the
+    # email rather than just typing it, which is friction a live class
+    # doesn't need. First names unchanged so every downstream reference
+    # (docs, walkthroughs, your own memory of "Ben's account holds the
+    # traversal flag") still points at the same person, just a new
+    # surname/email.
+    ("alice.smith@example.com", "alice123", "Alice Smith", "12 Birch St, Springvale", "12 Birch St, Springvale"),
+    ("ben.wood@example.com", "ben123", "Ben Wood", "48 Oak Ave, Riverton", "48 Oak Ave, Riverton"),
+    ("carla.clark@example.com", "carla123", "Carla Clark", "7 Maple Ct, Riverton", "PO Box 220, Riverton"),
+    ("devon.reed@example.com", "devon123", "Devon Reed", "301 Cedar Rd, Springvale", "301 Cedar Rd, Springvale"),
+    ("elena.brown@example.com", "elena123", "Elena Brown", "9 Willow Way, Fairfield", "9 Willow Way, Fairfield"),
+    ("farid.shaw@example.com", "farid123", "Farid Shaw", "56 Elm St, Fairfield", "56 Elm St, Fairfield"),
+    ("grace.green@example.com", "grace123", "Grace Green", "18 Poplar Ln, Riverton", "18 Poplar Ln, Riverton"),
+    ("harun.lee@example.com", "harun123", "Harun Lee", "77 Spruce Dr, Springvale", "77 Spruce Dr, Springvale"),
 ]
 
 # Weak passwords, never rotated -- "admin accounts never forced off their
@@ -108,12 +116,12 @@ SESSIONID_ACCOUNT = ("fieldrelay@wattzgoat.example", "n0t-f0r-hum4n-use-88x2", "
 SESSIONID_ACCOUNT_BASELINE_TOKEN = "100000"
 
 # One PDF bill per customer, meter_code in the same order as CUSTOMERS.
-# Ben Osei's (index 1, MTR-1002) is the one that carries the directory
+# Ben Wood's (index 1, MTR-1002) is the one that carries the directory
 # traversal flag -- reachable by requesting his path while logged in as
 # anyone else. Period/amount are just fixture flavor.
 BILL_PERIOD = "2026-09"
 BILL_AMOUNTS = [42.17, 38.90, 51.05, 29.60, 47.33, 33.10, 55.82, 40.25]
-TRAVERSAL_FLAG_METER = "MTR-1002"  # Ben Osei
+TRAVERSAL_FLAG_METER = "MTR-1002"  # Ben Wood
 # No longer used by generate_bills.py -- Ben's bill is regenerated at
 # request time with a personalized flag instead of one baked in at image
 # build time (see app/billing.py, app/customer.py:download_bill()). Left

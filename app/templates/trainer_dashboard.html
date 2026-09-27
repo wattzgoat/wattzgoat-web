@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Trainer dashboard — WattzGOAT{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-semibold">Trainer dashboard</h1>
+  <form method="post" action="{{ url_for('ops.reset_lab') }}" onsubmit="return confirm('Reset the entire lab to its seeded state? This clears redemptions, sessions, and every hardening toggle.');">
+    <button type="submit" class="bg-red-600 text-white rounded px-4 py-2 text-sm font-medium">Reset Lab</button>
+  </form>
+</div>
+
+<div class="grid grid-cols-3 gap-4 mb-8">
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <div class="text-xs text-gray-500 uppercase tracking-wide">Flags hardened</div>
+    <div class="text-2xl font-semibold mt-1"><span id="hardened-count">–</span> / {{ total_flags }}</div>
+  </div>
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <div class="text-xs text-gray-500 uppercase tracking-wide">Total redemptions</div>
+    <div class="text-2xl font-semibold mt-1"><span id="total-redemptions">–</span></div>
+  </div>
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <div class="text-xs text-gray-500 uppercase tracking-wide">Active participants</div>
+    <div class="text-2xl font-semibold mt-1"><span id="participant-count">–</span></div>
+  </div>
+</div>
+
+<h2 class="text-lg font-semibold mb-3">Hardening toggles</h2>
+<p class="text-sm text-gray-500 mb-4">
+  Flip any flag to its hardened branch live -- takes effect on the next request, no restart needed.
+  A toggle here writes to <span class="font-mono text-xs">hardening_state</span> via the same
+  <span class="font-mono text-xs">/ops/__set_hardening__</span> endpoint the test suite uses.
+</p>
+<div class="space-y-6 mb-10">
+{% for category, items in grouped_catalog.items() %}
+  <div class="bg-white rounded-lg shadow-sm p-4">
+    <h3 class="font-medium text-sm text-gray-700 mb-3">{{ category }}</h3>
+    <div class="divide-y">
+    {% for item in items %}
+      <div class="flex items-center justify-between py-2 text-sm">
+        <div class="flex items-center gap-2">
+          <span>{{ item.name }}</span>
+          <span class="font-mono text-xs text-gray-400">{{ item.key }}</span>
+          <span class="text-xs text-amber-700 bg-amber-50 rounded-full px-2 py-0.5 hidden" data-redeem-badge="{{ item.key }}"></span>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" class="sr-only peer" data-flag-key="{{ item.key }}" onchange="toggleFlag(this)">
+          <div class="w-9 h-5 bg-gray-200 peer-checked:bg-green-600 rounded-full transition-colors"></div>
+          <div class="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4"></div>
+        </label>
+      </div>
+    {% endfor %}
+    </div>
+  </div>
+{% endfor %}
+</div>
+
+<h2 class="text-lg font-semibold mb-3">Participants</h2>
+<div class="bg-white rounded-lg shadow-sm overflow-x-auto mb-10">
+<table class="w-full text-sm">
+<thead class="bg-gray-50 text-left text-gray-500">
+<tr><th class="px-4 py-2">Participant</th><th class="px-4 py-2">Last seen as</th><th class="px-4 py-2">Flags redeemed</th><th class="px-4 py-2">Last activity</th></tr>
+</thead>
+<tbody class="divide-y" id="participant-rows">
+<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">Loading…</td></tr>
+</tbody>
+</table>
+</div>
+
+<script>
+(function () {
+  const POLL_MS = 3000;
+  let inFlight = false;
+
+  function fmtTime(iso) {
+    if (!iso) return '\u2014';
+    return iso.replace('T', ' ').slice(0, 19);
+  }
+
+  async function refresh() {
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      const res = await fetch("{{ url_for('trainer.api_summary') }}", { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      // Toggle checkboxes -- reflect actual DB state, not just what
+      // this browser tab last clicked (another trainer tab, or a lab
+      // reset, can change it independently).
+      let hardenedCount = 0;
+      document.querySelectorAll('input[data-flag-key]').forEach(function (input) {
+        const key = input.dataset.flagKey;
+        const isHardened = !!data.hardening[key];
+        if (isHardened) hardenedCount += 1;
+        if (document.activeElement !== input) {
+          input.checked = isHardened;
+        }
+      });
+      document.getElementById('hardened-count').textContent = hardenedCount;
+      document.getElementById('total-redemptions').textContent = data.total_redemptions;
+      document.getElementById('participant-count').textContent = data.participants.length;
+
+      // Per-flag redemption badges.
+      document.querySelectorAll('[data-redeem-badge]').forEach(function (badge) {
+        const key = badge.dataset.redeemBadge;
+        const count = data.redemption_counts[key];
+        if (count) {
+          badge.textContent = count + (count === 1 ? ' redemption' : ' redemptions');
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      });
+
+      // Participant roster.
+      const rows = document.getElementById('participant-rows');
+      if (data.participants.length === 0) {
+        rows.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No redemptions yet.</td></tr>';
+      } else {
+        rows.innerHTML = data.participants.map(function (p) {
+          return '<tr>' +
+            '<td class="px-4 py-2 font-mono text-xs">' + p.participant_id + '</td>' +
+            '<td class="px-4 py-2">' + (p.redeemed_by || '\u2014') + '</td>' +
+            '<td class="px-4 py-2">' + p.flags_redeemed + ' / {{ total_flags }}</td>' +
+            '<td class="px-4 py-2 text-xs text-gray-500">' + fmtTime(p.last_activity) + '</td>' +
+            '</tr>';
+        }).join('');
+      }
+    } catch (e) {
+      // Transient network error mid-poll -- try again next tick rather
+      // than surfacing anything to the trainer.
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  window.toggleFlag = function (input) {
+    const key = input.dataset.flagKey;
+    const hardened = input.checked;
+    fetch("{{ url_for('ops.set_hardening') }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'flag_key=' + encodeURIComponent(key) + '&hardened=' + (hardened ? '1' : '0'),
+    }).then(function () { refresh(); });
+  };
+
+  refresh();
+  setInterval(refresh, POLL_MS);
+})();
+</script>
+{% endblock %}

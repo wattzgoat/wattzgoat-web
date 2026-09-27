@@ -45,11 +45,11 @@ FLAG_RE = re.compile(r"FLAG\{[A-Z0-9_]+\}")
 # Seeded accounts (see scripts/seed.py / the instructor guide's roster).
 # Reused deliberately across test files to mirror how a real participant
 # session progresses through the categories on one shared instance.
-CUSTOMER_ALICE = ("alice.nguyen@example.com", "alice123")   # general-purpose customer
-CUSTOMER_DEVON = ("devon.hale@example.com", "devon123")     # kept as the IDOR/privesc "attacker" -- never promoted to admin
-CUSTOMER_BEN = ("ben.osei@example.com", "ben123")            # bill-traversal target; password reset in test_09 (not needed as ben elsewhere)
-CUSTOMER_CARLA = ("carla.reyes@example.com", "carla123")     # session-reuse test only
-CUSTOMER_FARID = ("farid.khan@example.com", "farid123")      # mass-assignment + role-escalation pair (kept off devon on purpose)
+CUSTOMER_ALICE = ("alice.smith@example.com", "alice123")   # general-purpose customer
+CUSTOMER_DEVON = ("devon.reed@example.com", "devon123")     # kept as the IDOR/privesc "attacker" -- never promoted to admin
+CUSTOMER_BEN = ("ben.wood@example.com", "ben123")            # bill-traversal target; password reset in test_09 (not needed as ben elsewhere)
+CUSTOMER_CARLA = ("carla.clark@example.com", "carla123")     # session-reuse test only
+CUSTOMER_FARID = ("farid.shaw@example.com", "farid123")      # mass-assignment + role-escalation pair (kept off devon on purpose)
 ADMIN_OPS1 = ("ops1@wattzgoat.example", "changeme")
 ADMIN_DEVADMIN = ("devadmin@wattzgoat.example", "Dev@2024!")
 

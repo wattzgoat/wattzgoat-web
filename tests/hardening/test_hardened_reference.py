@@ -35,7 +35,7 @@ def _login(base_url, email, password):
 
 
 def test_headers_teach_no_flag(hardened_base_url):
-    s = _login(hardened_base_url, "alice.nguyen@example.com", "alice123")
+    s = _login(hardened_base_url, "alice.smith@example.com", "alice123")
     resp = s.get(f"{hardened_base_url}/dashboard", timeout=10)
     assert resp.headers.get("X-Lab-Flag") is None
     assert resp.headers.get("X-Frame-Options") == "DENY"
@@ -56,7 +56,7 @@ def test_sqli_teach_no_flag(hardened_base_url):
 
 
 def test_rxss_teach_no_flag(hardened_base_url):
-    s = _login(hardened_base_url, "alice.nguyen@example.com", "alice123")
+    s = _login(hardened_base_url, "alice.smith@example.com", "alice123")
     marker = "<script>alert(1)</script>"
     resp = s.get(f"{hardened_base_url}/usage", params={"q": marker}, timeout=10)
     assert marker not in resp.text
@@ -105,6 +105,6 @@ def test_weakpw_change_rejected(hardened_base_url):
 
 
 def test_progress_disabled(hardened_base_url):
-    s = _login(hardened_base_url, "alice.nguyen@example.com", "alice123")
+    s = _login(hardened_base_url, "alice.smith@example.com", "alice123")
     resp = s.get(f"{hardened_base_url}/progress", timeout=10)
     assert resp.status_code == 404

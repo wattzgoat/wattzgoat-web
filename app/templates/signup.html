@@ -10,8 +10,10 @@
   </div>
   {% endif %}
   {% if error %}
-  {# Phase 6: shown only on WEAKPW_TEACH's hardened branch (see
-     auth.py:signup()) -- the vulnerable branch never sets this. #}
+  {# Shown for a password mismatch (Phase 7) or on WEAKPW_TEACH's
+     hardened branch (Phase 6, see auth.py:signup()) -- the vulnerable
+     branch never sets this for weak passwords, but a mismatch is
+     checked regardless of hardening state. #}
   <div class="bg-red-50 text-red-800 text-sm rounded p-3 mb-4">{{ error }}</div>
   {% endif %}
   <form method="post" class="space-y-4">
@@ -26,6 +28,10 @@
     <div>
       <label for="password" class="block text-sm mb-1">Password</label>
       <input id="password" name="password" type="password" required class="w-full border rounded px-3 py-2">
+    </div>
+    <div>
+      <label for="confirm_password" class="block text-sm mb-1">Confirm password</label>
+      <input id="confirm_password" name="confirm_password" type="password" required class="w-full border rounded px-3 py-2">
     </div>
     <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Create account</button>
   </form>

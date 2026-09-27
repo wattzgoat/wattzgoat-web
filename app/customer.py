@@ -197,6 +197,12 @@ def change_password():
             ), 403
 
     new_password = request.form.get("new_password", "")
+    confirm_new_password = request.form.get("confirm_new_password", "")
+
+    # Phase 7: plain usability check, independent of hardening state and
+    # checked server-side, same rationale as signup()'s equivalent check.
+    if new_password != confirm_new_password:
+        return render_template("account.html", user=g.user, error="New passwords don't match.")
 
     # Phase 6: PWCHANGE_TEACH's hardened branch adds the missing current-
     # password check back -- this is the actual "broken authentication"
@@ -506,7 +512,7 @@ def download_bill():
     if not os.path.isfile(full_path):
         abort(404)
 
-    # Ben Osei's bill (MTR-1002/<period>.pdf) is the one that carries the
+    # Ben Wood's bill (MTR-1002/<period>.pdf) is the one that carries the
     # TRAVERSAL_TEACH flag. It's regenerated here, in memory, with a flag
     # personalized to whoever's asking, rather than served from the
     # static placeholder scripts/generate_bills.py baked in at image

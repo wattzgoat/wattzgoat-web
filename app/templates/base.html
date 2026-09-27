@@ -35,12 +35,10 @@
     <a href="{{ url_for('admin.alarms') }}" class="hover:text-white">Alarms</a>
     <a href="{{ url_for('admin.tickets') }}" class="hover:text-white">Tickets</a>
     <a href="{{ url_for('admin.users') }}" class="hover:text-white">Users</a>
+    <a href="{{ url_for('trainer.dashboard') }}" class="hover:text-white">Trainer</a>
     <a href="{{ url_for('customer.account') }}" class="hover:text-white">Account</a>
     <a href="{{ url_for('progress.progress') }}" class="hover:text-white">Progress</a>
     <a href="{{ url_for('leaderboard.leaderboard_page') }}" class="hover:text-white">Solar Leaderboard</a>
-    <form method="post" action="{{ url_for('ops.reset_lab') }}" onsubmit="return confirm('Reset the entire lab to its seeded state?');">
-      <button type="submit" class="hover:text-white text-red-300">Reset Lab</button>
-    </form>
     {% endif %}
   </nav>
   <span class="ml-auto text-sm text-gray-400">{{ g.user['name'] }}</span>

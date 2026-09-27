@@ -21,7 +21,7 @@ def test_privesc_teach_toggle(devon, base_url, set_hardened):
 
 
 def test_oldtoken_exercise_toggle(base_url, set_hardened):
-    email = "ben.osei@example.com"
+    email = "ben.wood@example.com"
     stale_ts = int(time.time()) - 7200  # 2 hours old
     token = base64.urlsafe_b64encode(f"{email}:{stale_ts}".encode()).decode()
     resp = requests.post(f"{base_url}/reset-password", data={"token": token, "password": "oldtok-vuln-pw1"}, verify=False, timeout=10)
@@ -40,7 +40,7 @@ def test_oldtoken_exercise_toggle(base_url, set_hardened):
 
 
 def test_sessionreuse_bonus_toggle(base_url, set_hardened, login_fn):
-    session, _ = login_fn("carla.reyes@example.com", "carla123")
+    session, _ = login_fn("carla.clark@example.com", "carla123")
     captured = session.cookies.get("wgs_session")
     session.post(f"{base_url}/logout", timeout=10)
 
@@ -52,7 +52,7 @@ def test_sessionreuse_bonus_toggle(base_url, set_hardened, login_fn):
 
     set_hardened("SESSIONREUSE_BONUS", True)
 
-    session2, _ = login_fn("farid.khan@example.com", "farid123")
+    session2, _ = login_fn("farid.shaw@example.com", "farid123")
     captured2 = session2.cookies.get("wgs_session")
     session2.post(f"{base_url}/logout", timeout=10)
     replay2 = requests.Session()

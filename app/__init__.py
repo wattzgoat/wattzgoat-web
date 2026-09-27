@@ -37,6 +37,7 @@ def create_app() -> Flask:
     from .leaderboard import bp as leaderboard_bp
     from .pages import bp as pages_bp
     from .personalize import bp as personalize_bp
+    from .trainer import bp as trainer_bp
 
     if os.path.exists(app.config["DB_PATH"]):
         init_counters(app.config["DB_PATH"])
@@ -53,6 +54,7 @@ def create_app() -> Flask:
     app.register_blueprint(leaderboard_bp)
     app.register_blueprint(pages_bp)
     app.register_blueprint(personalize_bp)
+    app.register_blueprint(trainer_bp)
 
     @app.route("/")
     def index():

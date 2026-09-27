@@ -214,7 +214,15 @@ def signup():
 
     email = request.form.get("email", "")
     password = request.form.get("password", "")
+    confirm_password = request.form.get("confirm_password", "")
     name = request.form.get("name", "")
+
+    # Phase 7: plain usability check, independent of hardening state (a
+    # mismatched confirmation field is a data-entry error, not a security
+    # control) -- checked server-side so it can't be skipped by disabling
+    # JS, consistent with how every other check in this app works.
+    if password != confirm_password:
+        return render_template("signup.html", error="Passwords don't match.")
 
     # NOTE: no length/complexity check on purpose -- "weak passwords" teach
     # instance.
