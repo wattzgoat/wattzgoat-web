@@ -12,7 +12,7 @@ def test_sessionid_teach_toggle(base_url, set_hardened, login_fn):
     # the same live instance, alongside that suite.
     email = f"sessionid-test-{secrets.token_hex(4)}@example.com"
     password = "Str0ngPassw0rd"
-    requests.post(f"{base_url}/signup", data={"email": email, "password": password, "name": "T"}, verify=False, timeout=10)
+    requests.post(f"{base_url}/signup", data={"email": email, "password": password, "name": "Fixture Account ZzQx"}, verify=False, timeout=10)
 
     session, _ = login_fn(email, password)
     token = session.cookies.get("wgs_session")

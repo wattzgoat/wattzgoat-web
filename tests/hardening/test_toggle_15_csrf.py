@@ -8,7 +8,7 @@ CSRF_TOKEN_RE = re.compile(r'name="csrf_token" value="([a-f0-9]+)"')
 
 def test_csrf_teach_toggle(base_url, set_hardened):
     email = f"csrf-teach-{secrets.token_hex(4)}@example.com"
-    requests.post(f"{base_url}/signup", data={"email": email, "password": "Str0ngPassw0rd", "name": "T"}, verify=False, timeout=10)
+    requests.post(f"{base_url}/signup", data={"email": email, "password": "Str0ngPassw0rd", "name": "Fixture Account ZzQx"}, verify=False, timeout=10)
     session = requests.Session()
     session.verify = False
     session.post(f"{base_url}/login", data={"email": email, "password": "Str0ngPassw0rd"}, timeout=10)

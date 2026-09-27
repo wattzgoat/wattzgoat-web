@@ -65,7 +65,7 @@ def test_sessionreuse_bonus_toggle(base_url, set_hardened, login_fn):
 
 def test_pwchange_teach_toggle(base_url, set_hardened):
     email = f"pwchange-{secrets.token_hex(4)}@example.com"
-    requests.post(f"{base_url}/signup", data={"email": email, "password": "Str0ngPassw0rd", "name": "T"}, verify=False, timeout=10)
+    requests.post(f"{base_url}/signup", data={"email": email, "password": "Str0ngPassw0rd", "name": "Fixture Account ZzQx"}, verify=False, timeout=10)
     session = requests.Session()
     session.verify = False
     session.post(f"{base_url}/login", data={"email": email, "password": "Str0ngPassw0rd"}, timeout=10)
