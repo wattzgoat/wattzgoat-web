@@ -142,6 +142,14 @@
   function closeModal() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+    // The cookie banner was deferred until this step resolved (see the
+    // disclaimer/cookie script block below) -- show it now if it's
+    // still owed. Guarded because this script loads before that one
+    // defines the function, but closeModal() is never actually called
+    // until after both have loaded and a click has happened.
+    if (window.__wgMaybeShowCookieBanner) {
+      window.__wgMaybeShowCookieBanner();
+    }
   }
 
   chips.forEach(function (chip) {
@@ -177,17 +185,21 @@
       });
   });
 
-  // Asked on first visit: auto-open once (per browser, via localStorage)
-  // if this participant has no nickname yet server-side. Gated behind
-  // the safety-disclaimer ack below so the two never compete for
-  // attention on a brand-new visit.
+  // Asked on first visit, right after the safety disclaimer -- NOT
+  // gated behind the cookie banner (an earlier version was, and that
+  // banner has no forced interaction, so a participant who never
+  // happened to click its "Accept" button would never reach the
+  // nickname step at all). Auto-opens once per browser (via
+  // localStorage) if this participant has no nickname yet server-side.
   window.__wgMaybePromptNickname = function () {
     var hasNickname = {{ 'true' if participant_has_nickname() else 'false' }};
     var alreadyPrompted = false;
     try { alreadyPrompted = !!localStorage.getItem('wg_nickname_prompted'); } catch (e) {}
     if (!hasNickname && !alreadyPrompted) {
       openModal();
+      return true;
     }
+    return false;
   };
 })();
 </script>
@@ -198,32 +210,36 @@
     var disclaimer = document.getElementById('wg-disclaimer');
     var cookieBanner = document.getElementById('wg-cookie-banner');
 
+    // Cookie banner is deferred until the nickname step has been
+    // resolved (saved or skipped) -- shows immediately if there's no
+    // nickname prompt pending. Called after the disclaimer is
+    // dismissed, and again from the nickname modal's Save/Skip
+    // handlers (see the script above) once that step is done.
+    window.__wgMaybeShowCookieBanner = function () {
+      if (!localStorage.getItem('wg_cookie_ack')) {
+        cookieBanner.classList.remove('hidden');
+      }
+    };
+
     if (!localStorage.getItem('wg_disclaimer_ack')) {
       disclaimer.classList.remove('hidden');
       disclaimer.classList.add('flex');
-    } else if (!localStorage.getItem('wg_cookie_ack')) {
-      // Cookie banner waits until the safety notice is dismissed, so
-      // they never compete for attention on first visit.
-      cookieBanner.classList.remove('hidden');
-    } else {
-      window.__wgMaybePromptNickname();
+    } else if (!window.__wgMaybePromptNickname()) {
+      window.__wgMaybeShowCookieBanner();
     }
 
     document.getElementById('wg-disclaimer-ack').addEventListener('click', function () {
       localStorage.setItem('wg_disclaimer_ack', '1');
       disclaimer.classList.add('hidden');
       disclaimer.classList.remove('flex');
-      if (!localStorage.getItem('wg_cookie_ack')) {
-        cookieBanner.classList.remove('hidden');
-      } else {
-        window.__wgMaybePromptNickname();
+      if (!window.__wgMaybePromptNickname()) {
+        window.__wgMaybeShowCookieBanner();
       }
     });
 
     document.getElementById('wg-cookie-ack').addEventListener('click', function () {
       localStorage.setItem('wg_cookie_ack', '1');
       cookieBanner.classList.add('hidden');
-      window.__wgMaybePromptNickname();
     });
   } catch (e) {
     // localStorage unavailable (privacy mode, etc.) -- fail open rather
