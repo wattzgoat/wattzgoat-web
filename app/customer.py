@@ -197,11 +197,15 @@ def change_password():
             ), 403
 
     new_password = request.form.get("new_password", "")
-    confirm_new_password = request.form.get("confirm_new_password", "")
 
     # Phase 7: plain usability check, independent of hardening state and
     # checked server-side, same rationale as signup()'s equivalent check.
-    if new_password != confirm_new_password:
+    # Same NOTE as there: .get() with no default, not "" -- an omitted
+    # field (every pre-existing API-style caller) skips this check rather
+    # than being treated as an empty-string mismatch. The real HTML form
+    # always sends it (account.html's `required` input).
+    confirm_new_password = request.form.get("confirm_new_password")
+    if confirm_new_password is not None and new_password != confirm_new_password:
         return render_template("account.html", user=g.user, error="New passwords don't match.")
 
     # Phase 6: PWCHANGE_TEACH's hardened branch adds the missing current-

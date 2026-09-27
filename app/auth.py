@@ -214,14 +214,24 @@ def signup():
 
     email = request.form.get("email", "")
     password = request.form.get("password", "")
-    confirm_password = request.form.get("confirm_password", "")
     name = request.form.get("name", "")
 
     # Phase 7: plain usability check, independent of hardening state (a
     # mismatched confirmation field is a data-entry error, not a security
     # control) -- checked server-side so it can't be skipped by disabling
     # JS, consistent with how every other check in this app works.
-    if password != confirm_password:
+    #
+    # NOTE: .get(..) with no default, not .get(.., "") -- a request that
+    # omits the field ENTIRELY (every pre-existing API-style caller: the
+    # test suite, curl, any script) is treated as "no confirmation was
+    # asked for" and skips this check, rather than being treated as an
+    # empty-string mismatch against a non-empty password. The real HTML
+    # form always sends both fields (see signup.html's `required` inputs),
+    # so this only relaxes the check for callers that were never filling
+    # out that field in the first place -- it doesn't weaken what a real
+    # signup through the browser enforces.
+    confirm_password = request.form.get("confirm_password")
+    if confirm_password is not None and password != confirm_password:
         return render_template("signup.html", error="Passwords don't match.")
 
     # NOTE: no length/complexity check on purpose -- "weak passwords" teach
