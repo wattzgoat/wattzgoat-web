@@ -3,6 +3,9 @@ import json
 
 import jwt
 
+from . import flags
+from . import hardening
+
 # ---------------------------------------------------------------------------
 # Device tokens authenticate a METER (not a person) to /api/telemetry.
 # Issued the same way jwt.io itself would build one: HS256, a short fixed
@@ -40,6 +43,12 @@ def verify_device_token(token: str):
         return None, False
 
     if header.get("alg") == "none":
+        # Phase 6: hardened branch pins the expected algorithm and
+        # rejects alg=none outright, instead of accepting it and just not
+        # flagging the outcome -- the real fix, matching the remediation
+        # note in flags.py word for word.
+        if hardening.is_hardened(flags.JWT_EXERCISE):
+            return None, False
         try:
             payload = json.loads(_b64url_decode(payload_b64))
             return payload.get("meter_code"), True

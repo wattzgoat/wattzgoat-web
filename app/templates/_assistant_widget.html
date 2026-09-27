@@ -48,6 +48,14 @@
     if (who === 'me') {
       // The user's own message is always rendered safely.
       bubble.textContent = text;
+    } else if ({{ 'true' if is_hardened('ASSISTANT_OUTPUT_XSS') else 'false' }}) {
+      // Phase 6: ASSISTANT_OUTPUT_XSS hardened -- bot replies rendered
+      // the same safe way as the user's own messages. This is the
+      // actual fix (matches the remediation note word for word: "never
+      // render assistant output with innerHTML"), not a server-side
+      // stub -- a working marker in the echoed text is now just inert
+      // text on the page either way.
+      bubble.textContent = text;
     } else {
       // NOTE: bot replies are rendered with innerHTML, not textContent.
       // The simulated bot's fallback echoes unrecognized input back

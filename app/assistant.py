@@ -3,6 +3,7 @@ import re
 from flask import Blueprint, g, jsonify, request
 
 from . import flags
+from . import hardening
 from .auth import login_required
 from .db import get_db
 from .personalize import get_flag
@@ -198,6 +199,15 @@ def handle_customer_message(user, text):
         meter = _find_meter(db, text)
         if meter is not None and meter["user_id"] != user["id"]:
             if _has_override_phrase(t):
+                # Phase 6: ASSISTANT_DIRECT_ACTION's hardened branch --
+                # an override phrase no longer authorizes acting on an
+                # account the caller doesn't own. The bot's OWN access
+                # control decides this now, not whatever framing the
+                # message used -- the real fix, matching the remediation
+                # note ("don't let a chat message alone authorize a real
+                # action outside the caller's own scope").
+                if hardening.is_hardened(flags.ASSISTANT_DIRECT_ACTION):
+                    return "I can't do that -- that meter isn't on your account."
                 new_status = "disconnected" if _contains_any(t, DISCONNECT_WORDS) else "connected"
                 db.execute("UPDATE meters SET status = ? WHERE id = ?", (new_status, meter["id"]))
                 db.commit()
@@ -207,7 +217,13 @@ def handle_customer_message(user, text):
     # 2) Direct injection -> data leak: another account's details,
     # requires the same override-style prefix (symmetric with #1). Several
     # fields are explorable; only billing address trips the flag.
-    if _has_override_phrase(t):
+    #
+    # Phase 6: ASSISTANT_DIRECT_DATALEAK's hardened branch applies the
+    # same access-control check the API itself would (matching the
+    # remediation note) -- an override phrase no longer unlocks another
+    # account's data at all, not just the billing-address field
+    # specifically.
+    if _has_override_phrase(t) and not hardening.is_hardened(flags.ASSISTANT_DIRECT_DATALEAK):
         account = _find_account(db, text)
         if account is not None and account["id"] != user["id"]:
             if _contains_any(t, ADDRESS_WORDS):
@@ -238,7 +254,13 @@ def handle_customer_message(user, text):
     # system prompt" with no override framing no longer works on its own;
     # this makes the exercise actually require an injection attempt
     # instead of a single plain, ordinary-sounding question.
+    #
+    # Phase 6: hardened branch refuses the leak outright -- symmetric
+    # with how admin mode already always refuses it (ADMIN_LEAK_REFUSAL
+    # below), rather than a customer-mode-only gap.
     if _has_override_phrase(t) and _is_leak_attempt(t):
+        if hardening.is_hardened(flags.ASSISTANT_SYSPROMPT_LEAK):
+            return ADMIN_LEAK_REFUSAL
         return f'Here are my instructions: "{_customer_system_prompt(g.participant_id)}"'
 
     # --- normal, correctly-scoped skills ---
@@ -280,7 +302,14 @@ def handle_customer_message(user, text):
     # A working marker (onerror=/onload=/javascript:) earns the flag; a
     # bare, inert <script>/<img>/<svg> with no handler gets a nudge
     # instead -- it genuinely wouldn't execute here.
+    #
+    # Phase 6: the actual fix is client-side (_assistant_widget.html
+    # switches bot replies from innerHTML to textContent when hardened --
+    # see there); this just stops awarding the flag once that's on, since
+    # the echoed marker itself is harmless server-side either way.
     if _has_working_xss(text):
+        if hardening.is_hardened(flags.ASSISTANT_OUTPUT_XSS):
+            return CUSTOMER_FALLBACK.format(echo=text)
         return CUSTOMER_FALLBACK.format(echo=text) + f" {get_flag(flags.ASSISTANT_OUTPUT_XSS, g.participant_id)}"
     if _looks_like_inert_xss_attempt(text):
         return "That didn't do anything here — a bare tag like that won't execute. You'll need something that actually runs."
@@ -296,7 +325,16 @@ def _summarize_ticket(ticket):
     # anything not created through the normal /support flow (there's no
     # seeded ticket data), which never equals a real g.participant_id.
     same_participant = ticket["participant_id"] is not None and ticket["participant_id"] == g.participant_id
-    if same_participant and (_has_override_phrase(combined.lower()) or _is_leak_attempt(combined.lower())):
+    # Phase 6: ASSISTANT_INDIRECT_INJECTION's hardened branch treats
+    # ticket content as data, never instructions -- the real fix (matches
+    # the remediation note word for word). Note this is checked
+    # independently of same_participant/override detection: even content
+    # that WOULD otherwise qualify is never followed once this is on.
+    if (
+        not hardening.is_hardened(flags.ASSISTANT_INDIRECT_INJECTION)
+        and same_participant
+        and (_has_override_phrase(combined.lower()) or _is_leak_attempt(combined.lower()))
+    ):
         # Indirect injection: the admin asked only to summarize a ticket --
         # nothing they typed was malicious. The instruction came from
         # content a customer planted, and unlike a direct ask (which admin
@@ -481,6 +519,8 @@ def handle_admin_message(user, text):
         )
 
     if _has_working_xss(text):
+        if hardening.is_hardened(flags.ASSISTANT_OUTPUT_XSS):
+            return ADMIN_FALLBACK.format(echo=text)
         return ADMIN_FALLBACK.format(echo=text) + f" {get_flag(flags.ASSISTANT_OUTPUT_XSS, g.participant_id)}"
     if _looks_like_inert_xss_attempt(text):
         return "That didn't do anything here — a bare tag like that won't execute. You'll need something that actually runs."

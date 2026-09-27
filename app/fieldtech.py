@@ -1,6 +1,7 @@
 from flask import Blueprint, g, jsonify, render_template, request
 
 from . import flags
+from . import hardening
 from .db import get_db
 from .personalize import get_flag
 
@@ -41,6 +42,18 @@ def meter_lookup_api():
         return jsonify({"error": f"no meter found with code {code}"}), 404
 
     row = dict(meter)
+
+    # Phase 6: hardened branch returns exactly what a field technician's
+    # tool actually needs -- meter code, status, install address -- and
+    # nothing about the owner's identity, billing, or account history.
+    # The real fix (return less), not a stub that blocks the endpoint.
+    if hardening.is_hardened(flags.FIELDTECH_LOOKUP):
+        return jsonify({
+            "meter_code": row["meter_code"],
+            "status": row["status"],
+            "install_address": row["owner_address_service"],
+        })
+
     return jsonify({
         "meter_code": row["meter_code"],
         "status": row["status"],

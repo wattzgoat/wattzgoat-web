@@ -9,12 +9,22 @@
 {% for t in tickets %}
 <div class="bg-white rounded-lg p-5 shadow-sm">
   <div class="flex items-start justify-between mb-2">
-    {# |safe on purpose -- stored XSS exercise instance (the customer's own /support view escapes normally). #}
+    {# |safe on purpose -- stored XSS exercise instance (the customer's
+       own /support view escapes normally). Phase 6: SXSS_EXERCISE
+       hardened escapes both fields, matching normal Jinja autoescape. #}
+    {% if is_hardened('SXSS_EXERCISE') %}
+    <h2 class="font-semibold">{{ t['subject'] }}</h2>
+    {% else %}
     <h2 class="font-semibold">{{ t['subject']|safe }}</h2>
+    {% endif %}
     <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-yellow-100 text-yellow-700' if t['status']=='open' else 'bg-gray-100 text-gray-600' }}">{{ t['status'] }}</span>
   </div>
   <p class="text-xs text-gray-500 mb-3">{{ t['customer_name'] }} &lt;{{ t['customer_email'] }}&gt; · {{ t['created_at'] }}</p>
+  {% if is_hardened('SXSS_EXERCISE') %}
+  <div class="text-sm text-gray-700">{{ t['description'] }}</div>
+  {% else %}
   <div class="text-sm text-gray-700">{{ t['description']|safe }}</div>
+  {% endif %}
 </div>
 {% else %}
 <p class="text-gray-500">No tickets yet.</p>

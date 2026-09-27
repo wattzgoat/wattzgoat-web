@@ -15,8 +15,14 @@
 <div class="bg-white rounded-lg p-6 shadow-sm mb-4" data-meter-card data-meter-id="{{ meter['id'] }}">
   <div class="flex items-start justify-between">
     <div>
-      {# |safe on purpose -- stored XSS teach instance (nickname is unescaped). #}
+      {# |safe on purpose -- stored XSS teach instance (nickname is
+         unescaped). Phase 6: SXSS_TEACH hardened escapes it, matching
+         Jinja's normal autoescape (no |safe branch at all). #}
+      {% if is_hardened('SXSS_TEACH') %}
+      <h2 class="text-lg font-semibold">{{ meter['nickname'] }}</h2>
+      {% else %}
       <h2 class="text-lg font-semibold">{{ meter['nickname']|safe }}</h2>
+      {% endif %}
       <p class="text-sm text-gray-500">{{ meter['meter_code'] }}</p>
     </div>
     <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-100 text-green-700' if meter['status'] == 'connected' else 'bg-red-100 text-red-700' }}">
@@ -41,6 +47,9 @@
   </div>
 
   <form method="post" action="{{ url_for('customer.update_nickname', meter_id=meter['id']) }}" class="mt-4 flex gap-2">
+    {% if is_hardened('CSRF_EXERCISE') %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% endif %}
     <input name="nickname" placeholder="Rename this meter" value="{{ meter['nickname'] }}" class="flex-1 border rounded px-3 py-1.5 text-sm">
     <button class="bg-[#14181C] text-white rounded px-4 py-1.5 text-sm">Save</button>
   </form>

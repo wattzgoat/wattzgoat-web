@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import itertools
+import secrets
 import sqlite3
 import time
 from collections import defaultdict
@@ -8,6 +9,7 @@ from datetime import datetime
 from functools import wraps
 
 from flask import Blueprint, g, redirect, render_template, request, url_for
+from markupsafe import escape
 
 from . import flags
 from . import hardening
@@ -27,6 +29,15 @@ _session_counter = itertools.count(100000)
 
 
 def issue_session_token() -> str:
+    # Phase 6: SESSIONID_TEACH's hardened branch issues a real,
+    # cryptographically random token instead of the next value in a
+    # sequential counter -- the actual fix, not a stub. Note this makes
+    # the flag structurally unreachable in hardened mode: there's no
+    # sequence left to walk, and the dedicated account
+    # (SESSIONID_ACCOUNT_EMAIL, see app/flags.py) never gets a
+    # guessable token to land on.
+    if hardening.is_hardened(flags.SESSIONID_TEACH):
+        return secrets.token_hex(24)
     return str(next(_session_counter))
 
 
@@ -71,7 +82,20 @@ def init_counters(db_path: str) -> None:
     conn = sqlite3.connect(db_path)
     try:
         rows = conn.execute("SELECT token FROM sessions").fetchall()
-        highest = max((int(t[0]) for t in rows), default=99999)
+        # Phase 6: a hardened-mode token (secrets.token_hex()) isn't a
+        # base-10 integer, so it can't feed the sequential counter's
+        # high-water mark -- skip those rather than letting one crash
+        # this whole function (which would otherwise take the container
+        # down on next boot if SESSIONID_TEACH was ever toggled hardened
+        # before a restart, since some session rows would carry
+        # non-numeric tokens).
+        numeric_tokens = []
+        for (t,) in rows:
+            try:
+                numeric_tokens.append(int(t))
+            except (TypeError, ValueError):
+                continue
+        highest = max(numeric_tokens, default=99999)
         _session_counter = itertools.count(max(100000, highest + 1))
     except sqlite3.OperationalError:
         pass  # table doesn't exist yet (fresh DB) -- default start stands
@@ -111,12 +135,21 @@ def current_user():
     if not token:
         return None
     db = get_db()
-    return db.execute(
+    row = db.execute(
         "SELECT users.*, sessions.logged_out_at AS session_logged_out_at FROM sessions "
         "JOIN users ON users.id = sessions.user_id "
         "WHERE sessions.token = ?",
         (token,),
     ).fetchone()
+    # Phase 6: SESSIONREUSE_BONUS's hardened branch -- a session already
+    # marked logged-out is treated as if it doesn't exist at all, rather
+    # than the row being returned as a valid session regardless. This is
+    # the actual server-side invalidation logout() never did (see
+    # logout() below); the flag becomes unreachable once this is on,
+    # since a replayed post-logout token now just looks logged-out.
+    if row is not None and row["session_logged_out_at"] and hardening.is_hardened(flags.SESSIONREUSE_BONUS):
+        return None
+    return row
 
 
 @bp.before_app_request
@@ -227,6 +260,18 @@ def login():
     email = request.form.get("email", "")
     password = request.form.get("password", "")
     db = get_db()
+
+    # Phase 6: RATELIMIT_TEACH's hardened branch actually locks the
+    # account out once the threshold is hit, instead of merely no longer
+    # withholding the flag -- checked BEFORE looking up credentials at
+    # all, so a correct password doesn't slip through mid-lockout either.
+    if hardening.is_hardened(flags.RATELIMIT_TEACH) and _login_attempts.get(email, 0) >= RATE_LIMIT_THRESHOLD:
+        return render_template(
+            "login.html",
+            error="Too many failed attempts. Try again later.",
+            plaintext_flag=get_flag(flags.PLAINTEXT_TEACH, g.participant_id),
+        ), 429
+
     user = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
 
     # NOTE: two distinct messages on purpose -- "improper error handling"
@@ -235,7 +280,11 @@ def login():
         _login_attempts[email] += 1
         # NOTE: no lockout at any attempt count -- lack of rate limiting
         # teach instance.
-        ratelimit_flag = get_flag(flags.RATELIMIT_TEACH, g.participant_id) if _login_attempts[email] >= RATE_LIMIT_THRESHOLD else None
+        ratelimit_flag = (
+            get_flag(flags.RATELIMIT_TEACH, g.participant_id)
+            if _login_attempts[email] >= RATE_LIMIT_THRESHOLD and not hardening.is_hardened(flags.RATELIMIT_TEACH)
+            else None
+        )
         error = "Invalid username" if user is None else "Invalid password"
         return render_template(
             "login.html",
@@ -289,10 +338,22 @@ def forgot_password():
 
     email = request.form.get("email", "")
     db = get_db()
+
+    # Phase 6: RATELIMIT_EXERCISE's hardened branch, same real-lockout
+    # shape as RATELIMIT_TEACH on /login above -- checked before doing
+    # any work for this request, so a locked-out email doesn't even get
+    # a fresh reset email queued.
+    if hardening.is_hardened(flags.RATELIMIT_EXERCISE) and _reset_attempts.get(email, 0) >= RATE_LIMIT_THRESHOLD:
+        return render_template("forgot_password.html", ratelimit_error=True), 429
+
     user = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
 
     _reset_attempts[email] += 1
-    ratelimit_flag = get_flag(flags.RATELIMIT_EXERCISE, g.participant_id) if _reset_attempts[email] >= RATE_LIMIT_THRESHOLD else None
+    ratelimit_flag = (
+        get_flag(flags.RATELIMIT_EXERCISE, g.participant_id)
+        if _reset_attempts[email] >= RATE_LIMIT_THRESHOLD and not hardening.is_hardened(flags.RATELIMIT_EXERCISE)
+        else None
+    )
 
     if user is None:
         # Confirms account existence AND echoes the raw email back
@@ -303,9 +364,13 @@ def forgot_password():
         # flag is readable from ANY XSS anywhere in the session, not just
         # this specific injection point, which let one working payload
         # hand over flags that had nothing to do with where it fired.
+        #
+        # Phase 6: RXSS_EXERCISE's hardened branch escapes the echoed
+        # email before it reaches the template, same pattern as
+        # RXSS_TEACH on /usage (see customer.py).
         return render_template(
             "forgot_password.html",
-            not_found_email=email,
+            not_found_email=escape(email) if hardening.is_hardened(flags.RXSS_EXERCISE) else email,
             ratelimit_flag=ratelimit_flag,
             rxss_title_flag=get_flag(flags.RXSS_EXERCISE, g.participant_id),
         )
@@ -336,13 +401,24 @@ def reset_password():
         return render_template("reset_password.html", token=token, email=email, issued_at=issued_display)
 
     new_password = request.form.get("password", "")
-    db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (weak_hash(new_password), user["id"]))
-    db.commit()
 
     # NOTE: an hour-old (or decades-old) token resets the password just
     # fine -- the timestamp embedded in it is never checked. Broken
     # authentication exercise instance.
     is_stale = issued_at is not None and (time.time() - issued_at) > 3600
+
+    # Phase 6: hardened branch actually rejects a stale token BEFORE
+    # applying the update, instead of applying it unconditionally and
+    # only noting the staleness afterward -- the real fix. A token with
+    # no timestamp at all (issued_at is None, i.e. it never parsed as
+    # "email:timestamp") is left alone here since that's decode_reset_
+    # token()'s own concern, not this one.
+    if is_stale and hardening.is_hardened(flags.OLDTOKEN_EXERCISE):
+        return render_template("reset_password.html", error="This reset link has expired. Please request a new one."), 400
+
+    db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (weak_hash(new_password), user["id"]))
+    db.commit()
+
     if is_stale:
         return render_template("reset_password_done.html", oldtoken_flag=get_flag(flags.OLDTOKEN_EXERCISE, g.participant_id))
     return redirect(url_for("auth.login"))

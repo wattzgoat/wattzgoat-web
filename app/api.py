@@ -1,6 +1,7 @@
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, abort, g, jsonify, request
 
 from . import flags
+from . import hardening
 from .auth import login_required
 from .db import get_db
 from .devices import verify_device_token
@@ -23,7 +24,20 @@ ACCOUNT_PATCHABLE_FIELDS = {"name", "phone", "address_service", "address_billing
 @login_required()
 def patch_account():
     payload = request.get_json(silent=True) or {}
-    updates = {k: v for k, v in payload.items() if k in ACCOUNT_PATCHABLE_FIELDS}
+
+    # Phase 6: MASSASSIGN_EXERCISE and ROLE_ESCALATION_BONUS are two
+    # independent toggles on the SAME allow-list, gating two different
+    # fields that shouldn't be here -- billing_rate (an internal figure)
+    # and role (real privilege). Hardening one drops just that field from
+    # what's patchable; hardening both collapses this back to what the
+    # form actually exposes.
+    patchable_fields = set(ACCOUNT_PATCHABLE_FIELDS)
+    if hardening.is_hardened(flags.MASSASSIGN_EXERCISE):
+        patchable_fields.discard("billing_rate")
+    if hardening.is_hardened(flags.ROLE_ESCALATION_BONUS):
+        patchable_fields.discard("role")
+
+    updates = {k: v for k, v in payload.items() if k in patchable_fields}
     if not updates:
         return jsonify({"error": "no recognized fields in payload"}), 400
 
@@ -79,11 +93,17 @@ def meter_readings(meter_id):
     meter_dict = dict(meter)
     is_idor = meter_dict.pop("user_id") != g.user["id"]
 
+    # Phase 6: hardened branch actually enforces ownership (or admin
+    # role) instead of just withholding the flag while still returning
+    # someone else's meter data.
+    if is_idor and hardening.is_hardened(flags.IDOR_TEACH) and g.user["role"] != "admin":
+        abort(403)
+
     response = {
         "meter": meter_dict,
         "readings": [dict(r) for r in readings],
     }
-    if is_idor:
+    if is_idor and not hardening.is_hardened(flags.IDOR_TEACH):
         response["flag"] = get_flag(flags.IDOR_TEACH, g.participant_id)
     return jsonify(response)
 

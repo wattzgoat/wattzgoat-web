@@ -9,6 +9,7 @@ from markupsafe import escape
 from .auth import login_required, weak_hash, is_weak_password
 from .db import get_db, mysql_style_error
 from .devices import issue_device_token
+from .hardening import csrf_token
 from .personalize import get_flag
 from . import billing
 from . import flags
@@ -45,7 +46,24 @@ def dashboard():
     # to this account, however they got here, sees the flag -- that's the
     # whole exercise, and matches how every other flag in this app is
     # delivered to whatever session happens to trigger it.
-    sessionid_flag = get_flag(flags.SESSIONID_TEACH, g.participant_id) if g.user["email"] == flags.SESSIONID_ACCOUNT_EMAIL else None
+    # Phase 6: gated the same way every other structural/seeded-fixture
+    # exception in this app is -- the pre-planted low-numbered token this
+    # account ships with (SESSIONID_ACCOUNT_BASELINE_TOKEN, see
+    # app/flags.py) is written directly into `sessions` at seed time,
+    # independent of issue_session_token(). Hardening that function stops
+    # any FUTURE token from being guessable, but doesn't retroactively
+    # revoke this one fixed fixture row -- same shape as the SQLi
+    # sentinel rows staying planted in the DB either way while the
+    # QUERY's ability to reach them is what actually changes. Gating the
+    # flag here, not the account's reachability, keeps that consistent:
+    # once hardened, guessing session IDs (the actual skill being taught)
+    # no longer works for any real account, even though this one static
+    # lab fixture is a known, deliberate exception to that.
+    sessionid_flag = (
+        get_flag(flags.SESSIONID_TEACH, g.participant_id)
+        if g.user["email"] == flags.SESSIONID_ACCOUNT_EMAIL and not hardening.is_hardened(flags.SESSIONID_TEACH)
+        else None
+    )
 
     # Stored XSS teach instance: the flag is personalized to whoever
     # actually set the exploited nickname (nickname_set_by), not to
@@ -54,7 +72,11 @@ def dashboard():
     # genuinely shared state once set, but a later viewer shouldn't get
     # credit for someone else's earlier work just by loading the page.
     nickname_setter = next((m["nickname_set_by"] for m in meters if m["nickname_set_by"]), None)
-    sxss_title_flag = get_flag(flags.SXSS_TEACH, nickname_setter) if nickname_setter else None
+    sxss_title_flag = (
+        get_flag(flags.SXSS_TEACH, nickname_setter)
+        if nickname_setter and not hardening.is_hardened(flags.SXSS_TEACH)
+        else None
+    )
 
     resp = make_response(render_template(
         "dashboard.html", user=g.user, meters=meters, device_tokens=device_tokens,
@@ -84,6 +106,15 @@ def update_nickname(meter_id):
     # Ownership IS checked here -- this route isn't the access-control
     # exercise. The bug on this page is purely in how the nickname gets
     # rendered back out (see dashboard.html) -- stored XSS teach instance.
+    #
+    # Phase 6: CSRF_EXERCISE's hardened branch -- same real token check
+    # as CSRF_TEACH on the password form (customer.py:change_password()),
+    # checked first, before the nickname is ever written.
+    if hardening.is_hardened(flags.CSRF_EXERCISE):
+        submitted_token = request.form.get("csrf_token", "")
+        if not submitted_token or submitted_token != csrf_token():
+            abort(403)
+
     nickname = request.form.get("nickname", "")
     db = get_db()
     db.execute(
@@ -93,7 +124,7 @@ def update_nickname(meter_id):
     db.commit()
 
     resp = make_response(redirect(url_for("customer.dashboard")))
-    if _is_cross_origin(request):
+    if _is_cross_origin(request) and not hardening.is_hardened(flags.CSRF_EXERCISE):
         # CSRF exercise instance: same missing-token gap as the password
         # form, on a lower-stakes action -- this route redirects rather
         # than rendering a page, so the flag rides on a response header
@@ -148,7 +179,37 @@ def change_password():
     # check; it doesn't require any special trickery to notice. See the
     # CSRF category for how this becomes a remote, no-session-needed
     # takeover, chained off this same gap.
+    #
+    # Phase 6: CSRF_TEACH's hardened branch is checked FIRST, before
+    # anything else on this route -- a forged cross-origin submission
+    # that fails the token check never reaches the current-password gap,
+    # the weak-password check, or the actual UPDATE, regardless of what
+    # those are separately toggled to. This is deliberately independent
+    # of _is_cross_origin()'s Origin/Referer check below: a same-origin-
+    # looking request with no valid token is rejected too, which is the
+    # actual point of a token-based defense over header-sniffing.
+    if hardening.is_hardened(flags.CSRF_TEACH):
+        submitted_token = request.form.get("csrf_token", "")
+        if not submitted_token or submitted_token != csrf_token():
+            return render_template(
+                "account.html", user=g.user,
+                error="Missing or invalid security token -- request rejected.",
+            ), 403
+
     new_password = request.form.get("new_password", "")
+
+    # Phase 6: PWCHANGE_TEACH's hardened branch adds the missing current-
+    # password check back -- this is the actual "broken authentication"
+    # fix, independent of CSRF_TEACH's token check above (a legitimate,
+    # same-origin, correctly-tokened request should still be refused if
+    # it doesn't prove it's really the account owner).
+    if hardening.is_hardened(flags.PWCHANGE_TEACH):
+        current_password = request.form.get("current_password", "")
+        if weak_hash(current_password) != g.user["password_hash"]:
+            return render_template(
+                "account.html", user=g.user,
+                error="Current password is incorrect.",
+            ), 403
 
     # Phase 6: WEAKPW_CHANGE's hardened branch rejects the new password
     # outright and never writes it, reusing the same is_weak_password()
@@ -174,13 +235,17 @@ def change_password():
         if is_weak_password(new_password) and not hardening.is_hardened(flags.WEAKPW_CHANGE)
         else None
     )
-    pwchange_flag = get_flag(flags.PWCHANGE_TEACH, g.participant_id)
+    pwchange_flag = get_flag(flags.PWCHANGE_TEACH, g.participant_id) if not hardening.is_hardened(flags.PWCHANGE_TEACH) else None
     # CSRF teach instance: no anti-CSRF token on this form at all, so a
     # forged cross-origin submission works just as well as a real one --
     # combined with the missing current-password check above, that's a
     # full remote account takeover from a hosted page or a local HTML
     # file, no session-riding trickery beyond a plain auto-submitting form.
-    csrf_flag = get_flag(flags.CSRF_TEACH, g.participant_id) if _is_cross_origin(request) else None
+    csrf_flag = (
+        get_flag(flags.CSRF_TEACH, g.participant_id)
+        if _is_cross_origin(request) and not hardening.is_hardened(flags.CSRF_TEACH)
+        else None
+    )
 
     return render_template(
         "account.html", user=g.user, password_changed=True,
@@ -216,9 +281,17 @@ def recharge():
     # outright instead of being recomputed from amount_paid -- business
     # logic teach instance. The rendered form never sends this field, so it
     # only shows up when someone crafts the request directly.
+    #
+    # Phase 6: hardened branch ignores any client-supplied units_credited
+    # entirely and always recomputes it server-side from amount_paid --
+    # the real fix, not just hiding the override's effect.
     raw_override = request.form.get("units_credited")
-    units_credited = float(raw_override) if raw_override not in (None, "") else round(amount_paid / RECHARGE_RATE, 2)
-    buslogic_flag = get_flag(flags.BUSLOGIC_TEACH, g.participant_id) if raw_override not in (None, "") else None
+    if hardening.is_hardened(flags.BUSLOGIC_TEACH):
+        units_credited = round(amount_paid / RECHARGE_RATE, 2)
+        buslogic_flag = None
+    else:
+        units_credited = float(raw_override) if raw_override not in (None, "") else round(amount_paid / RECHARGE_RATE, 2)
+        buslogic_flag = get_flag(flags.BUSLOGIC_TEACH, g.participant_id) if raw_override not in (None, "") else None
 
     db = get_db()
     db.execute("UPDATE meters SET balance = balance + ? WHERE id = ?", (units_credited, meter["id"]))
@@ -246,12 +319,22 @@ def solar():
     # business logic exercise instance: any claimed export is paid out at
     # face value.
     exported_kwh = float(request.form.get("exported_kwh", 0) or 0)
-    credit_amount = round(exported_kwh * SOLAR_CREDIT_RATE, 2)
     # NOTE: 1000 kWh is roughly a whole year's residential solar export --
     # anything past that in one submission is well outside what's
     # physically plausible, and nothing here checks for it. Business logic
     # exercise instance.
-    buslogic_flag = get_flag(flags.BUSLOGIC_EXERCISE, g.participant_id) if exported_kwh > 1000 else None
+    #
+    # Phase 6: hardened branch actually caps it server-side at the same
+    # 1000 kWh plausibility threshold, instead of paying out the full
+    # claimed amount and merely flagging that it was implausible.
+    if hardening.is_hardened(flags.BUSLOGIC_EXERCISE) and exported_kwh > 1000:
+        exported_kwh = 1000
+    credit_amount = round(exported_kwh * SOLAR_CREDIT_RATE, 2)
+    buslogic_flag = (
+        get_flag(flags.BUSLOGIC_EXERCISE, g.participant_id)
+        if exported_kwh > 1000 and not hardening.is_hardened(flags.BUSLOGIC_EXERCISE)
+        else None
+    )
 
     db = get_db()
     db.execute("UPDATE meters SET balance = balance + ? WHERE id = ?", (credit_amount, meter["id"]))
@@ -285,12 +368,26 @@ def usage():
     # page (improper error handling teach instance), and the query text
     # echoed back unescaped in the "no results" message (reflected XSS
     # teach instance).
-    sql = f"SELECT reading_kwh, source, recorded_at FROM readings WHERE meter_id = {meter_id} AND recorded_at LIKE '%{query}%'"
-
+    #
+    # Phase 6: SQLI_BONUS's hardened branch parameterizes this query --
+    # independent of ERRHANDLING_TEACH below, which is a second, separate
+    # layer of defense on the SAME route (a real app might have one fixed
+    # and not the other yet). With this parameterized, a quote in `query`
+    # can no longer break the query at all, which also means
+    # ERRHANDLING_TEACH's branch below simply never triggers in that
+    # case -- not because it's disabled, but because there's nothing left
+    # to mishandle.
     db = get_db()
     sqli_flag = None
+    if hardening.is_hardened(flags.SQLI_BONUS):
+        sql = "SELECT reading_kwh, source, recorded_at FROM readings WHERE meter_id = ? AND recorded_at LIKE ?"
+        params = (meter_id, f"%{query}%")
+    else:
+        sql = f"SELECT reading_kwh, source, recorded_at FROM readings WHERE meter_id = {meter_id} AND recorded_at LIKE '%{query}%'"
+        params = ()
+
     try:
-        results = db.execute(sql).fetchall()
+        results = db.execute(sql, params).fetchall()
         db_error = None
         # SQLi bonus sentinel detection -- see app/flags.py's module
         # docstring for why this is a sentinel check rather than the flag
@@ -304,7 +401,14 @@ def usage():
             sqli_flag = get_flag(flags.SQLI_BONUS, g.participant_id)
     except sqlite3.OperationalError as e:
         results = None
-        db_error = mysql_style_error(e) + f"\n-- improper error handling: {get_flag(flags.ERRHANDLING_TEACH, g.participant_id)}"
+        # Phase 6: ERRHANDLING_TEACH's own hardened branch -- a generic
+        # message instead of the raw driver error (and no flag), even if
+        # SQLI_BONUS is somehow still vulnerable and this except block is
+        # still reachable.
+        if hardening.is_hardened(flags.ERRHANDLING_TEACH):
+            db_error = "Something went wrong processing your search. Please try again."
+        else:
+            db_error = mysql_style_error(e) + f"\n-- improper error handling: {get_flag(flags.ERRHANDLING_TEACH, g.participant_id)}"
 
     # Phase 6: RXSS_TEACH's hardened branch escapes the echoed query
     # before it ever reaches the template -- the template's |safe stays
@@ -371,6 +475,25 @@ def download_bill():
     # something that only happens to work at one specific depth.
     rel_path = request.args.get("path", "")
     full_path = os.path.normpath(os.path.join(BILLS_DIR, rel_path))
+
+    # Phase 6: TRAVERSAL_TEACH's hardened branch does two things, not
+    # one -- containment alone isn't enough here. MTR-1004/../MTR-1002/...
+    # never actually leaves BILLS_DIR (MTR-1002 is a legitimate sibling
+    # folder under the same root), so a containment-only check would
+    # still let this exact documented exploit through. The real fix is
+    # an ownership check: the first path segment under BILLS_DIR is a
+    # meter code, and it has to be one of THIS caller's own meters, not
+    # just "somewhere under bills/ generically."
+    if hardening.is_hardened(flags.TRAVERSAL_TEACH):
+        real_bills_dir = os.path.realpath(BILLS_DIR)
+        real_full_path = os.path.realpath(full_path)
+        if os.path.commonpath([real_bills_dir, real_full_path]) != real_bills_dir:
+            abort(403)
+        own_meter_codes = {m["meter_code"] for m in _own_meters()}
+        rel_to_bills = os.path.relpath(real_full_path, real_bills_dir)
+        requested_meter_code = rel_to_bills.split(os.sep)[0]
+        if requested_meter_code not in own_meter_codes:
+            abort(403)
 
     if os.path.isdir(full_path):
         try:

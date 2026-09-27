@@ -29,7 +29,11 @@ escaping, a real header, an enforced policy), not just "return an error
 instead" -- the whole point of hardening mode is showing participants
 what correct looks like, not that the door got locked.
 """
+import hashlib
+import hmac
 import os
+
+from flask import current_app, request
 
 from .db import get_db
 
@@ -79,3 +83,18 @@ def all_states() -> dict:
     state = {key: False for key in flags_module.VALID_KEYS}
     state.update({r["flag_key"]: bool(r["hardened"]) for r in rows})
     return state
+
+
+def csrf_token() -> str:
+    """A standard double-submit-cookie-style anti-CSRF token: derived
+    deterministically (HMAC) from the current session cookie plus the
+    app's SECRET_KEY, computed fresh on every call rather than stored
+    anywhere -- no schema change needed, and it's automatically
+    unguessable to anyone who doesn't already have the session cookie
+    (which they'd need for the rest of the attack to matter anyway).
+    Used by CSRF_TEACH/CSRF_EXERCISE's hardened branches (customer.py)
+    and exposed as a Jinja global (see app/__init__.py) so templates can
+    embed it in a hidden form field directly."""
+    session_token = request.cookies.get("wgs_session", "")
+    secret = current_app.config["SECRET_KEY"]
+    return hmac.new(secret.encode(), session_token.encode(), hashlib.sha256).hexdigest()

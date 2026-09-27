@@ -53,6 +53,19 @@
   {% endif %}
   {% endif %}
   <form method="post" action="{{ url_for('customer.change_password') }}" class="space-y-4">
+    {% if is_hardened('CSRF_TEACH') %}
+    {# Phase 6: CSRF_TEACH hardened -- a real anti-CSRF token, checked in
+       customer.py:change_password() before anything else on this route. #}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% endif %}
+    {% if is_hardened('PWCHANGE_TEACH') %}
+    {# Phase 6: PWCHANGE_TEACH hardened -- the current-password field this
+       form always should have had. #}
+    <div>
+      <label class="block text-sm mb-1">Current password</label>
+      <input name="current_password" type="password" required class="w-full border rounded px-3 py-2">
+    </div>
+    {% endif %}
     <div>
       <label class="block text-sm mb-1">New password</label>
       <input name="new_password" type="password" required class="w-full border rounded px-3 py-2">
