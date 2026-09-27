@@ -28,12 +28,12 @@ CUSTOMERS = [
 # Weak passwords, never rotated -- "admin accounts never forced off their
 # default password" weak-passwords exercise instance.
 ADMINS = [
-    ("ops1@wattzgoat.example", "changeme", "Priya Shah"),
-    ("ops2@wattzgoat.example", "changeme", "Marcus Webb"),
+    ("ops1@example.com", "changeme", "Priya Shah"),
+    ("ops2@example.com", "changeme", "Marcus Webb"),
     # Left over from staging and advertised in an HTML comment on the login
     # page. Deliberately NOT "changeme" so it doesn't trip the weak-password
     # flag -- it's a credential-leak finding, not a flag.
-    ("devadmin@wattzgoat.example", "Dev@2024!", "Dev Admin"),
+    ("devadmin@example.com", "Dev@2024!", "Dev Admin"),
 ]
 
 # One meter per pre-populated customer, same order as CUSTOMERS -- a
@@ -88,8 +88,8 @@ ALARM_SEEDS = [
 # taught for that page can still cross over, which is fine, real UNION
 # SQLi really does let you read any table you can name.
 SQLI_FLAG_ACCOUNTS = [
-    ("svc-meters@internal.wattzgoat.example", "Meters Sync Service"),
-    ("svc-alarms@internal.wattzgoat.example", "Alarms Sync Service"),
+    ("svc-meters@example.com", "Meters Sync Service"),
+    ("svc-alarms@example.com", "Alarms Sync Service"),
 ]
 
 # Sentinel markers, not flag values -- must match app.flags.SQLI_TEACH_SENTINEL
@@ -112,7 +112,7 @@ SQLI_BONUS_FLAG_VALUE = "__WG_SENTINEL_SQLI_BONUS__"
 # The password is random and is never meant to be typed in by a
 # participant -- this account is only ever reached by guessing/walking its
 # session token, never by logging in directly.
-SESSIONID_ACCOUNT = ("fieldrelay@wattzgoat.example", "n0t-f0r-hum4n-use-88x2", "Field Relay Unit")
+SESSIONID_ACCOUNT = ("fieldrelay@example.com", "n0t-f0r-hum4n-use-88x2", "Field Relay Unit")
 SESSIONID_ACCOUNT_BASELINE_TOKEN = "100000"
 
 # One PDF bill per customer, meter_code in the same order as CUSTOMERS.

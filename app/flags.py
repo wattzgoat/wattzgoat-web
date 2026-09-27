@@ -188,14 +188,14 @@ REMEDIATION = {
 # scripts/seed.py and therefore also restored by every /ops/__reset_lab__
 # run, so the account's flag-bearing token is always that same known,
 # fixed value -- this bounds how long the guessing exercise can take.
-SESSIONID_ACCOUNT_EMAIL = "fieldrelay@wattzgoat.example"
+SESSIONID_ACCOUNT_EMAIL = "fieldrelay@example.com"
 SESSIONID_ACCOUNT_BASELINE_TOKEN = "100000"
 
 # The leaked dev-admin account (advertised in an HTML comment on the login
 # page) -- DEVADMIN_LEAK is shown on this account's own dashboard once
 # logged into, tying the previously-unflagged credential leak to a real,
 # flagged payoff.
-DEVADMIN_ACCOUNT_EMAIL = "devadmin@wattzgoat.example"
+DEVADMIN_ACCOUNT_EMAIL = "devadmin@example.com"
 
 # --- SQLi sentinel markers -- see the module docstring note above. These
 # are what actually get planted in the DB by scripts/seed.py; detecting

@@ -1,12 +1,7 @@
-{% extends "base.html" %}
+{% extends "trainer_base.html" %}
 {% block title %}Trainer dashboard — WattzGOAT{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-semibold">Trainer dashboard</h1>
-  <form method="post" action="{{ url_for('ops.reset_lab') }}" onsubmit="return confirm('Reset the entire lab to its seeded state? This clears redemptions, sessions, and every hardening toggle.');">
-    <button type="submit" class="bg-red-600 text-white rounded px-4 py-2 text-sm font-medium">Reset Lab</button>
-  </form>
-</div>
+<h1 class="text-2xl font-semibold mb-6">Trainer dashboard</h1>
 
 <div class="grid grid-cols-3 gap-4 mb-8">
   <div class="bg-white rounded-lg shadow-sm p-4">
@@ -25,14 +20,21 @@
 
 <h2 class="text-lg font-semibold mb-3">Hardening toggles</h2>
 <p class="text-sm text-gray-500 mb-4">
-  Flip any flag to its hardened branch live -- takes effect on the next request, no restart needed.
-  A toggle here writes to <span class="font-mono text-xs">hardening_state</span> via the same
-  <span class="font-mono text-xs">/ops/__set_hardening__</span> endpoint the test suite uses.
+  Flip any flag to its hardened branch live, or flip an entire category at once with the switch
+  next to its name -- takes effect on the next request, no restart needed.
 </p>
 <div class="space-y-6 mb-10">
 {% for category, items in grouped_catalog.items() %}
   <div class="bg-white rounded-lg shadow-sm p-4">
-    <h3 class="font-medium text-sm text-gray-700 mb-3">{{ category }}</h3>
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-medium text-sm text-gray-700">{{ category }}</h3>
+      <label class="relative inline-flex items-center cursor-pointer gap-2">
+        <span class="text-xs text-gray-400">Harden all</span>
+        <input type="checkbox" class="sr-only peer" data-category-key="{{ category }}" onchange="toggleCategory(this)">
+        <div class="w-9 h-5 bg-gray-200 peer-checked:bg-amber-600 rounded-full transition-colors"></div>
+        <div class="absolute right-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:-translate-x-4"></div>
+      </label>
+    </div>
     <div class="divide-y">
     {% for item in items %}
       <div class="flex items-center justify-between py-2 text-sm">
@@ -99,6 +101,17 @@
       document.getElementById('total-redemptions').textContent = data.total_redemptions;
       document.getElementById('participant-count').textContent = data.participants.length;
 
+      // Category switches -- "on" only when every flag in that
+      // category is currently hardened (see app/trainer.py's
+      // category_state computation).
+      document.querySelectorAll('input[data-category-key]').forEach(function (input) {
+        const key = input.dataset.categoryKey;
+        const isHardened = !!(data.category_hardening && data.category_hardening[key]);
+        if (document.activeElement !== input) {
+          input.checked = isHardened;
+        }
+      });
+
       // Per-flag redemption badges.
       document.querySelectorAll('[data-redeem-badge]').forEach(function (badge) {
         const key = badge.dataset.redeemBadge;
@@ -136,10 +149,20 @@
   window.toggleFlag = function (input) {
     const key = input.dataset.flagKey;
     const hardened = input.checked;
-    fetch("{{ url_for('ops.set_hardening') }}", {
+    fetch("{{ url_for('trainer.api_toggle_flag') }}", {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'flag_key=' + encodeURIComponent(key) + '&hardened=' + (hardened ? '1' : '0'),
+    }).then(function () { refresh(); });
+  };
+
+  window.toggleCategory = function (input) {
+    const key = input.dataset.categoryKey;
+    const hardened = input.checked;
+    fetch("{{ url_for('trainer.api_toggle_category') }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'category=' + encodeURIComponent(key) + '&hardened=' + (hardened ? '1' : '0'),
     }).then(function () { refresh(); });
   };
 

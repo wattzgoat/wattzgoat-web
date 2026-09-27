@@ -1,0 +1,73 @@
+{% extends "trainer_base.html" %}
+{% block title %}Participant Leaderboard — WattzGOAT Trainer{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">Participant Leaderboard</h1>
+<p class="text-sm text-gray-500 mb-6">
+  Live participant progress standings, by flags redeemed. Shown nickname-first where a participant
+  has set one, with their participant ID as a small parenthetical -- not the public Solar Leaderboard.
+</p>
+
+<div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+<table class="w-full text-sm">
+<thead class="bg-gray-50 text-left text-gray-500">
+<tr>
+  <th class="px-4 py-2 w-12">#</th>
+  <th class="px-4 py-2">Participant</th>
+  <th class="px-4 py-2">Flags redeemed</th>
+  <th class="px-4 py-2">Last activity</th>
+</tr>
+</thead>
+<tbody class="divide-y" id="leaderboard-rows">
+<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">Loading…</td></tr>
+</tbody>
+</table>
+</div>
+
+<script>
+(function () {
+  const POLL_MS = 3000;
+  let inFlight = false;
+
+  function fmtTime(iso) {
+    if (!iso) return '\u2014';
+    return iso.replace('T', ' ').slice(0, 19);
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  async function refresh() {
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      const res = await fetch("{{ url_for('trainer.api_leaderboard') }}", { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = document.getElementById('leaderboard-rows');
+      if (data.standings.length === 0) {
+        rows.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No redemptions yet.</td></tr>';
+        return;
+      }
+      rows.innerHTML = data.standings.map(function (p, i) {
+        return '<tr>' +
+          '<td class="px-4 py-2 text-gray-400">' + (i + 1) + '</td>' +
+          '<td class="px-4 py-2">' + esc(p.display) + '</td>' +
+          '<td class="px-4 py-2">' + p.flags_redeemed + ' / {{ total_flags }}</td>' +
+          '<td class="px-4 py-2 text-xs text-gray-500">' + fmtTime(p.last_activity) + '</td>' +
+          '</tr>';
+      }).join('');
+    } catch (e) {
+      // Transient network error mid-poll -- try again next tick.
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  refresh();
+  setInterval(refresh, POLL_MS);
+})();
+</script>
+{% endblock %}

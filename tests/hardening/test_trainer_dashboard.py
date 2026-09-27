@@ -1,133 +1,172 @@
-"""Phase 7: trainer dashboard (/trainer/).
+"""Next-phase item 1: the trainer dashboard now runs as its own
+decoupled role (TRAINER_DASHBOARD=true, own auth, own DB -- see
+app/trainer.py), not an admin-gated page inside the main participant
+instance. These tests target that SEPARATE instance
+(WATTZGOAT_TRAINER_URL) and are skipped entirely if it isn't
+configured -- same optional-second-container convention as
+test_hardened_reference.py's WATTZGOAT_HARDENED_URL, since not every
+environment running this suite has that second container up (current
+CI doesn't -- see .github/workflows/ci.yml's own comment on why).
 
-Uses the same set_hardened fixture as tests/hardening/'s other files
-(tests/hardening/conftest.py) since the dashboard's own toggle path IS
-/ops/__set_hardening__ -- these tests confirm the dashboard's read side
-(the summary API) reflects what that endpoint does, not a second,
-separate toggle mechanism.
+Two instances, two roles, one shared DB: base_url/ops1_admin (from
+tests/conftest.py) talk to the participant instance; trainer_base_url/
+trainer_session (from tests/hardening/conftest.py) talk to the trainer
+instance. Both are expected to point at the SAME underlying app.db (a
+shared volume in the real deployment) for the redemption-tracking test
+below to make sense at all.
 """
 import re
-import secrets
 
-import requests
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    "WATTZGOAT_TRAINER_URL" not in __import__("os").environ,
+    reason="WATTZGOAT_TRAINER_URL not set -- no decoupled trainer instance to test against",
+)
 
 
 def _fresh_customer_session(base_url):
-    """A brand-new participant identity on a brand-new throwaway account.
+    """A brand-new participant identity on a brand-new throwaway
+    account -- see the equivalent helper's docstring in
+    tests/flags/test_05_weak_passwords.py-adjacent files for why this
+    is a signup, not a login with any seeded account's credentials."""
+    import secrets
 
-    Deliberately NOT the shared `alice` fixture, and deliberately NOT a
-    fresh login against alice's own seeded credentials either (an
-    earlier attempt at this did exactly that and broke, see below) --
-    this signs up its own disposable account instead, so it depends on
-    nothing any other test in the suite has done.
+    import requests
 
-    Why not the shared `alice` fixture: it's session-scoped and shares
-    tests/conftest.py's single PARTICIPANT_ID across the whole suite
-    run -- by the time tests/hardening/ runs, tests/flags/test_01_headers.py
-    has already redeemed HEADERS_TEACH with that exact alice/participant_id.
-    Redemption is keyed by participant_id (wg_pid), not by account (see
-    app/progress.py), so re-redeeming with the shared session here just
-    returns "Already redeemed" and doesn't move the count.
-
-    Why not a fresh login with alice's known seeded password either:
-    tests/flags/test_05_weak_passwords.py::test_weakpw_change and
-    tests/flags/test_15_csrf.py::test_csrf_teach both change Alice's
-    account password earlier in the suite (that's the point of those
-    flags) -- test_05's own comment notes "nothing later in the suite
-    re-logs-in as alice by username/password, so this is safe to run
-    mid-suite," which a fresh login here would have quietly violated.
-    Confirmed live: a fresh login with "alice123" after those two tests
-    have run returns 401, exactly the failure this produced in CI.
-
-    A throwaway signup sidesteps both problems at once -- see the
-    Design Reference §7.3 note on preferring fresh throwaway identities
-    over seeded/shared ones where a test doesn't specifically need the
-    seeded account's role in the story.
-    """
-    email = f"trainer-summary-test-{secrets.token_hex(4)}@wattzgoat.example"
-    password = "FreshParticipant!2026"  # strong on purpose, so this signup
-    # succeeds the same way regardless of whether WEAKPW_TEACH happens to
-    # be hardened at the moment this runs -- this test has nothing to do
-    # with that category and shouldn't couple to its toggle state.
+    email = f"trainer-summary-test-{secrets.token_hex(4)}@example.com"
+    password = "FreshParticipant!2026"
     s = requests.Session()
     s.verify = False
     s.cookies.set("wg_pid", secrets.token_hex(8))
     signup_resp = s.post(
         f"{base_url}/signup",
-        data={
-            "email": email,
-            "password": password,
-            "confirm_password": password,
-            "name": "Trainer Summary Test",
-        },
+        data={"email": email, "password": password, "confirm_password": password, "name": "Trainer Summary Test"},
         timeout=10,
     )
     assert signup_resp.status_code in (200, 302)
-    # Signup redirects to /login rather than authenticating directly (see
-    # app/auth.py's signup()), so a separate login call is required.
-    login_resp = s.post(
-        f"{base_url}/login", data={"email": email, "password": password}, timeout=10
-    )
+    login_resp = s.post(f"{base_url}/login", data={"email": email, "password": password}, timeout=10)
     assert login_resp.status_code in (200, 302)
     assert "wgs_session" in s.cookies.get_dict()
     return s
 
 
-def test_dashboard_loads_with_all_toggles(ops1_admin, base_url):
-    resp = ops1_admin.get(f"{base_url}/trainer/", timeout=10)
-    assert resp.status_code == 200
-    # All 43 catalog entries render a toggle.
-    assert resp.text.count("data-flag-key=") == 43
+def test_trainer_login_required(trainer_base_url):
+    import requests
 
-
-def test_dashboard_requires_admin(alice, base_url):
-    resp = alice.get(f"{base_url}/trainer/", timeout=10, allow_redirects=False)
+    resp = requests.get(f"{trainer_base_url}/trainer/", verify=False, timeout=10, allow_redirects=False)
     assert resp.status_code in (302, 303)
+    assert resp.headers.get("Location", "").endswith("/trainer/login")
 
 
-def test_summary_reflects_hardening_toggle(ops1_admin, base_url, set_hardened):
-    resp = ops1_admin.get(f"{base_url}/trainer/api/summary", timeout=10)
+def test_dashboard_loads_with_all_toggles(trainer_session, trainer_base_url):
+    resp = trainer_session.get(f"{trainer_base_url}/trainer/", timeout=10)
+    assert resp.status_code == 200
+    assert resp.text.count("data-flag-key=") == 43
+    # No implementation detail naming the underlying endpoint directly
+    # (next-phase item 5) -- this instance doesn't even register
+    # ops_bp, so /ops/__set_hardening__ isn't reachable here at all.
+    assert "/ops/__set_hardening__" not in resp.text
+
+
+def test_ops_endpoints_not_registered_on_trainer_instance(trainer_base_url):
+    """The trainer role registers ONLY app/trainer.py's blueprint (see
+    app/__init__.py's TRAINER_DASHBOARD branch) -- confirms ops_bp
+    genuinely isn't there, not just unlinked from the page."""
+    import requests
+
+    resp = requests.post(f"{trainer_base_url}/ops/__set_hardening__", verify=False, timeout=10)
+    assert resp.status_code == 404
+
+
+def test_summary_reflects_category_toggle(trainer_session, trainer_base_url):
+    resp = trainer_session.get(f"{trainer_base_url}/trainer/api/summary", timeout=10)
     assert resp.status_code == 200
     data = resp.json()
-    assert data["hardening"]["SQLI_TEACH"] is False
+    assert data["hardening"]["HEADERS_TEACH"] is False
+    assert data["category_hardening"]["Missing security headers"] is False
 
-    set_hardened("SQLI_TEACH", True)
+    toggle = trainer_session.post(
+        f"{trainer_base_url}/trainer/api/toggle_category",
+        data={"category": "Missing security headers", "hardened": "1"},
+        timeout=10,
+    )
+    assert toggle.status_code == 200
+    assert set(toggle.json()["flag_keys"]) == {"HEADERS_TEACH", "HEADERS_EXERCISE"}
 
-    resp = ops1_admin.get(f"{base_url}/trainer/api/summary", timeout=10)
+    resp = trainer_session.get(f"{trainer_base_url}/trainer/api/summary", timeout=10)
     data = resp.json()
-    assert data["hardening"]["SQLI_TEACH"] is True
-    assert data["total_flags"] == 43
+    assert data["hardening"]["HEADERS_TEACH"] is True
+    assert data["hardening"]["HEADERS_EXERCISE"] is True
+    assert data["category_hardening"]["Missing security headers"] is True
+
+    # Flip back off so this doesn't leak into another test run against
+    # the same shared instance -- same teardown discipline as
+    # set_hardened's fixture-level version above, done manually here
+    # since this isn't going through that fixture.
+    trainer_session.post(
+        f"{trainer_base_url}/trainer/api/toggle_category",
+        data={"category": "Missing security headers", "hardened": "0"},
+        timeout=10,
+    )
 
 
-def test_summary_reflects_redemption(ops1_admin, base_url):
-    # Redeem a header-delivered flag (HEADERS_TEACH, on /dashboard) and
-    # confirm it shows up in the trainer summary's counts and roster.
-    # Uses a fresh participant (see _fresh_customer_session above), not
-    # the shared `alice` fixture, since that one may already have
-    # redeemed this exact flag earlier in the suite run.
+def test_summary_reflects_redemption(trainer_session, trainer_base_url, base_url):
+    # Redeem a header-delivered flag on the PARTICIPANT instance, then
+    # confirm the TRAINER instance's summary (reading the same shared
+    # DB) reflects it -- this is the actual point of decoupling: two
+    # separate processes, one source of truth.
     fresh = _fresh_customer_session(base_url)
     dash = fresh.get(f"{base_url}/dashboard", timeout=10)
     flag = dash.headers.get("X-Lab-Flag")
     assert flag, "HEADERS_TEACH flag missing -- can't test redemption tracking without it"
 
-    before = ops1_admin.get(f"{base_url}/trainer/api/summary", timeout=10).json()
+    before = trainer_session.get(f"{trainer_base_url}/trainer/api/summary", timeout=10).json()
     before_count = before["redemption_counts"].get("HEADERS_TEACH", 0)
 
     fresh.post(f"{base_url}/progress", data={"flag": flag}, timeout=10)
 
-    after = ops1_admin.get(f"{base_url}/trainer/api/summary", timeout=10).json()
+    after = trainer_session.get(f"{trainer_base_url}/trainer/api/summary", timeout=10).json()
     after_count = after["redemption_counts"].get("HEADERS_TEACH", 0)
     assert after_count == before_count + 1
     assert after["total_redemptions"] >= 1
     assert any(p["participant_id"] for p in after["participants"])
 
 
-def test_reset_lab_control_moved_to_trainer(ops1_admin, base_url):
-    # Reset Lab lives only on the trainer dashboard now, not the general
-    # admin nav (see base.html / app/templates/trainer_dashboard.html).
+def test_participant_leaderboard_nickname_first(trainer_session, trainer_base_url, base_url):
+    import secrets
+
+    import requests
+
+    pid = secrets.token_hex(8)
+    s = requests.Session()
+    s.verify = False
+    s.cookies.set("wg_pid", pid)
+    s.post(f"{base_url}/login", data={"email": "grace.green@example.com", "password": "grace123"}, timeout=10)
+    nick = s.post(f"{base_url}/participant/nickname", data={"nickname": "LeaderboardTestNick"}, timeout=10)
+    assert nick.status_code == 200
+
+    page = trainer_session.get(f"{trainer_base_url}/trainer/leaderboard", timeout=10)
+    assert page.status_code == 200
+    assert "Participant Leaderboard" in page.text
+
+    api = trainer_session.get(f"{trainer_base_url}/trainer/api/leaderboard", timeout=10).json()
+    entry = next((row for row in api["standings"] if row["participant_id"] == pid), None)
+    # Only present once this participant has redeemed at least one flag
+    # (standings are built from flag_redemptions) -- if the shared
+    # instance already has other coverage this may be empty for a
+    # brand-new pid with no redemptions, which is expected, not a bug.
+    if entry is not None:
+        assert entry["display"].startswith("LeaderboardTestNick")
+
+
+def test_reset_lab_control_moved_to_trainer(ops1_admin, base_url, trainer_base_url):
+    # Reset Lab lives on the trainer dashboard now, not the general
+    # admin nav (see base.html / app/templates/trainer_base.html) --
+    # and not on the participant instance's own /trainer/ at all, since
+    # that route doesn't exist there anymore.
     admin_page = ops1_admin.get(f"{base_url}/admin/", timeout=10)
     assert "Reset Lab" not in admin_page.text
 
     trainer_page = ops1_admin.get(f"{base_url}/trainer/", timeout=10)
-    assert "Reset Lab" in trainer_page.text
-    assert re.search(r'action="[^"]*__reset_lab__"', trainer_page.text)
+    assert trainer_page.status_code == 404

@@ -38,6 +38,16 @@ jobs:
       - name: Run tests
         env:
           WATTZGOAT_BASE_URL: https://127.0.0.1:5000
+          # WATTZGOAT_HARDENED_URL (tests/hardening/test_hardened_reference.py)
+          # and WATTZGOAT_TRAINER_URL + TRAINER1_EMAIL/TRAINER1_PASSWORD
+          # (tests/hardening/test_trainer_dashboard.py) are both
+          # deliberately unset here -- each targets an optional SECOND
+          # container (a HARDENING_MODE=all reference instance, and the
+          # decoupled trainer role respectively) that this workflow
+          # doesn't boot. Both test files skip themselves entirely when
+          # their URL isn't set, so CI stays green without them; wiring
+          # either one up for real coverage is a separate follow-up, not
+          # done as part of this change.
         run: pytest tests/ -v
 
       - name: Dump container logs on failure

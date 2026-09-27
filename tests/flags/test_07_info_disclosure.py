@@ -1,5 +1,5 @@
 def test_devadmin_leak(login_fn, alice, base_url, extract_flag_fn, redeem_flag_fn):
-    session, _ = login_fn("devadmin@wattzgoat.example", "Dev@2024!")
+    session, _ = login_fn("devadmin@example.com", "Dev@2024!")
     resp = session.get(f"{base_url}/admin/", timeout=10)
     assert resp.status_code == 200
     flag = extract_flag_fn(resp.text)

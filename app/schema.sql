@@ -36,7 +36,7 @@ CREATE TABLE sessions (
 CREATE TABLE emails (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sender_name TEXT NOT NULL DEFAULT 'WattzGOAT',
-    sender_email TEXT NOT NULL DEFAULT 'noreply@wattzgoat.example',
+    sender_email TEXT NOT NULL DEFAULT 'noreply@example.com',
     recipient_email TEXT NOT NULL,
     subject TEXT NOT NULL,
     body_html TEXT NOT NULL,
@@ -173,4 +173,27 @@ CREATE TABLE lab_meta (
 CREATE TABLE hardening_state (
     flag_key TEXT PRIMARY KEY,
     hardened INTEGER NOT NULL DEFAULT 0
+);
+
+-- Next-phase: participant nicknames. One row per participant_id (see
+-- app/personalize.py's wg_pid cookie) -- a display name a participant
+-- picks for themselves the first time they're prompted, shown
+-- nickname-first with their participant_id as a small parenthetical
+-- both in their own view and on the trainer dashboard's Participant
+-- Leaderboard. Deliberately NOT unique/enforced: two participants
+-- picking the same nickname is resolved by silently appending a short
+-- suffix to whichever one asks second (see
+-- app/personalize.py:set_nickname()), not by rejecting the request --
+-- this is a display convenience, not an identity system, and the real
+-- identity is always the participant_id underneath.
+--
+-- Lives in the same app.db that /ops/__reset_lab__ (and the trainer
+-- dashboard's own reset, see app/trainer.py) wholesale-swaps back to
+-- seed.db's contents, so nicknames reset along with everything else on
+-- a lab reset, the same way hardening_state does -- no extra reset-lab
+-- code needed for this table either.
+CREATE TABLE participant_nicknames (
+    participant_id TEXT PRIMARY KEY,
+    nickname TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

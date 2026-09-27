@@ -8,7 +8,7 @@ def test_weakpw_teach_signup(anon_session, alice, base_url, extract_flag_fn, red
     # "abc12345" specifically exercises the single-case-alphanumeric rule
     # (8 chars, so not caught by length alone) rather than just
     # re-confirming a trivially-short password is weak.
-    email = f"weakpw-test-{int(time.time())}@wattzgoat.example"
+    email = f"weakpw-test-{int(time.time())}@example.com"
     resp = anon_session.post(
         f"{base_url}/signup",
         data={"email": email, "password": "abc12345", "name": "Weak PW Test"},

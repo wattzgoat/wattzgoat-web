@@ -10,7 +10,7 @@ def test_devadmin_leak_toggle(base_url, set_hardened, login_fn):
     resp = requests.get(f"{base_url}/login", verify=False, timeout=10)
     assert "Dev@2024!" not in resp.text
 
-    devadmin, _ = login_fn("devadmin@wattzgoat.example", "Dev@2024!")
+    devadmin, _ = login_fn("devadmin@example.com", "Dev@2024!")
     resp = devadmin.get(f"{base_url}/admin/", timeout=10)
     assert "FLAG{" not in resp.text
 

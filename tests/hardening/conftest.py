@@ -39,6 +39,36 @@ def hardened_base_url():
     return os.environ.get("WATTZGOAT_HARDENED_URL")
 
 
+@pytest.fixture(scope="session")
+def trainer_base_url():
+    """The decoupled trainer role's own instance URL (next-phase item
+    1), or None if not configured -- optional second container, same
+    convention as hardened_base_url above. Set by
+    WATTZGOAT_TRAINER_URL."""
+    return os.environ.get("WATTZGOAT_TRAINER_URL")
+
+
+@pytest.fixture(scope="session")
+def trainer_session(trainer_base_url):
+    """A logged-in session against the trainer role's OWN login
+    (app/trainer.py), using TRAINER1_EMAIL/TRAINER1_PASSWORD -- entirely
+    separate from ops1_admin/the participant app's own auth. None (not
+    skipped here) if trainer_base_url isn't configured; tests using this
+    fixture should skip themselves the same way hardened_base_url tests
+    do."""
+    if not trainer_base_url:
+        return None
+    email = os.environ.get("TRAINER1_EMAIL")
+    password = os.environ.get("TRAINER1_PASSWORD")
+    if not email or not password:
+        return None
+    s = requests.Session()
+    s.verify = False
+    resp = s.post(f"{trainer_base_url}/trainer/login", data={"email": email, "password": password}, timeout=10)
+    assert "wgt_session" in s.cookies.get_dict(), f"trainer login failed: {resp.status_code}"
+    return s
+
+
 @pytest.fixture()
 def set_hardened(base_url, ops1_admin):
     """Yields a function(flag_key, hardened: bool) -> None that POSTs to

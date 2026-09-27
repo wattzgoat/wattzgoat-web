@@ -50,8 +50,8 @@ CUSTOMER_DEVON = ("devon.reed@example.com", "devon123")     # kept as the IDOR/p
 CUSTOMER_BEN = ("ben.wood@example.com", "ben123")            # bill-traversal target; password reset in test_09 (not needed as ben elsewhere)
 CUSTOMER_CARLA = ("carla.clark@example.com", "carla123")     # session-reuse test only
 CUSTOMER_FARID = ("farid.shaw@example.com", "farid123")      # mass-assignment + role-escalation pair (kept off devon on purpose)
-ADMIN_OPS1 = ("ops1@wattzgoat.example", "changeme")
-ADMIN_DEVADMIN = ("devadmin@wattzgoat.example", "Dev@2024!")
+ADMIN_OPS1 = ("ops1@example.com", "changeme")
+ADMIN_DEVADMIN = ("devadmin@example.com", "Dev@2024!")
 
 
 def _b64url(data: bytes) -> str:

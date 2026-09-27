@@ -268,6 +268,18 @@ def handle_customer_message(user, text):
         "SELECT * FROM meters WHERE user_id = ? ORDER BY id LIMIT 1", (user["id"],)
     ).fetchone()
 
+    # Next-phase fix: recharge-guidance checked BEFORE BALANCE_WORDS, not
+    # after. BALANCE_WORDS includes the bare word "credit" (see its
+    # definition above), which is a real balance synonym on its own
+    # ("what's my credit?") but also happens to be a substring of the
+    # much more specific recharge phrase "add credit" -- with the old
+    # ordering, "how do I add credit" matched BALANCE_WORDS first and
+    # returned the current balance instead of recharge guidance. The
+    # recharge phrase list is strictly more specific than bare "credit",
+    # so it wins when both would otherwise match the same message.
+    if _contains_any(t, ("recharge", "add credit", "top up", "top-up", "topup")):
+        return "You can add credit any time from the Recharge page in the top navigation."
+
     if _contains_any(t, BALANCE_WORDS):
         if own_meter is None:
             return "You don't have a meter connected yet, so there's no balance to show."
@@ -285,9 +297,6 @@ def handle_customer_message(user, text):
             "SELECT COALESCE(SUM(reading_kwh), 0) FROM readings WHERE meter_id = ?", (own_meter["id"],)
         ).fetchone()[0]
         return f"Your meter has recorded {total:.2f} kWh of usage on file."
-
-    if _contains_any(t, ("recharge", "add credit", "top up", "top-up", "topup")):
-        return "You can add credit any time from the Recharge page in the top navigation."
 
     if "ticket" in t:
         ticket = db.execute(

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}WattzGOAT Trainer{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+{% block head_extra %}{% endblock %}
+</head>
+<body class="bg-[#F2EFE9] text-[#14181C] min-h-screen" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<header class="bg-[#14181C] text-white px-6 py-4 flex items-center gap-3">
+  <a href="{{ url_for('trainer.dashboard') }}" class="flex items-center gap-3 hover:opacity-90">
+    <svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M60 4 L20 56 L42 56 L34 96 L80 40 L52 40 Z" fill="#F4B41A"/>
+    </svg>
+    <span class="font-semibold text-lg">Wattz<span class="text-[#F4B41A] font-bold">GOAT</span></span>
+  </a>
+  <span class="text-xs uppercase tracking-wide bg-[#F4B41A] text-[#14181C] rounded-full px-2 py-0.5 font-semibold">Trainer</span>
+
+  {# Next-phase item 4: the three trainer-specific nav items -- Participant
+     Leaderboard, Reset Lab, WattzGOAT Portal -- plus Dashboard, live here
+     rather than in base.html since this role has no customer/admin surface
+     to share a nav with at all. #}
+  <nav class="ml-8 flex items-center gap-4 text-sm text-gray-300">
+    <a href="{{ url_for('trainer.dashboard') }}" class="hover:text-white">Dashboard</a>
+    <a href="{{ url_for('trainer.leaderboard') }}" class="hover:text-white">Participant Leaderboard</a>
+    {% if participant_base_url %}
+    {# Context-aware by construction: this just links at the target
+       participant instance's root, and that instance's OWN index()
+       route already redirects to customer dashboard / admin dashboard
+       / login depending on the browser's session state there -- the
+       trainer process doesn't need to know or compute which applies. #}
+    <a href="{{ participant_base_url }}/" class="hover:text-white" target="_blank" rel="noopener">WattzGOAT Portal ↗</a>
+    {% endif %}
+    <form method="post" action="{{ url_for('trainer.reset_lab') }}"
+          onsubmit="return confirm('Reset the entire lab to its seeded state? This clears redemptions, sessions, nicknames, and every hardening toggle.');">
+      <button type="submit" class="text-red-300 hover:text-red-200 underline decoration-dotted">Reset Lab</button>
+    </form>
+  </nav>
+
+  <span class="ml-auto text-sm text-gray-400">{{ trainer_name }}</span>
+  <form method="post" action="{{ url_for('trainer.logout') }}">
+    <button class="text-sm text-gray-300 hover:text-white underline">Log out</button>
+  </form>
+</header>
+<main class="max-w-5xl mx-auto px-6 py-10">
+{% block content %}{% endblock %}
+</main>
+<footer class="max-w-5xl mx-auto px-6 py-8 text-xs text-gray-400 border-t border-gray-200 mt-8">
+  <p>WattzGOAT Trainer Dashboard -- instructor tooling for the WattzGOAT training lab. Not part of the participant-facing app.</p>
+</footer>
+</body>
+</html>

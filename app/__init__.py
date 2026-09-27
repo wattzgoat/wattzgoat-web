@@ -7,12 +7,43 @@ from . import flags as flags_module
 from . import hardening
 
 
+def _truthy_env(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config["DB_PATH"] = os.environ.get("DB_PATH", "/app/data/app.db")
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "wattzgoat-training-lab")
 
     db_module.init_app(app)
+
+    # Next-phase item 1: TRAINER_DASHBOARD=true switches this container
+    # to run as a dedicated trainer-dashboard role INSTEAD OF the
+    # participant-facing app -- same image, same INSTANCE_HOST-style
+    # boot-time role selection entrypoint.sh/run.py already use for
+    # HARDENING_MODE=all (see app/hardening.py), extended to a third
+    # role. The trainer role registers only app/trainer.py's blueprint
+    # (own login, own DB, own everything -- see that module's docstring)
+    # and returns early: no auth/customer/admin/participant surface at
+    # all on this process, on purpose -- there is nothing here for a
+    # participant to ever reach.
+    app.config["TRAINER_MODE"] = _truthy_env("TRAINER_DASHBOARD")
+    if app.config["TRAINER_MODE"]:
+        app.config["TRAINER_DB_PATH"] = os.environ.get("TRAINER_DB_PATH", "/app/trainer_data/trainer.db")
+        # Pure UI convenience -- the "WattzGOAT Portal" nav link's target.
+        # No API calls ever go out over this; the participant app's own
+        # index() route (below) already does the context-aware
+        # dashboard/admin-dashboard/login redirect on ITS OWN session
+        # state once the browser follows the link there, so the trainer
+        # process itself doesn't need to know or care which one applies.
+        app.config["PARTICIPANT_BASE_URL"] = os.environ.get("PARTICIPANT_BASE_URL", "")
+
+        from . import trainer_auth
+        from .trainer import bp as trainer_bp
+        app.teardown_appcontext(trainer_auth.close_trainer_db)
+        app.register_blueprint(trainer_bp)
+        return app
 
     # Phase 6: exposed so templates can branch on hardening state and
     # embed a real anti-CSRF token directly (see CSRF_TEACH/CSRF_EXERCISE
@@ -37,7 +68,12 @@ def create_app() -> Flask:
     from .leaderboard import bp as leaderboard_bp
     from .pages import bp as pages_bp
     from .personalize import bp as personalize_bp
-    from .trainer import bp as trainer_bp
+    from .personalize import current_participant_display, current_participant_has_nickname
+
+    # Next-phase item 6: participant nickname display, read by
+    # base.html's identity chip and nickname-prompt trigger.
+    app.jinja_env.globals["participant_display"] = current_participant_display
+    app.jinja_env.globals["participant_has_nickname"] = current_participant_has_nickname
 
     if os.path.exists(app.config["DB_PATH"]):
         init_counters(app.config["DB_PATH"])
@@ -54,7 +90,10 @@ def create_app() -> Flask:
     app.register_blueprint(leaderboard_bp)
     app.register_blueprint(pages_bp)
     app.register_blueprint(personalize_bp)
-    app.register_blueprint(trainer_bp)
+    # Next-phase item 1: app/trainer.py's blueprint is registered ONLY
+    # under TRAINER_DASHBOARD=true (see above) -- no longer part of the
+    # participant-facing app at all. base.html's admin nav no longer
+    # links to it either (see base.html).
 
     @app.route("/")
     def index():

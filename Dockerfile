@@ -37,8 +37,12 @@ RUN python scripts/generate_bills.py
 
 ENV DB_PATH=/app/data/app.db \
     SEED_DB_PATH=/app/data/seed.db \
-    CERT_DIR=/app/certs
+    CERT_DIR=/app/certs \
+    TRAINER_DB_PATH=/app/trainer_data/trainer.db
 
-EXPOSE 5000 5001
+# 5000/5001: participant-facing role (HTTPS / plaintext mirror).
+# 5004: trainer role (TRAINER_DASHBOARD=true, see entrypoint.sh/run.py) --
+# same image, only one role's ports are actually listened on per container.
+EXPOSE 5000 5001 5004
 
 ENTRYPOINT ["./entrypoint.sh"]

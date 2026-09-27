@@ -48,7 +48,7 @@ def test_headers_exercise_no_flag(hardened_base_url):
 
 
 def test_sqli_teach_no_flag(hardened_base_url):
-    s = _login(hardened_base_url, "ops1@wattzgoat.example", "changeme")
+    s = _login(hardened_base_url, "ops1@example.com", "changeme")
     payload = "zzz' UNION SELECT id,meter_code,user_id,nickname,status,balance,created_at,0,0,0 FROM meters--"
     resp = s.get(f"{hardened_base_url}/admin/meters", params={"q": payload}, timeout=10)
     assert resp.status_code == 200

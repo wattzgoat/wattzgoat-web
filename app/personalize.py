@@ -21,9 +21,10 @@ future participants a working answer key.
 """
 import hashlib
 import hmac
+import re
 import secrets
 
-from flask import Blueprint, g, request
+from flask import Blueprint, g, jsonify, request
 
 from .db import get_db
 
@@ -31,6 +32,14 @@ bp = Blueprint("personalize", __name__)
 
 PARTICIPANT_COOKIE = "wg_pid"
 LAB_SECRET_KEY = "flag_secret"
+
+# Next-phase: participant nickname prompt. Plain display text, not an
+# identity/auth mechanism -- kept short and printable-only so it's safe
+# to render directly (still HTML-escaped by Jinja's autoescaping like
+# everything else, this isn't a trust boundary, just a sanity limit on
+# what's worth accepting as a "name").
+NICKNAME_MAX_LEN = 24
+_NICKNAME_RE = re.compile(r"^[\w \-'.]{1,%d}$" % NICKNAME_MAX_LEN, re.UNICODE)
 
 # Two independent word banks -- picked by different bytes of the HMAC
 # digest, so the result reads as an ADJECTIVE_NOUN codename in the same
@@ -90,6 +99,22 @@ def set_participant_cookie(resp):
     return resp
 
 
+def current_participant_display() -> str | None:
+    """Jinja global (see app/__init__.py) -- base.html's identity chip
+    and nickname-prompt trigger both read this rather than querying the
+    DB directly from the template. None only if participant identity
+    somehow isn't loaded at all (shouldn't happen on any real request --
+    load_participant() runs before every one), which templates treat the
+    same as "no nickname yet"."""
+    participant_id = g.get("participant_id")
+    return display_identity(participant_id) if participant_id else None
+
+
+def current_participant_has_nickname() -> bool:
+    participant_id = g.get("participant_id")
+    return bool(participant_id and get_nickname(participant_id))
+
+
 def get_lab_secret() -> str:
     db = get_db()
     row = db.execute("SELECT value FROM lab_meta WHERE key = ?", (LAB_SECRET_KEY,)).fetchone()
@@ -111,6 +136,85 @@ def regenerate_lab_secret(conn) -> None:
         (LAB_SECRET_KEY, secrets.token_hex(32)),
     )
     conn.commit()
+
+
+def short_participant_id(participant_id: str) -> str:
+    """The small parenthetical form -- first 8 hex chars of the full
+    16-char participant_id token, enough to disambiguate at realistic
+    class sizes without printing the full token everywhere it's shown
+    alongside a nickname."""
+    return participant_id[:8]
+
+
+def get_nickname(participant_id: str) -> str | None:
+    db = get_db()
+    row = db.execute(
+        "SELECT nickname FROM participant_nicknames WHERE participant_id = ?", (participant_id,)
+    ).fetchone()
+    return row["nickname"] if row else None
+
+
+def display_identity(participant_id: str) -> str:
+    """Nickname-first with participant_id as a small parenthetical --
+    the shared display format used both in a participant's own view
+    (see base.html) and on the trainer dashboard's Participant
+    Leaderboard (see app/trainer.py). Falls back to the participant_id
+    alone (no parenthetical -- nothing to disambiguate from) if no
+    nickname has been set yet."""
+    nickname = get_nickname(participant_id)
+    short_id = short_participant_id(participant_id)
+    return f"{nickname} ({short_id})" if nickname else short_id
+
+
+def set_nickname(participant_id: str, requested: str) -> str:
+    """Sets participant_id's nickname to `requested`, silently
+    disambiguating on collision with another participant's existing
+    nickname (per the design decision: no enforced uniqueness, no
+    rejection -- this is a display convenience, not an identity system).
+    Returns the nickname actually stored, which may differ from
+    `requested` if a short numeric suffix had to be appended. Setting
+    your own nickname again (to a value already yours) is no-op-safe:
+    it doesn't collide with itself."""
+    db = get_db()
+    candidate = requested
+    suffix = 1
+    while True:
+        collision = db.execute(
+            "SELECT 1 FROM participant_nicknames WHERE nickname = ? AND participant_id != ?",
+            (candidate, participant_id),
+        ).fetchone()
+        if collision is None:
+            break
+        suffix += 1
+        candidate = f"{requested}-{suffix}"
+
+    db.execute(
+        "INSERT INTO participant_nicknames (participant_id, nickname) VALUES (?, ?) "
+        "ON CONFLICT(participant_id) DO UPDATE SET nickname = excluded.nickname",
+        (participant_id, candidate),
+    )
+    db.commit()
+    return candidate
+
+
+@bp.route("/participant/nickname", methods=["POST"])
+def submit_nickname():
+    """Asked on first visit (see base.html's nickname prompt), but not
+    gated to only-first-visit server-side -- a participant can still
+    change their nickname later by resubmitting, same as they could
+    dismiss the prompt and never set one at all. Tied purely to the
+    wg_pid cookie, independent of login state (this route itself
+    doesn't require login), matching how participant identity works
+    everywhere else in this app."""
+    raw = (request.form.get("nickname") or "").strip()
+    if not raw or not _NICKNAME_RE.match(raw):
+        return jsonify({
+            "error": f"Nickname must be 1-{NICKNAME_MAX_LEN} characters "
+                     "(letters, numbers, spaces, - ' . only).",
+        }), 400
+
+    stored = set_nickname(g.participant_id, raw)
+    return jsonify({"nickname": stored, "display": display_identity(g.participant_id)})
 
 
 def get_flag(flag_key: str, participant_id: str) -> str:
