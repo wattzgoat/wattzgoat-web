@@ -29,8 +29,8 @@
       {{ meter['status'] }}
     </span>
   </div>
-  <p class="mt-4 text-2xl font-semibold">${{ "%.2f"|format(meter['balance']) }}</p>
-  <p class="text-sm text-gray-500">prepaid balance</p>
+  <p class="mt-4 text-2xl font-semibold">{{ "{:,.2f}".format(meter['balance']) }} <span class="text-base font-medium text-gray-500">kWh</span></p>
+  <p class="text-sm text-gray-500">prepaid energy balance</p>
 
   <div class="mt-4 border-t pt-4">
     <div class="flex items-center justify-between mb-2">

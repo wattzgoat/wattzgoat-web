@@ -1,4 +1,5 @@
 import io
+import math
 import os
 import sqlite3
 import traceback
@@ -268,7 +269,7 @@ def change_password():
 def recharge():
     if request.method == "GET":
         meter = _own_meters()[0] if _own_meters() else None
-        return render_template("recharge.html", meter=meter)
+        return render_template("recharge.html", meter=meter, rate=RECHARGE_RATE)
 
     meters = _own_meters()
     if not meters:
@@ -286,6 +287,23 @@ def recharge():
     except ValueError:
         tb = traceback.format_exc() + f"\n# improper error handling instance: {get_flag(flags.INFOLEAK_TEACH, g.participant_id)}"
         return render_template("error_debug.html", traceback=tb), 500
+
+    # NOTE: no lower bound on amount_paid -- a negative payment is applied
+    # as-is (business logic bonus instance). The meter balance is in kWh
+    # (energy units bought at RECHARGE_RATE dollars each), so a negative
+    # payment quietly removes energy from the balance.
+    #
+    # Phase 6: hardened branch rejects zero, negative and non-finite
+    # amounts outright before anything is applied.
+    if hardening.is_hardened(flags.BUSLOGIC_NEGATIVE_RECHARGE):
+        if not math.isfinite(amount_paid) or amount_paid <= 0:
+            return render_template(
+                "recharge.html", meter=meter, rate=RECHARGE_RATE,
+                error="Enter an amount greater than $0.00.",
+            ), 400
+        negative_flag = None
+    else:
+        negative_flag = get_flag(flags.BUSLOGIC_NEGATIVE_RECHARGE, g.participant_id) if amount_paid < 0 else None
 
     # NOTE: if a units_credited value is present at all, it's trusted
     # outright instead of being recomputed from amount_paid -- business
@@ -311,7 +329,10 @@ def recharge():
     )
     db.commit()
     meter = _own_meters()[0]
-    return render_template("recharge.html", meter=meter, credited=units_credited, buslogic_flag=buslogic_flag)
+    return render_template(
+        "recharge.html", meter=meter, rate=RECHARGE_RATE, paid=amount_paid, credited=units_credited,
+        buslogic_flag=buslogic_flag, negative_flag=negative_flag,
+    )
 
 
 @bp.route("/solar", methods=["GET", "POST"])
@@ -319,7 +340,7 @@ def recharge():
 def solar():
     if request.method == "GET":
         meter = _own_meters()[0] if _own_meters() else None
-        return render_template("solar.html", meter=meter)
+        return render_template("solar.html", meter=meter, export_rate=SOLAR_CREDIT_RATE, rate=RECHARGE_RATE)
 
     meters = _own_meters()
     if not meters:
@@ -329,6 +350,21 @@ def solar():
     # business logic exercise instance: any claimed export is paid out at
     # face value.
     exported_kwh = float(request.form.get("exported_kwh", 0) or 0)
+
+    # NOTE: no lower bound either -- a negative export is applied as-is
+    # (business logic bonus instance).
+    #
+    # Phase 6: hardened branch rejects zero, negative and non-finite
+    # quantities outright.
+    if hardening.is_hardened(flags.BUSLOGIC_NEGATIVE_SOLAR):
+        if not math.isfinite(exported_kwh) or exported_kwh <= 0:
+            return render_template(
+                "solar.html", meter=meter, export_rate=SOLAR_CREDIT_RATE, rate=RECHARGE_RATE,
+                error="Enter an export greater than 0 kWh.",
+            ), 400
+        negative_flag = None
+    else:
+        negative_flag = get_flag(flags.BUSLOGIC_NEGATIVE_SOLAR, g.participant_id) if exported_kwh < 0 else None
     # NOTE: 1000 kWh is roughly a whole year's residential solar export --
     # anything past that in one submission is well outside what's
     # physically plausible, and nothing here checks for it. Business logic
@@ -339,7 +375,11 @@ def solar():
     # claimed amount and merely flagging that it was implausible.
     if hardening.is_hardened(flags.BUSLOGIC_EXERCISE) and exported_kwh > 1000:
         exported_kwh = 1000
+    # The export earns a dollar credit at SOLAR_CREDIT_RATE, which is then
+    # converted into energy units at the same RECHARGE_RATE a prepaid top-up
+    # uses -- the meter balance is always in kWh.
     credit_amount = round(exported_kwh * SOLAR_CREDIT_RATE, 2)
+    units_credited = round(credit_amount / RECHARGE_RATE, 2)
     buslogic_flag = (
         get_flag(flags.BUSLOGIC_EXERCISE, g.participant_id)
         if exported_kwh > 1000 and not hardening.is_hardened(flags.BUSLOGIC_EXERCISE)
@@ -347,14 +387,18 @@ def solar():
     )
 
     db = get_db()
-    db.execute("UPDATE meters SET balance = balance + ? WHERE id = ?", (credit_amount, meter["id"]))
+    db.execute("UPDATE meters SET balance = balance + ? WHERE id = ?", (units_credited, meter["id"]))
     db.execute(
         "INSERT INTO solar_exports (user_id, exported_kwh, credit_amount) VALUES (?, ?, ?)",
         (g.user["id"], exported_kwh, credit_amount),
     )
     db.commit()
     meter = _own_meters()[0]
-    return render_template("solar.html", meter=meter, credited=credit_amount, buslogic_flag=buslogic_flag)
+    return render_template(
+        "solar.html", meter=meter, export_rate=SOLAR_CREDIT_RATE, rate=RECHARGE_RATE,
+        exported=exported_kwh, credit=credit_amount, credited=units_credited,
+        buslogic_flag=buslogic_flag, negative_flag=negative_flag,
+    )
 
 
 @bp.route("/usage", methods=["GET"])

@@ -1,0 +1,76 @@
+{# Participant leaderboard table + polling script, shared by the instructor dashboard's
+   leaderboard page and the standalone /participants console. Expects lb_api (JSON
+   endpoint), lb_reset (per-participant reset action URL) and lb_total (flag count). #}
+<div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+<table class="w-full text-sm">
+<thead class="bg-gray-50 text-left text-gray-500">
+<tr>
+  <th class="px-4 py-2 w-12">#</th>
+  <th class="px-4 py-2">Participant</th>
+  <th class="px-4 py-2">Participant ID</th>
+  <th class="px-4 py-2">Flags redeemed</th>
+  <th class="px-4 py-2">Last activity</th>
+  <th class="px-4 py-2">Redemptions</th>
+</tr>
+</thead>
+<tbody class="divide-y" id="leaderboard-rows">
+<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">Loading…</td></tr>
+</tbody>
+</table>
+</div>
+
+<script>
+(function () {
+  const POLL_MS = 3000;
+  let inFlight = false;
+
+  function fmtTime(iso) {
+    if (!iso) return '\u2014';
+    return iso.replace('T', ' ').slice(0, 19);
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  async function refresh() {
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      const res = await fetch("{{ lb_api }}", { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = document.getElementById('leaderboard-rows');
+      if (data.standings.length === 0) {
+        rows.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">No redemptions yet.</td></tr>';
+        return;
+      }
+      rows.innerHTML = data.standings.map(function (p, i) {
+        return '<tr>' +
+          '<td class="px-4 py-2 text-gray-400">' + (i + 1) + '</td>' +
+          '<td class="px-4 py-2">' + esc(p.display) + '</td>' +
+          '<td class="px-4 py-2 font-mono text-xs">' + esc(p.participant_id) + '</td>' +
+          '<td class="px-4 py-2">' + p.flags_redeemed + ' / {{ lb_total }}</td>' +
+          '<td class="px-4 py-2 text-xs text-gray-500">' + fmtTime(p.last_activity) + '</td>' +
+          '<td class="px-4 py-2">' +
+            '<form method="post" data-confirm="Clear all redemptions for this participant? Their nickname is left as it is." action="{{ lb_reset }}">' +
+              '<input type="hidden" name="participant_id" value="' + esc(p.participant_id) + '">' +
+              '<input type="hidden" name="next" value="leaderboard">' +
+              '<button type="submit" class="text-xs text-red-600 hover:text-red-800 underline decoration-dotted">Reset</button>' +
+            '</form>' +
+          '</td>' +
+          '</tr>';
+      }).join('');
+    } catch (e) {
+      // Transient network error mid-poll -- try again next tick.
+    } finally {
+      inFlight = false;
+    }
+  }
+
+  refresh();
+  setInterval(refresh, POLL_MS);
+})();
+</script>

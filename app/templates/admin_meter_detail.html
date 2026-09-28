@@ -10,7 +10,7 @@
     </div>
     <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-100 text-green-700' if meter['status']=='connected' else 'bg-red-100 text-red-700' }}">{{ meter['status'] }}</span>
   </div>
-  <p class="mt-4 text-lg font-semibold">${{ "%.2f"|format(meter['balance']) }}</p>
+  <p class="mt-4 text-lg font-semibold">{{ "{:,.2f}".format(meter['balance']) }} kWh</p>
 
   <form method="post" action="{{ url_for('admin.disconnect_meter' if meter['status']=='connected' else 'admin.reconnect_meter', meter_id=meter['id']) }}" class="mt-4">
     <button class="text-sm rounded px-4 py-2 {{ 'bg-red-600 text-white' if meter['status']=='connected' else 'bg-green-600 text-white' }}">

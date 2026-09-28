@@ -28,6 +28,7 @@ whole subtree.
 import os
 
 import pytest
+import requests
 
 
 @pytest.fixture(scope="session")

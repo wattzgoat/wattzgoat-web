@@ -35,11 +35,8 @@ multi-instance-sync work (Design Reference S10.1) picks up a
 trainer-to-participant command channel for other reasons anyway; not
 worth building a one-off endpoint just for this alone.
 """
-import glob
 import os
-import shutil
 import sqlite3
-import tempfile
 
 from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_template, request, url_for
 
@@ -69,27 +66,6 @@ def _keys_in_category(category: str) -> list[str]:
     return [key for key, cat, _ in CATALOG if cat == category]
 
 
-# Reset actions redirect back to a trainer page with a short, fixed-vocabulary
-# notice code in the query string, rendered as a toast by trainer_base.html.
-# Only codes in this table are ever shown, and the only dynamic values are a
-# clamped integer and a short, Jinja-escaped participant ID prefix -- nothing
-# from the query string is rendered as free text.
-_NOTICES = {
-    "lab_reset": ("success", "Lab reset to its seeded state"),
-    "lab_reset_failed": ("error", "Lab reset failed -- see the instructor container logs"),
-    "app_reset": ("success", "App reset to its seeded state"),
-    "app_reset_failed": ("error", "App reset failed -- nothing was changed; see the instructor container logs"),
-    "app_reset_files_failed": (
-        "error",
-        "App data was reset, but uploaded firmware files could not be removed -- see the instructor container logs",
-    ),
-    "redemptions_reset_all": ("success", "All redemptions cleared"),
-    "redemptions_reset_all_failed": ("error", "Reset all redemptions failed -- see the instructor container logs"),
-    "redemptions_reset": ("success", "Redemptions cleared for participant"),
-    "redemptions_reset_failed": ("error", "Reset redemption failed -- see the instructor container logs"),
-    "redemptions_reset_no_id": ("error", "Reset redemption failed -- no participant ID given"),
-}
-
 _NEXT_ENDPOINTS = {"dashboard": "trainer.dashboard", "leaderboard": "trainer.leaderboard"}
 
 
@@ -100,18 +76,7 @@ def _back_to(next_name: str, **params):
 
 @bp.context_processor
 def _inject_notice():
-    code = request.args.get("notice")
-    if code not in _NOTICES:
-        return {"notice": None}
-    kind, text = _NOTICES[code]
-    if code == "redemptions_reset":
-        pid = personalize.short_participant_id(request.args.get("pid") or "")
-        if pid:
-            text += f" {pid}"
-    count = request.args.get("n", type=int)
-    if count is not None and kind == "success" and code != "lab_reset":
-        text += f" ({max(count, 0)} removed)"
-    return {"notice": {"kind": kind, "text": text + "."}}
+    return {"notice": resets.notice_from_args(request.args)}
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -291,21 +256,7 @@ def leaderboard():
 @bp.route("/api/leaderboard", methods=["GET"])
 @trainer_login_required
 def api_leaderboard():
-    db = get_db()
-    rows = db.execute(
-        "SELECT participant_id, COUNT(*) AS flags_redeemed, MAX(redeemed_at) AS last_activity "
-        "FROM flag_redemptions GROUP BY participant_id ORDER BY flags_redeemed DESC, last_activity ASC"
-    ).fetchall()
-    standings = [
-        {
-            "participant_id": row["participant_id"],
-            "display": personalize.display_identity(row["participant_id"]),
-            "flags_redeemed": row["flags_redeemed"],
-            "last_activity": row["last_activity"],
-        }
-        for row in rows
-    ]
-    return jsonify({"standings": standings, "total_flags": len(CATALOG)})
+    return jsonify({"standings": personalize.participant_standings(), "total_flags": len(CATALOG)})
 
 
 @bp.route("/reset", methods=["POST"])
@@ -324,30 +275,7 @@ def reset_lab():
     seed_path = os.environ.get("SEED_DB_PATH", "/app/data/seed.db")
 
     try:
-        if not os.path.isfile(seed_path):
-            raise FileNotFoundError(f"no seed.db to reset from at {seed_path}")
-
-        db_dir = os.path.dirname(db_path) or "."
-        fd, tmp_path = tempfile.mkstemp(prefix=".app_db_reset_", dir=db_dir)
-        try:
-            os.close(fd)
-            shutil.copyfile(seed_path, tmp_path)
-            os.replace(tmp_path, db_path)
-        except Exception:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-            raise
-
-        for aux in glob.glob(db_path + "-*"):
-            os.remove(aux)
-
-        fresh_conn = sqlite3.connect(db_path)
-        try:
-            personalize.regenerate_lab_secret(fresh_conn)
-        finally:
-            fresh_conn.close()
-
-        resets.clear_firmware_files()
+        resets.reset_lab_state(db_path, seed_path)
     except Exception:
         current_app.logger.exception("Reset Lab failed")
         return _back_to("dashboard", notice="lab_reset_failed")

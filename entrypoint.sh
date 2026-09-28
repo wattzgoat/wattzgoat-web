@@ -64,6 +64,18 @@ fi
 # default) for an ordinary participant-facing instance, where hardening is
 # instead a live, per-flag DB toggle -- see the trainer dashboard (or, pre-
 # decoupling, /ops/__set_hardening__ directly).
+# STANDALONE=true enables the hidden /participants console (leaderboard +
+# resets) for an instance with no paired instructor container; it needs
+# STANDALONE_PASSWORD too (see app/standalone.py). Leave both unset on an
+# instance that is paired with an instructor.
+if [ "${STANDALONE:-}" = "true" ]; then
+  if [ -z "${STANDALONE_PASSWORD:-}" ]; then
+    echo "STANDALONE=true but STANDALONE_PASSWORD is not set -- the /participants console will stay disabled"
+  else
+    echo "STANDALONE=true -- hidden /participants console enabled"
+  fi
+fi
+
 if [ "${HARDENING_MODE:-}" = "all" ]; then
   echo "HARDENING_MODE=all -- this instance is a standalone hardened reference (see app/hardening.py); /progress is disabled on it"
 fi

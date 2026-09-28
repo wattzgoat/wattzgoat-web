@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Participants — WattzGOAT{% endblock %}</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+</head>
+<body class="bg-[#F2EFE9] text-[#14181C] min-h-screen" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<header class="bg-[#14181C] text-white px-6 py-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+  <span class="flex items-center gap-3">
+    <svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M60 4 L20 56 L42 56 L34 96 L80 40 L52 40 Z" fill="#F4B41A"/>
+    </svg>
+    <span class="font-semibold text-lg">Wattz<span class="text-[#F4B41A] font-bold">GOAT</span></span>
+  </span>
+  <span class="text-xs uppercase tracking-wide bg-[#F4B41A] text-[#14181C] rounded-full px-2 py-0.5 font-semibold">Instructor</span>
+  {% block nav %}{% endblock %}
+</header>
+<main class="max-w-5xl mx-auto px-6 py-10">
+{% block content %}{% endblock %}
+</main>
+{% include "_instructor_ui.html" %}
+</body>
+</html>

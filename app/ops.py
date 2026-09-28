@@ -1,14 +1,9 @@
-import glob
 import os
-import shutil
-import sqlite3
-import tempfile
 
 from flask import Blueprint, abort, current_app, jsonify, redirect, request, url_for
 
 from . import assistant, auth, flags, hardening
-from .personalize import regenerate_lab_secret
-from .resets import clear_firmware_files
+from .resets import reset_lab_state
 
 bp = Blueprint("ops", __name__, url_prefix="/ops")
 
@@ -40,49 +35,14 @@ def reset_lab():
     db_path = current_app.config["DB_PATH"]
     seed_path = os.environ.get("SEED_DB_PATH", "/app/data/seed.db")
 
-    if not os.path.isfile(seed_path):
+    try:
+        reset_lab_state(db_path, seed_path)
+    except FileNotFoundError:
         abort(500, "no seed.db to reset from")
-
-    # Temp file lives in the same directory as db_path on purpose --
-    # os.replace() is only guaranteed atomic within a single filesystem,
-    # so a temp dir on a different mount (e.g. /tmp) would silently
-    # degrade this back into a non-atomic cross-filesystem copy.
-    db_dir = os.path.dirname(db_path) or "."
-    fd, tmp_path = tempfile.mkstemp(prefix=".app_db_reset_", dir=db_dir)
-    try:
-        os.close(fd)
-        shutil.copyfile(seed_path, tmp_path)
-        os.replace(tmp_path, db_path)
-    except Exception:
-        # Don't leave a half-written temp file lying around if the copy
-        # itself fails partway through.
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-        raise
-
-    # WAL/SHM cleanup happens *after* the swap, not before -- doing it
-    # first (as the old version did) briefly left the pre-reset database
-    # without its journal sidecar files while the copy was still in
-    # flight, which was its own smaller version of the same problem.
-    for aux in glob.glob(db_path + "-*"):
-        os.remove(aux)
-
-    # Rotate the personalization secret on the now-live DB -- this is
-    # what makes flag VALUES change on every reset, not just at first
-    # boot (the file swap above alone would restore the same secret that
-    # was baked into seed.db at the original seeding pass). A short-lived
-    # connection of its own, not g.db, since this runs outside normal
-    # request-scoped DB access.
-    fresh_conn = sqlite3.connect(db_path)
-    try:
-        regenerate_lab_secret(fresh_conn)
-    finally:
-        fresh_conn.close()
 
     # The attempt counters behind the rate-limiting flags live in memory, so
     # they have to be cleared by hand -- otherwise the very next failed
     # login after a reset would already count as attempt #6.
-    clear_firmware_files()
     auth._login_attempts.clear()
     auth._reset_attempts.clear()
     assistant._pending_admin_actions.clear()

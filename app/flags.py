@@ -66,6 +66,8 @@ PLAINTEXT_TEACH = "PLAINTEXT_TEACH"
 PLAINTEXT_EXERCISE = "PLAINTEXT_EXERCISE"
 BUSLOGIC_TEACH = "BUSLOGIC_TEACH"
 BUSLOGIC_EXERCISE = "BUSLOGIC_EXERCISE"
+BUSLOGIC_NEGATIVE_RECHARGE = "BUSLOGIC_NEGATIVE_RECHARGE"
+BUSLOGIC_NEGATIVE_SOLAR = "BUSLOGIC_NEGATIVE_SOLAR"
 ERRHANDLING_TEACH = "ERRHANDLING_TEACH"
 ERRHANDLING_EXERCISE = "ERRHANDLING_EXERCISE"
 CSRF_TEACH = "CSRF_TEACH"
@@ -112,6 +114,8 @@ CATALOG = [
     (PLAINTEXT_EXERCISE, "Plaintext transmission", "Telemetry API"),
     (BUSLOGIC_TEACH, "Business logic flaws", "Recharge"),
     (BUSLOGIC_EXERCISE, "Business logic flaws", "Solar export"),
+    (BUSLOGIC_NEGATIVE_RECHARGE, "Business logic flaws", "Recharge amount"),
+    (BUSLOGIC_NEGATIVE_SOLAR, "Business logic flaws", "Solar export amount"),
     (ERRHANDLING_TEACH, "Improper error handling", "Usage search"),
     (ERRHANDLING_EXERCISE, "Improper error handling", "Login"),
     (INFOLEAK_TEACH, "Improper error handling", "Recharge"),
@@ -128,8 +132,8 @@ CATALOG = [
 
 VALID_KEYS = {key for key, _, _ in CATALOG}
 
-assert len(CATALOG) == 43
-assert len(VALID_KEYS) == 43, "flag keys must be unique"
+assert len(CATALOG) == 45
+assert len(VALID_KEYS) == 45, "flag keys must be unique"
 
 # One-line remediation note shown on /progress after a correct
 # submission -- what a developer would actually do to fix this class of
@@ -166,6 +170,8 @@ REMEDIATION = {
     PLAINTEXT_EXERCISE: "Device/API traffic needs TLS just as much as browser traffic does.",
     BUSLOGIC_TEACH: "Recompute credited amounts server-side; never trust a client-supplied total.",
     BUSLOGIC_EXERCISE: "Apply a plausibility cap server-side on any self-reported quantity tied to money.",
+    BUSLOGIC_NEGATIVE_RECHARGE: "Validate lower bounds server-side: reject zero, negative and non-numeric payment amounts before applying them.",
+    BUSLOGIC_NEGATIVE_SOLAR: "Reject zero or negative self-reported quantities server-side, not just implausibly large ones.",
     ERRHANDLING_TEACH: "Catch DB errors and return a generic message -- never the raw driver error.",
     ERRHANDLING_EXERCISE: "Use one identical error message for both cases, so login failures don't reveal which part was wrong.",
     INFOLEAK_TEACH: "Never render a raw traceback to the client, even during active development.",

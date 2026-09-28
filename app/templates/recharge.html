@@ -1,27 +1,51 @@
 {% extends "base.html" %}
 {% block title %}Recharge — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-6">Recharge balance</h1>
+<h1 class="text-2xl font-semibold mb-2">Recharge balance</h1>
+<p class="text-sm text-gray-600 mb-6">
+  Your balance is prepaid energy, measured in kWh. Energy is sold at
+  <strong>${{ "%.2f"|format(rate) }} per kWh</strong> &mdash; you pay in dollars and the equivalent kWh are added to your balance.
+</p>
+
+{% if error %}
+<div class="bg-red-50 text-red-700 text-sm rounded p-3 mb-6">{{ error }}</div>
+{% endif %}
 
 {% if credited is defined %}
 <div class="bg-green-50 text-green-800 text-sm rounded p-3 mb-6">
-  ${{ "%.2f"|format(credited) }} credited. New balance: ${{ "%.2f"|format(meter['balance']) }}
+  You paid {{ "-" if paid < 0 else "" }}${{ "%.2f"|format(paid|abs) }} &rarr; {{ "{:,.2f}".format(credited) }} kWh added at ${{ "%.2f"|format(rate) }}/kWh.
+  New balance: {{ "{:,.2f}".format(meter['balance']) }} kWh
   {% if buslogic_flag %}
   <br><span class="text-xs">units_credited was trusted directly instead of being recomputed from amount_paid — Business logic flaws: {{ buslogic_flag }}</span>
+  {% endif %}
+  {% if negative_flag %}
+  <br><span class="text-xs">A negative amount was accepted and applied to the balance — Business logic flaws: {{ negative_flag }}</span>
   {% endif %}
 </div>
 {% endif %}
 
 <div class="max-w-sm bg-white rounded-lg p-6 shadow-sm">
   {% if meter %}
-  <p class="text-sm text-gray-500 mb-4">{{ meter['nickname'] }} · current balance ${{ "%.2f"|format(meter['balance']) }}</p>
+  <p class="text-sm text-gray-500 mb-4">{{ meter['nickname'] }} · current balance {{ "{:,.2f}".format(meter['balance']) }} kWh</p>
   <form method="post" class="space-y-4">
     <div>
-      <label class="block text-sm mb-1">Amount to add to your balance ($)</label>
+      <label class="block text-sm mb-1">Amount to pay ($)</label>
       <input name="amount_paid" type="text" step="0.01" min="0" required class="w-full border rounded px-3 py-2">
+      <p id="recharge-preview" class="text-xs text-gray-500 mt-1 h-4"></p>
     </div>
     <button id="confirm-recharge" class="w-full bg-[#F4B41A] text-[#14181C] rounded py-2 font-medium">Confirm recharge</button>
   </form>
+  <script>
+  (function () {
+    var rate = {{ rate }};
+    var input = document.querySelector('input[name=amount_paid]');
+    var preview = document.getElementById('recharge-preview');
+    input.addEventListener('input', function () {
+      var v = parseFloat(input.value);
+      preview.textContent = isFinite(v) ? 'You will receive ' + (v / rate).toFixed(2) + ' kWh' : '';
+    });
+  })();
+  </script>
   {% else %}
   <p class="text-gray-500">No meter on this account.</p>
   {% endif %}

@@ -232,3 +232,24 @@ def get_flag(flag_key: str, participant_id: str) -> str:
     # distinct at any real class size.
     suffix = digest[2:6].hex().upper()
     return f"FLAG{{{adjective}_{noun}_{suffix}}}"
+
+
+def participant_standings():
+    """Participant progress standings, most flags first (ties broken by who
+    got there first) -- shared by the instructor dashboard's leaderboard and
+    the standalone /participants console. Built from flag_redemptions, so a
+    participant appears once they've redeemed at least one flag."""
+    rows = get_db().execute(
+        "SELECT participant_id, COUNT(*) AS flags_redeemed, MAX(redeemed_at) AS last_activity "
+        "FROM flag_redemptions GROUP BY participant_id ORDER BY flags_redeemed DESC, last_activity ASC"
+    ).fetchall()
+    return [
+        {
+            "participant_id": row["participant_id"],
+            "display": display_identity(row["participant_id"]),
+            "flags_redeemed": row["flags_redeemed"],
+            "last_activity": row["last_activity"],
+        }
+        for row in rows
+    ]
+

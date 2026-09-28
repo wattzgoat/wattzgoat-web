@@ -1,0 +1,74 @@
+{# Toast (from `notice`) and the in-page confirm modal, shared by the instructor dashboard and
+   the standalone /participants console. Include once, near the end of <body>. #}
+{% if notice %}
+<div id="wg-toast" role="status"
+     class="fixed top-4 right-4 z-50 max-w-sm rounded-lg shadow-lg px-4 py-3 text-sm flex items-start gap-3 {{ 'bg-green-600 text-white' if notice.kind == 'success' else 'bg-red-600 text-white' }}">
+  <span class="flex-1">{{ notice.text }}</span>
+  <button type="button" id="wg-toast-close" class="font-bold leading-none" aria-label="Dismiss">&times;</button>
+</div>
+<script>
+(function () {
+  var toast = document.getElementById('wg-toast');
+  document.getElementById('wg-toast-close').addEventListener('click', function () { toast.remove(); });
+  setTimeout(function () { if (toast.parentNode) toast.remove(); }, 6000);
+  // Drop the notice from the URL so a refresh doesn't replay it.
+  try {
+    var url = new URL(window.location.href);
+    ['notice', 'n', 'pid'].forEach(function (k) { url.searchParams.delete(k); });
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  } catch (e) {}
+})();
+</script>
+{% endif %}
+{# In-page confirmation for destructive actions. Replaces the browser's native
+   confirm() on purpose: browsers add a "don't allow this site to prompt you
+   again" tick box to repeated native dialogs, and ticking it silently blocks
+   every later reset. Any form with a data-confirm attribute (including rows
+   the leaderboard re-renders on each poll) goes through this. #}
+<div id="wg-confirm" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="wg-confirm-msg">
+  <div class="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+    <p id="wg-confirm-msg" class="text-sm text-gray-800 mb-5"></p>
+    <div class="flex justify-end gap-2">
+      <button type="button" id="wg-confirm-cancel" class="px-4 py-2 rounded bg-gray-100 text-gray-700 text-sm font-medium">Cancel</button>
+      <button type="button" id="wg-confirm-ok" class="px-4 py-2 rounded bg-red-600 text-white text-sm font-medium">Confirm</button>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modal = document.getElementById('wg-confirm');
+  var message = document.getElementById('wg-confirm-msg');
+  var ok = document.getElementById('wg-confirm-ok');
+  var cancel = document.getElementById('wg-confirm-cancel');
+  var pending = null;
+
+  function close() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    pending = null;
+  }
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    var text = form.getAttribute && form.getAttribute('data-confirm');
+    if (!text) return;
+    e.preventDefault();
+    pending = form;
+    message.textContent = text;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    cancel.focus();  // safe default for a destructive action
+  });
+
+  ok.addEventListener('click', function () {
+    var form = pending;
+    close();
+    if (form) form.submit();  // programmatic submit doesn't re-fire the submit event
+  });
+  cancel.addEventListener('click', close);
+  modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && pending) close();
+  });
+})();
+</script>

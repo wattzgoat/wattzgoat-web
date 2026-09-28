@@ -231,7 +231,7 @@ def handle_customer_message(user, text):
                 return f"{account['name']}'s billing address is {addr}. {get_flag(flags.ASSISTANT_DIRECT_DATALEAK, g.participant_id)}"
             if _contains_any(t, BALANCE_WORDS):
                 meter = db.execute("SELECT balance FROM meters WHERE user_id = ?", (account["id"],)).fetchone()
-                bal = f"${meter['balance']:.2f}" if meter else "no meter on file"
+                bal = f"{meter['balance']:.2f} kWh" if meter else "no meter on file"
                 return f"{account['name']}'s balance is {bal}."
             if _contains_any(t, READING_WORDS):
                 meter = db.execute("SELECT id FROM meters WHERE user_id = ?", (account["id"],)).fetchone()
@@ -283,7 +283,7 @@ def handle_customer_message(user, text):
     if _contains_any(t, BALANCE_WORDS):
         if own_meter is None:
             return "You don't have a meter connected yet, so there's no balance to show."
-        return f"Your current balance is ${own_meter['balance']:.2f}."
+        return f"Your current balance is {own_meter['balance']:.2f} kWh."
 
     if "status" in t or _contains_any(t, ("connected", "disconnected", "online", "working")):
         if own_meter is None:
@@ -483,7 +483,7 @@ def handle_admin_message(user, text):
         if not rows:
             return "There are no customer accounts yet."
         lines = "; ".join(
-            f"{r['name']} ({r['meter_code'] or 'no meter'}, ${r['balance'] or 0:.2f}, {r['total_kwh']:.1f} kWh)"
+            f"{r['name']} ({r['meter_code'] or 'no meter'}, {r['balance'] or 0:.2f} kWh balance, {r['total_kwh']:.1f} kWh used)"
             for r in rows
         )
         return "Customers: " + lines + "."
@@ -499,7 +499,7 @@ def handle_admin_message(user, text):
         _pending_admin_actions[user["id"]] = {
             "emails": emails,
             "subject": "Your WattzGOAT balance is running low",
-            "body": "Your prepaid balance is under $5. Please recharge soon to avoid a service interruption.",
+            "body": "Your prepaid energy balance is under 5 kWh. Please recharge soon to avoid a service interruption.",
         }
         return (
             "Low-balance accounts: " + ", ".join(emails) + ". "

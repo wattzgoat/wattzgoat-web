@@ -14,7 +14,7 @@
 <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
 <table class="w-full text-sm">
 <thead class="bg-gray-50 text-left text-gray-500">
-<tr><th class="px-4 py-2">Meter</th><th class="px-4 py-2">Owner</th><th class="px-4 py-2">Status</th><th class="px-4 py-2">Balance</th><th class="px-4 py-2"></th></tr>
+<tr><th class="px-4 py-2">Meter</th><th class="px-4 py-2">Owner</th><th class="px-4 py-2">Status</th><th class="px-4 py-2">Balance (kWh)</th><th class="px-4 py-2"></th></tr>
 </thead>
 <tbody class="divide-y">
 {% for m in meters %}
@@ -24,7 +24,7 @@
 <td class="px-4 py-2">
   <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-green-100 text-green-700' if m['status']=='connected' else 'bg-red-100 text-red-700' }}">{{ m['status'] }}</span>
 </td>
-<td class="px-4 py-2">${{ "%.2f"|format(m['balance']) }}</td>
+<td class="px-4 py-2">{{ "{:,.2f}".format(m['balance']) }}</td>
 <td class="px-4 py-2"><a href="{{ url_for('admin.meter_detail', meter_id=m['id']) }}" class="underline text-xs">View</a></td>
 </tr>
 {% else %}

@@ -94,6 +94,26 @@ def create_app() -> Flask:
     app.register_blueprint(leaderboard_bp)
     app.register_blueprint(pages_bp)
     app.register_blueprint(personalize_bp)
+
+    # Hidden /participants console (leaderboard + the three resets) for
+    # instances WITHOUT a paired instructor container. Off unless
+    # STANDALONE=true, and it also needs STANDALONE_PASSWORD -- see
+    # app/standalone.py. A HARDENING_MODE=all reference instance never gets
+    # it (hardening toggles and redemptions don't apply there).
+    if _truthy_env("STANDALONE"):
+        password = os.environ.get("STANDALONE_PASSWORD", "")
+        if hardening.FORCE_ALL:
+            app.logger.warning("STANDALONE=true ignored: HARDENING_MODE=all instances have no /participants console.")
+        elif not password:
+            app.logger.warning(
+                "STANDALONE=true but STANDALONE_PASSWORD is not set -- the /participants console stays DISABLED."
+            )
+        else:
+            from .standalone import bp as standalone_bp
+            app.config["STANDALONE_PASSWORD"] = password
+            app.register_blueprint(standalone_bp)
+            app.logger.warning("STANDALONE=true -- hidden /participants console is ENABLED on this instance.")
+
     # Next-phase item 1: app/trainer.py's blueprint is registered ONLY
     # under TRAINER_DASHBOARD=true (see above) -- no longer part of the
     # participant-facing app at all. base.html's admin nav no longer

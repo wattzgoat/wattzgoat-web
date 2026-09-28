@@ -1,14 +1,26 @@
 {% extends "base.html" %}
 {% block title %}Solar export — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-6">Report solar export</h1>
-<p class="text-gray-600 text-sm mb-6">Tell us how much you fed back into the grid this period and we'll credit your balance.</p>
+<h1 class="text-2xl font-semibold mb-2">Report solar export</h1>
+<p class="text-gray-600 text-sm mb-6">
+  Tell us how much you fed back into the grid this period. Exports earn a
+  ${{ "%.2f"|format(export_rate) }}/kWh credit, which is added to your balance as energy at the
+  ${{ "%.2f"|format(rate) }}/kWh prepaid rate.
+</p>
+
+{% if error %}
+<div class="bg-red-50 text-red-700 text-sm rounded p-3 mb-6">{{ error }}</div>
+{% endif %}
 
 {% if credited is defined %}
 <div class="bg-green-50 text-green-800 text-sm rounded p-3 mb-6">
-  ${{ "%.2f"|format(credited) }} credited. New balance: ${{ "%.2f"|format(meter['balance']) }}
+  {{ "{:,.1f}".format(exported) }} kWh exported &rarr; {{ "-" if credit < 0 else "" }}${{ "{:,.2f}".format(credit|abs) }} credit &rarr; {{ "{:,.2f}".format(credited) }} kWh added.
+  New balance: {{ "{:,.2f}".format(meter['balance']) }} kWh
   {% if buslogic_flag %}
   <br><span class="text-xs">No plausibility check on claimed export — Business logic flaws: {{ buslogic_flag }}</span>
+  {% endif %}
+  {% if negative_flag %}
+  <br><span class="text-xs">A negative export was accepted and applied to the balance — Business logic flaws: {{ negative_flag }}</span>
   {% endif %}
 </div>
 {% endif %}

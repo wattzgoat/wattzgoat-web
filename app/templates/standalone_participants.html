@@ -1,0 +1,30 @@
+{% extends "standalone_base.html" %}
+{% block nav %}
+  <nav class="ml-8 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-300">
+    <form method="post" action="{{ url_for('standalone.reset_lab') }}"
+          data-confirm="Reset the entire lab to its seeded state? This clears redemptions, sessions, nicknames, uploaded files, and every hardening toggle.">
+      <button type="submit" class="text-red-300 hover:text-red-200 underline decoration-dotted">Reset Lab</button>
+    </form>
+    <form method="post" action="{{ url_for('standalone.reset_app') }}"
+          data-confirm="Reset the app to its seeded state? Accounts, meters, tickets and other app data are restored, every hardening toggle returns to vulnerable, all logins expire, and uploaded files are removed. Redemptions, participant IDs and nicknames are kept.">
+      <button type="submit" class="text-red-300 hover:text-red-200 underline decoration-dotted">Reset App</button>
+    </form>
+    <form method="post" action="{{ url_for('standalone.reset_all_redemptions') }}"
+          data-confirm="Clear redemption progress for EVERY participant? Hardening state, nicknames, and accounts are left as they are.">
+      <button type="submit" class="text-red-300 hover:text-red-200 underline decoration-dotted">Reset All Redemptions</button>
+    </form>
+  </nav>
+  <form method="post" action="{{ url_for('standalone.logout') }}" class="ml-auto">
+    <button class="text-sm text-gray-300 hover:text-white underline">Sign out</button>
+  </form>
+{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">Participants</h1>
+<p class="text-sm text-gray-500 mb-6">
+  Live participant progress standings, by flags redeemed. Shown nickname-first where a participant
+  has set one, with their participant ID as a small parenthetical, plus the full ID in its own column.
+</p>
+{% with lb_api=standings_url, lb_reset=reset_participant_url, lb_total=total_flags %}
+{% include "_leaderboard_table.html" %}
+{% endwith %}
+{% endblock %}

@@ -1,8 +1,10 @@
-"""Shared reset helpers -- deliberately dependency-free (stdlib only) so both
-the participant process and the separate instructor process can import them
-without dragging in each other's blueprints.
+"""Shared reset helpers, used by the separate instructor process
+(app/trainer.py), the standalone /participants console (app/standalone.py)
+and the participant-side /ops/__reset_lab__. Only stdlib at import time --
+the one personalize import is deferred into reset_lab_state() -- so this
+module never drags a role's blueprints into another role's process.
 
-Two things live here:
+What lives here:
 
 - firmware_dir(): where the insecure-file-upload exercises write. It sits
   next to the database (DB_PATH's directory) rather than inside the app
@@ -10,12 +12,18 @@ Two things live here:
   both containers already mount at /app/data -- which is the only reason the
   instructor process can clear uploads that were written by the participant
   process at all (two containers don't otherwise share a filesystem).
+- reset_lab_state(): the full wipe (seed.db file-swap, new flag secret,
+  uploaded files removed).
 - reset_app_state(): restore the app's own data to its seeded state while
   keeping the participant-tracking tables exactly as they are.
+- NOTICES / notice_from_args(): the fixed vocabulary of toast messages the
+  redirect-after-reset flow shows.
 """
+import glob
 import os
 import shutil
 import sqlite3
+import tempfile
 
 
 def firmware_dir() -> str:
@@ -88,3 +96,79 @@ def reset_app_state(db_path: str, seed_path: str) -> None:
             raise
     finally:
         conn.close()
+
+
+def reset_lab_state(db_path: str, seed_path: str) -> None:
+    """Full wipe: swap seed.db over the live database, rotate the flag
+    secret, and remove uploaded files. The swap is a write-to-temp-file +
+    os.replace() -- a single atomic rename -- rather than an in-place copy,
+    because the app is never truly idle (the meter simulators hit the DB on
+    their own every 20-40s) and a concurrent connection must only ever see
+    the complete old file or the complete new one. The temp file lives next
+    to db_path because os.replace() is only atomic within one filesystem."""
+    from .personalize import regenerate_lab_secret
+
+    if not os.path.isfile(seed_path):
+        raise FileNotFoundError(f"no seed.db to reset from at {seed_path}")
+
+    db_dir = os.path.dirname(db_path) or "."
+    fd, tmp_path = tempfile.mkstemp(prefix=".app_db_reset_", dir=db_dir)
+    try:
+        os.close(fd)
+        shutil.copyfile(seed_path, tmp_path)
+        os.replace(tmp_path, db_path)
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+        raise
+
+    # WAL/SHM sidecars are cleaned up AFTER the swap, not before.
+    for aux in glob.glob(db_path + "-*"):
+        os.remove(aux)
+
+    # New secret on the now-live DB: flag VALUES change on every reset.
+    fresh_conn = sqlite3.connect(db_path)
+    try:
+        regenerate_lab_secret(fresh_conn)
+    finally:
+        fresh_conn.close()
+
+    clear_firmware_files()
+
+
+# Reset actions redirect back to a page with a short, fixed-vocabulary notice
+# code in the query string, rendered as a toast. Only codes in this table are
+# ever shown; the only dynamic values are a clamped integer and a short,
+# Jinja-escaped participant ID prefix -- nothing from the query string is
+# rendered as free text.
+NOTICES = {
+    "lab_reset": ("success", "Lab reset to its seeded state"),
+    "lab_reset_failed": ("error", "Lab reset failed -- see the container logs"),
+    "app_reset": ("success", "App reset to its seeded state"),
+    "app_reset_failed": ("error", "App reset failed -- nothing was changed; see the container logs"),
+    "app_reset_files_failed": (
+        "error",
+        "App data was reset, but uploaded firmware files could not be removed -- see the container logs",
+    ),
+    "redemptions_reset_all": ("success", "All redemptions cleared"),
+    "redemptions_reset_all_failed": ("error", "Reset all redemptions failed -- see the container logs"),
+    "redemptions_reset": ("success", "Redemptions cleared for participant"),
+    "redemptions_reset_failed": ("error", "Reset redemption failed -- see the container logs"),
+    "redemptions_reset_no_id": ("error", "Reset redemption failed -- no participant ID given"),
+}
+
+
+def notice_from_args(args):
+    """{'kind', 'text'} for the request's ?notice= code, or None."""
+    code = args.get("notice")
+    if code not in NOTICES:
+        return None
+    kind, text = NOTICES[code]
+    if code == "redemptions_reset":
+        pid = (args.get("pid") or "")[:8]
+        if pid:
+            text += f" {pid}"
+    count = args.get("n", type=int)
+    if count is not None and kind == "success" and code != "lab_reset":
+        text += f" ({max(count, 0)} removed)"
+    return {"kind": kind, "text": text + "."}
