@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}WattzGOAT Trainer{% endblock %}</title>
+<title>{% block title %}WattzGOAT Instructor{% endblock %}</title>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
 <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
@@ -17,13 +17,13 @@
     </svg>
     <span class="font-semibold text-lg">Wattz<span class="text-[#F4B41A] font-bold">GOAT</span></span>
   </a>
-  <span class="text-xs uppercase tracking-wide bg-[#F4B41A] text-[#14181C] rounded-full px-2 py-0.5 font-semibold">Trainer</span>
+  <span class="text-xs uppercase tracking-wide bg-[#F4B41A] text-[#14181C] rounded-full px-2 py-0.5 font-semibold">Instructor</span>
 
-  {# Next-phase item 4: the three trainer-specific nav items -- Participant
+  {# Next-phase item 4: the instructor-specific nav items -- Participant
      Leaderboard, Reset Lab, WattzGOAT Portal -- plus Dashboard, live here
      rather than in base.html since this role has no customer/admin surface
      to share a nav with at all. #}
-  <nav class="ml-8 flex items-center gap-4 text-sm text-gray-300">
+  <nav class="ml-8 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-300">
     <a href="{{ url_for('trainer.dashboard') }}" class="hover:text-white">Dashboard</a>
     <a href="{{ url_for('trainer.leaderboard') }}" class="hover:text-white">Participant Leaderboard</a>
     {% if participant_base_url %}
@@ -35,11 +35,15 @@
     <a href="{{ participant_base_url }}/" class="hover:text-white" target="_blank" rel="noopener">WattzGOAT Portal ↗</a>
     {% endif %}
     <form method="post" action="{{ url_for('trainer.reset_lab') }}"
-          onsubmit="return confirm('Reset the entire lab to its seeded state? This clears redemptions, sessions, nicknames, and every hardening toggle.');">
+          data-confirm="Reset the entire lab to its seeded state? This clears redemptions, sessions, nicknames, uploaded files, and every hardening toggle.">
       <button type="submit" class="text-red-300 hover:text-red-200 underline decoration-dotted">Reset Lab</button>
     </form>
+    <form method="post" action="{{ url_for('trainer.reset_app') }}"
+          data-confirm="Reset the app to its seeded state? Accounts, meters, tickets and other app data are restored, every hardening toggle returns to vulnerable, all logins expire, and uploaded files are removed. Redemptions, participant IDs and nicknames are kept.">
+      <button type="submit" class="text-red-300 hover:text-red-200 underline decoration-dotted">Reset App</button>
+    </form>
     <form method="post" action="{{ url_for('trainer.reset_all_redemptions') }}"
-          onsubmit="return confirm('Clear redemption progress for EVERY participant? Hardening state, nicknames, and accounts are left as they are.');">
+          data-confirm="Clear redemption progress for EVERY participant? Hardening state, nicknames, and accounts are left as they are.">
       <button type="submit" class="text-red-300 hover:text-red-200 underline decoration-dotted">Reset All Redemptions</button>
     </form>
   </nav>
@@ -73,7 +77,60 @@
 {% block content %}{% endblock %}
 </main>
 <footer class="max-w-5xl mx-auto px-6 py-8 text-xs text-gray-400 border-t border-gray-200 mt-8">
-  <p>WattzGOAT Trainer Dashboard -- instructor tooling for the WattzGOAT training lab. Not part of the participant-facing app.</p>
+  <p>WattzGOAT WattzGOAT Instructor Dashboard -- tooling for running the lab. Not part of the participant-facing app.</p>
 </footer>
+
+{# In-page confirmation for destructive actions. Replaces the browser's native
+   confirm() on purpose: browsers add a "don't allow this site to prompt you
+   again" tick box to repeated native dialogs, and ticking it silently blocks
+   every later reset. Any form with a data-confirm attribute (including rows
+   the leaderboard re-renders on each poll) goes through this. #}
+<div id="wg-confirm" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="wg-confirm-msg">
+  <div class="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+    <p id="wg-confirm-msg" class="text-sm text-gray-800 mb-5"></p>
+    <div class="flex justify-end gap-2">
+      <button type="button" id="wg-confirm-cancel" class="px-4 py-2 rounded bg-gray-100 text-gray-700 text-sm font-medium">Cancel</button>
+      <button type="button" id="wg-confirm-ok" class="px-4 py-2 rounded bg-red-600 text-white text-sm font-medium">Confirm</button>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modal = document.getElementById('wg-confirm');
+  var message = document.getElementById('wg-confirm-msg');
+  var ok = document.getElementById('wg-confirm-ok');
+  var cancel = document.getElementById('wg-confirm-cancel');
+  var pending = null;
+
+  function close() {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    pending = null;
+  }
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    var text = form.getAttribute && form.getAttribute('data-confirm');
+    if (!text) return;
+    e.preventDefault();
+    pending = form;
+    message.textContent = text;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    cancel.focus();  // safe default for a destructive action
+  });
+
+  ok.addEventListener('click', function () {
+    var form = pending;
+    close();
+    if (form) form.submit();  // programmatic submit doesn't re-fire the submit event
+  });
+  cancel.addEventListener('click', close);
+  modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && pending) close();
+  });
+})();
+</script>
 </body>
 </html>

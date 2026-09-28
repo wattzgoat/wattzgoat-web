@@ -1,10 +1,10 @@
 {% extends "trainer_base.html" %}
-{% block title %}Participant Leaderboard — WattzGOAT Trainer{% endblock %}
+{% block title %}Participant Leaderboard — WattzGOAT Instructor{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-semibold mb-2">Participant Leaderboard</h1>
 <p class="text-sm text-gray-500 mb-6">
   Live participant progress standings, by flags redeemed. Shown nickname-first where a participant
-  has set one, with their participant ID as a small parenthetical, plus the full ID in its own column -- not the public Solar Leaderboard.
+  has set one, with their participant ID as a small parenthetical, plus the full ID in its own column.
 </p>
 
 <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
@@ -61,7 +61,7 @@
           '<td class="px-4 py-2">' + p.flags_redeemed + ' / {{ total_flags }}</td>' +
           '<td class="px-4 py-2 text-xs text-gray-500">' + fmtTime(p.last_activity) + '</td>' +
           '<td class="px-4 py-2">' +
-            '<form method="post" class="wg-reset-redemption" action="{{ url_for('trainer.reset_participant_redemption') }}">' +
+            '<form method="post" data-confirm="Clear all redemptions for this participant? Their nickname is left as it is." action="{{ url_for('trainer.reset_participant_redemption') }}">' +
               '<input type="hidden" name="participant_id" value="' + esc(p.participant_id) + '">' +
               '<input type="hidden" name="next" value="leaderboard">' +
               '<button type="submit" class="text-xs text-red-600 hover:text-red-800 underline decoration-dotted">Reset</button>' +
@@ -75,15 +75,6 @@
       inFlight = false;
     }
   }
-
-  // Rows are re-rendered on every poll, so confirm via one delegated
-  // listener on the table body rather than per-row inline handlers.
-  document.getElementById('leaderboard-rows').addEventListener('submit', function (e) {
-    if (e.target.classList.contains('wg-reset-redemption') &&
-        !confirm('Clear all redemptions for this participant? Their nickname is left as it is.')) {
-      e.preventDefault();
-    }
-  });
 
   refresh();
   setInterval(refresh, POLL_MS);

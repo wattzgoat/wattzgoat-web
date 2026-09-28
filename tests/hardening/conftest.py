@@ -64,7 +64,7 @@ def trainer_session(trainer_base_url):
         return None
     s = requests.Session()
     s.verify = False
-    resp = s.post(f"{trainer_base_url}/trainer/login", data={"email": email, "password": password}, timeout=10)
+    resp = s.post(f"{trainer_base_url}/instructor/login", data={"email": email, "password": password}, timeout=10)
     assert "wgt_session" in s.cookies.get_dict(), f"trainer login failed: {resp.status_code}"
     return s
 

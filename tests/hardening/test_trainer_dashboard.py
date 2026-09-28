@@ -54,13 +54,13 @@ def _fresh_customer_session(base_url):
 def test_trainer_login_required(trainer_base_url):
     import requests
 
-    resp = requests.get(f"{trainer_base_url}/trainer/", verify=False, timeout=10, allow_redirects=False)
+    resp = requests.get(f"{trainer_base_url}/instructor/", verify=False, timeout=10, allow_redirects=False)
     assert resp.status_code in (302, 303)
-    assert resp.headers.get("Location", "").endswith("/trainer/login")
+    assert resp.headers.get("Location", "").endswith("/instructor/login")
 
 
 def test_dashboard_loads_with_all_toggles(trainer_session, trainer_base_url):
-    resp = trainer_session.get(f"{trainer_base_url}/trainer/", timeout=10)
+    resp = trainer_session.get(f"{trainer_base_url}/instructor/", timeout=10)
     assert resp.status_code == 200
     assert resp.text.count("data-flag-key=") == 43
     # No implementation detail naming the underlying endpoint directly
@@ -80,21 +80,21 @@ def test_ops_endpoints_not_registered_on_trainer_instance(trainer_base_url):
 
 
 def test_summary_reflects_category_toggle(trainer_session, trainer_base_url):
-    resp = trainer_session.get(f"{trainer_base_url}/trainer/api/summary", timeout=10)
+    resp = trainer_session.get(f"{trainer_base_url}/instructor/api/summary", timeout=10)
     assert resp.status_code == 200
     data = resp.json()
     assert data["hardening"]["HEADERS_TEACH"] is False
     assert data["category_hardening"]["Missing security headers"] is False
 
     toggle = trainer_session.post(
-        f"{trainer_base_url}/trainer/api/toggle_category",
+        f"{trainer_base_url}/instructor/api/toggle_category",
         data={"category": "Missing security headers", "hardened": "1"},
         timeout=10,
     )
     assert toggle.status_code == 200
     assert set(toggle.json()["flag_keys"]) == {"HEADERS_TEACH", "HEADERS_EXERCISE"}
 
-    resp = trainer_session.get(f"{trainer_base_url}/trainer/api/summary", timeout=10)
+    resp = trainer_session.get(f"{trainer_base_url}/instructor/api/summary", timeout=10)
     data = resp.json()
     assert data["hardening"]["HEADERS_TEACH"] is True
     assert data["hardening"]["HEADERS_EXERCISE"] is True
@@ -105,7 +105,7 @@ def test_summary_reflects_category_toggle(trainer_session, trainer_base_url):
     # set_hardened's fixture-level version above, done manually here
     # since this isn't going through that fixture.
     trainer_session.post(
-        f"{trainer_base_url}/trainer/api/toggle_category",
+        f"{trainer_base_url}/instructor/api/toggle_category",
         data={"category": "Missing security headers", "hardened": "0"},
         timeout=10,
     )
@@ -121,12 +121,12 @@ def test_summary_reflects_redemption(trainer_session, trainer_base_url, base_url
     flag = dash.headers.get("X-Lab-Flag")
     assert flag, "HEADERS_TEACH flag missing -- can't test redemption tracking without it"
 
-    before = trainer_session.get(f"{trainer_base_url}/trainer/api/summary", timeout=10).json()
+    before = trainer_session.get(f"{trainer_base_url}/instructor/api/summary", timeout=10).json()
     before_count = before["redemption_counts"].get("HEADERS_TEACH", 0)
 
     fresh.post(f"{base_url}/progress", data={"flag": flag}, timeout=10)
 
-    after = trainer_session.get(f"{trainer_base_url}/trainer/api/summary", timeout=10).json()
+    after = trainer_session.get(f"{trainer_base_url}/instructor/api/summary", timeout=10).json()
     after_count = after["redemption_counts"].get("HEADERS_TEACH", 0)
     assert after_count == before_count + 1
     assert after["total_redemptions"] >= 1
@@ -146,11 +146,11 @@ def test_participant_leaderboard_nickname_first(trainer_session, trainer_base_ur
     nick = s.post(f"{base_url}/participant/nickname", data={"nickname": "LeaderboardTestNick"}, timeout=10)
     assert nick.status_code == 200
 
-    page = trainer_session.get(f"{trainer_base_url}/trainer/leaderboard", timeout=10)
+    page = trainer_session.get(f"{trainer_base_url}/instructor/leaderboard", timeout=10)
     assert page.status_code == 200
     assert "Participant Leaderboard" in page.text
 
-    api = trainer_session.get(f"{trainer_base_url}/trainer/api/leaderboard", timeout=10).json()
+    api = trainer_session.get(f"{trainer_base_url}/instructor/api/leaderboard", timeout=10).json()
     entry = next((row for row in api["standings"] if row["participant_id"] == pid), None)
     # Only present once this participant has redeemed at least one flag
     # (standings are built from flag_redemptions) -- if the shared
@@ -163,10 +163,10 @@ def test_participant_leaderboard_nickname_first(trainer_session, trainer_base_ur
 def test_reset_lab_control_moved_to_trainer(ops1_admin, base_url, trainer_base_url):
     # Reset Lab lives on the trainer dashboard now, not the general
     # admin nav (see base.html / app/templates/trainer_base.html) --
-    # and not on the participant instance's own /trainer/ at all, since
+    # and not on the participant instance's own /instructor/ at all, since
     # that route doesn't exist there anymore.
     admin_page = ops1_admin.get(f"{base_url}/admin/", timeout=10)
     assert "Reset Lab" not in admin_page.text
 
-    trainer_page = ops1_admin.get(f"{base_url}/trainer/", timeout=10)
+    trainer_page = ops1_admin.get(f"{base_url}/instructor/", timeout=10)
     assert trainer_page.status_code == 404

@@ -61,7 +61,7 @@
 {% block content %}{% endblock %}
 </main>
 <footer class="max-w-4xl mx-auto px-6 py-8 text-xs text-gray-400 border-t border-gray-200 mt-8">
-  <p>WattzGOAT Corp™ — a fictional utility, provided entirely for security training purposes.</p>
+  <p>&copy; {{ current_year() }} WattzGOAT Corp™. All rights reserved.</p>
   <p class="mt-1">
     <a href="{{ url_for('pages.terms') }}" class="underline hover:text-gray-600">Terms of Service</a>
     &middot;
@@ -122,7 +122,7 @@
   <div class="bg-white rounded-lg max-w-sm w-full p-6 shadow-xl">
     <h2 class="text-lg font-semibold mb-2">Pick a nickname</h2>
     <p class="text-sm text-gray-600 mb-4">
-      Shown next to your participant ID on the trainer's leaderboard. Optional --
+      Shown next to your participant ID on the instructor's leaderboard. Optional --
       skip if you'd rather stay anonymous.
     </p>
     <input type="text" id="wg-nickname-input" maxlength="24" placeholder="e.g. CircuitBreaker"

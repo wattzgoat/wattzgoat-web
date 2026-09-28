@@ -18,7 +18,7 @@ Required:
   TRAINER1_EMAIL, TRAINER1_PASSWORD
   TRAINER2_EMAIL, TRAINER2_PASSWORD
 Optional:
-  TRAINER1_NAME (default "Trainer 1"), TRAINER2_NAME (default "Trainer 2")
+  TRAINER1_NAME (default "Instructor 1"), TRAINER2_NAME (default "Instructor 2")
 """
 import argparse
 import os
@@ -54,12 +54,12 @@ def build(conn: sqlite3.Connection) -> None:
         (
             _require_env("TRAINER1_EMAIL"),
             _require_env("TRAINER1_PASSWORD"),
-            os.environ.get("TRAINER1_NAME", "Trainer 1"),
+            os.environ.get("TRAINER1_NAME", "Instructor 1"),
         ),
         (
             _require_env("TRAINER2_EMAIL"),
             _require_env("TRAINER2_PASSWORD"),
-            os.environ.get("TRAINER2_NAME", "Trainer 2"),
+            os.environ.get("TRAINER2_NAME", "Instructor 2"),
         ),
     ]
 

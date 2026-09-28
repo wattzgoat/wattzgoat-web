@@ -1,7 +1,7 @@
 {% extends "trainer_base.html" %}
-{% block title %}Trainer dashboard — WattzGOAT{% endblock %}
+{% block title %}Instructor dashboard — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-6">Trainer dashboard</h1>
+<h1 class="text-2xl font-semibold mb-6">Instructor dashboard</h1>
 
 <div class="grid grid-cols-3 gap-4 mb-8">
   <div class="bg-white rounded-lg shadow-sm p-4">
@@ -74,7 +74,7 @@
       const data = await res.json();
 
       // Toggle checkboxes -- reflect actual DB state, not just what
-      // this browser tab last clicked (another trainer tab, or a lab
+      // this browser tab last clicked (another instructor tab, or a lab
       // reset, can change it independently).
       let hardenedCount = 0;
       document.querySelectorAll('input[data-flag-key]').forEach(function (input) {
@@ -113,7 +113,7 @@
       });
     } catch (e) {
       // Transient network error mid-poll -- try again next tick rather
-      // than surfacing anything to the trainer.
+      // than surfacing anything to the instructor.
     } finally {
       inFlight = false;
     }

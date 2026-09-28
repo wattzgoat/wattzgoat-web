@@ -8,6 +8,7 @@ from .db import get_db
 from .personalize import get_flag
 from . import flags
 from . import hardening
+from .resets import firmware_dir
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -20,7 +21,7 @@ bp = Blueprint("admin", __name__, url_prefix="/admin")
 # non-destructive thing to prove impact against (see admin.firmware_canary
 # below), rather than something that could break the rest of the app for
 # everyone on a shared instance.
-FIRMWARE_DIR = os.path.join(os.path.dirname(__file__), "firmware")
+FIRMWARE_DIR = firmware_dir()
 CANARY_PATH = os.path.normpath(os.path.join(FIRMWARE_DIR, "canary.txt"))
 
 

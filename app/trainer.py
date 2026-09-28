@@ -47,10 +47,11 @@ from .db import get_db
 from .flags import CATALOG
 from . import hardening
 from . import personalize
+from . import resets
 from . import trainer_auth
 from .trainer_auth import trainer_login_required
 
-bp = Blueprint("trainer", __name__, url_prefix="/trainer")
+bp = Blueprint("trainer", __name__, url_prefix="/instructor")
 
 
 def _catalog_grouped():
@@ -75,11 +76,17 @@ def _keys_in_category(category: str) -> list[str]:
 # from the query string is rendered as free text.
 _NOTICES = {
     "lab_reset": ("success", "Lab reset to its seeded state"),
-    "lab_reset_failed": ("error", "Lab reset failed -- see the trainer container logs"),
+    "lab_reset_failed": ("error", "Lab reset failed -- see the instructor container logs"),
+    "app_reset": ("success", "App reset to its seeded state"),
+    "app_reset_failed": ("error", "App reset failed -- nothing was changed; see the instructor container logs"),
+    "app_reset_files_failed": (
+        "error",
+        "App data was reset, but uploaded firmware files could not be removed -- see the instructor container logs",
+    ),
     "redemptions_reset_all": ("success", "All redemptions cleared"),
-    "redemptions_reset_all_failed": ("error", "Reset all redemptions failed -- see the trainer container logs"),
+    "redemptions_reset_all_failed": ("error", "Reset all redemptions failed -- see the instructor container logs"),
     "redemptions_reset": ("success", "Redemptions cleared for participant"),
-    "redemptions_reset_failed": ("error", "Reset redemption failed -- see the trainer container logs"),
+    "redemptions_reset_failed": ("error", "Reset redemption failed -- see the instructor container logs"),
     "redemptions_reset_no_id": ("error", "Reset redemption failed -- no participant ID given"),
 }
 
@@ -339,11 +346,40 @@ def reset_lab():
             personalize.regenerate_lab_secret(fresh_conn)
         finally:
             fresh_conn.close()
+
+        resets.clear_firmware_files()
     except Exception:
         current_app.logger.exception("Reset Lab failed")
         return _back_to("dashboard", notice="lab_reset_failed")
 
     return _back_to("dashboard", notice="lab_reset")
+
+
+@bp.route("/reset_app", methods=["POST"])
+@trainer_login_required
+def reset_app():
+    """Middle ground between Reset Lab and Reset All Redemptions: restores
+    the app's own data (accounts, meters, tickets, ...) to the seeded state,
+    returns every hardening toggle to vulnerable, expires every login
+    session, and removes uploaded firmware files -- while keeping
+    redemptions, participant IDs, nicknames and the flag secret exactly as
+    they are. See app/resets.py."""
+    db_path = current_app.config["DB_PATH"]
+    seed_path = os.environ.get("SEED_DB_PATH", "/app/data/seed.db")
+
+    try:
+        resets.reset_app_state(db_path, seed_path)
+    except Exception:
+        current_app.logger.exception("Reset App failed")
+        return _back_to("dashboard", notice="app_reset_failed")
+
+    try:
+        resets.clear_firmware_files()
+    except Exception:
+        current_app.logger.exception("Reset App: removing uploaded firmware files failed")
+        return _back_to("dashboard", notice="app_reset_files_failed")
+
+    return _back_to("dashboard", notice="app_reset")
 
 
 @bp.route("/reset_redemptions", methods=["POST"])

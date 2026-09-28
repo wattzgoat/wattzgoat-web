@@ -8,6 +8,7 @@ from flask import Blueprint, abort, current_app, jsonify, redirect, request, url
 
 from . import assistant, auth, flags, hardening
 from .personalize import regenerate_lab_secret
+from .resets import clear_firmware_files
 
 bp = Blueprint("ops", __name__, url_prefix="/ops")
 
@@ -81,6 +82,7 @@ def reset_lab():
     # The attempt counters behind the rate-limiting flags live in memory, so
     # they have to be cleared by hand -- otherwise the very next failed
     # login after a reset would already count as attempt #6.
+    clear_firmware_files()
     auth._login_attempts.clear()
     auth._reset_attempts.clear()
     assistant._pending_admin_actions.clear()
