@@ -17,3 +17,8 @@ def terms():
 @bp.route("/privacy")
 def privacy():
     return render_template("privacy.html")
+
+
+@bp.route("/contact")
+def contact():
+    return render_template("contact.html")

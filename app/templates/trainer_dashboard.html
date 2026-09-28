@@ -55,18 +55,6 @@
 {% endfor %}
 </div>
 
-<h2 class="text-lg font-semibold mb-3">Participants</h2>
-<div class="bg-white rounded-lg shadow-sm overflow-x-auto mb-10">
-<table class="w-full text-sm">
-<thead class="bg-gray-50 text-left text-gray-500">
-<tr><th class="px-4 py-2">Participant</th><th class="px-4 py-2">Last seen as</th><th class="px-4 py-2">Flags redeemed</th><th class="px-4 py-2">Last activity</th></tr>
-</thead>
-<tbody class="divide-y" id="participant-rows">
-<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">Loading…</td></tr>
-</tbody>
-</table>
-</div>
-
 <script>
 (function () {
   const POLL_MS = 3000;
@@ -123,21 +111,6 @@
           badge.classList.add('hidden');
         }
       });
-
-      // Participant roster.
-      const rows = document.getElementById('participant-rows');
-      if (data.participants.length === 0) {
-        rows.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">No redemptions yet.</td></tr>';
-      } else {
-        rows.innerHTML = data.participants.map(function (p) {
-          return '<tr>' +
-            '<td class="px-4 py-2 font-mono text-xs">' + p.participant_id + '</td>' +
-            '<td class="px-4 py-2">' + (p.redeemed_by || '\u2014') + '</td>' +
-            '<td class="px-4 py-2">' + p.flags_redeemed + ' / {{ total_flags }}</td>' +
-            '<td class="px-4 py-2 text-xs text-gray-500">' + fmtTime(p.last_activity) + '</td>' +
-            '</tr>';
-        }).join('');
-      }
     } catch (e) {
       // Transient network error mid-poll -- try again next tick rather
       // than surfacing anything to the trainer.

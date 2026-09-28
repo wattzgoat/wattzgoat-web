@@ -315,6 +315,13 @@ def login():
     _login_attempts.pop(email, None)
     token = issue_session_token()
     db.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user["id"]))
+    # Footer "Last logged in" shows the previous login, so rotate the old
+    # value across before stamping this one. Only this form login writes
+    # these columns -- planted/replayed session cookies never do.
+    db.execute(
+        "UPDATE users SET previous_login_at = last_login_at, last_login_at = datetime('now') WHERE id = ?",
+        (user["id"],),
+    )
     db.commit()
 
     dest = "admin.dashboard" if user["role"] == "admin" else "customer.dashboard"

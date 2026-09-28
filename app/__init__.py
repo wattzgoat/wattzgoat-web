@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 from flask import Flask, Response, g, redirect, request, send_from_directory, url_for
 
@@ -54,6 +55,8 @@ def create_app() -> Flask:
     # render_template() call.
     app.jinja_env.globals["is_hardened"] = hardening.is_hardened
     app.jinja_env.globals["csrf_token"] = hardening.csrf_token
+    # Header date (base.html) -- server-rendered, UTC, date only.
+    app.jinja_env.globals["today_utc"] = lambda: datetime.now(timezone.utc).strftime("%a %d %b %Y")
 
     from .auth import bp as auth_bp
     from .auth import init_counters

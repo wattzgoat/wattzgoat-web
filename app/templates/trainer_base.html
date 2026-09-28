@@ -38,6 +38,10 @@
           onsubmit="return confirm('Reset the entire lab to its seeded state? This clears redemptions, sessions, nicknames, and every hardening toggle.');">
       <button type="submit" class="text-red-300 hover:text-red-200 underline decoration-dotted">Reset Lab</button>
     </form>
+    <form method="post" action="{{ url_for('trainer.reset_all_redemptions') }}"
+          onsubmit="return confirm('Clear redemption progress for EVERY participant? Hardening state, nicknames, and accounts are left as they are.');">
+      <button type="submit" class="text-red-300 hover:text-red-200 underline decoration-dotted">Reset All Redemptions</button>
+    </form>
   </nav>
 
   <span class="ml-auto text-sm text-gray-400">{{ trainer_name }}</span>
@@ -45,6 +49,26 @@
     <button class="text-sm text-gray-300 hover:text-white underline">Log out</button>
   </form>
 </header>
+{% if notice %}
+<div id="wg-toast" role="status"
+     class="fixed top-4 right-4 z-50 max-w-sm rounded-lg shadow-lg px-4 py-3 text-sm flex items-start gap-3 {{ 'bg-green-600 text-white' if notice.kind == 'success' else 'bg-red-600 text-white' }}">
+  <span class="flex-1">{{ notice.text }}</span>
+  <button type="button" id="wg-toast-close" class="font-bold leading-none" aria-label="Dismiss">&times;</button>
+</div>
+<script>
+(function () {
+  var toast = document.getElementById('wg-toast');
+  document.getElementById('wg-toast-close').addEventListener('click', function () { toast.remove(); });
+  setTimeout(function () { if (toast.parentNode) toast.remove(); }, 6000);
+  // Drop the notice from the URL so a refresh doesn't replay it.
+  try {
+    var url = new URL(window.location.href);
+    ['notice', 'n', 'pid'].forEach(function (k) { url.searchParams.delete(k); });
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+  } catch (e) {}
+})();
+</script>
+{% endif %}
 <main class="max-w-5xl mx-auto px-6 py-10">
 {% block content %}{% endblock %}
 </main>

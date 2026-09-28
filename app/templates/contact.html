@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Contact us — WattzGOAT{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">Contact us</h1>
+<p class="text-sm text-gray-600 mb-6">We're here to help with your SmartMeter X1, your bill, or your account.</p>
+
+<div class="grid sm:grid-cols-2 gap-4 mb-6">
+  <div class="bg-white rounded-lg shadow-sm p-5">
+    <h2 class="font-semibold mb-2">Customer care</h2>
+    <p class="text-sm text-gray-700">1-800-555-0142</p>
+    <p class="text-sm text-gray-700">care@example.com</p>
+    <p class="text-xs text-gray-500 mt-2">Mon–Fri 8:00–18:00, Sat 9:00–13:00 (Fictional Springs time)</p>
+  </div>
+  <div class="bg-white rounded-lg shadow-sm p-5">
+    <h2 class="font-semibold mb-2">Outage line</h2>
+    <p class="text-sm text-gray-700">1-800-555-0177</p>
+    <p class="text-sm text-gray-700">outages@example.com</p>
+    <p class="text-xs text-gray-500 mt-2">Open 24 hours, every day.</p>
+  </div>
+  <div class="bg-white rounded-lg shadow-sm p-5">
+    <h2 class="font-semibold mb-2">Billing</h2>
+    <p class="text-sm text-gray-700">1-800-555-0163</p>
+    <p class="text-sm text-gray-700">billing@example.com</p>
+    <p class="text-xs text-gray-500 mt-2">Mon–Fri 8:00–17:00</p>
+  </div>
+  <div class="bg-white rounded-lg shadow-sm p-5">
+    <h2 class="font-semibold mb-2">Mail</h2>
+    <p class="text-sm text-gray-700">WattzGOAT Corp<br>100 Grid Street<br>Fictional Springs, FS 00100</p>
+  </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-sm p-5 text-sm text-gray-700">
+  <p class="mb-2"><strong>Downed power line or smell of gas?</strong> Stay clear and call your local emergency number first.</p>
+  <p>For account-specific issues, you can also
+    <a href="{{ url_for('customer.support') }}" class="underline text-[#14181C]">open a support ticket</a>
+    once you're logged in.</p>
+</div>
+{% endblock %}

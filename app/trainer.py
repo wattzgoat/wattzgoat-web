@@ -68,6 +68,45 @@ def _keys_in_category(category: str) -> list[str]:
     return [key for key, cat, _ in CATALOG if cat == category]
 
 
+# Reset actions redirect back to a trainer page with a short, fixed-vocabulary
+# notice code in the query string, rendered as a toast by trainer_base.html.
+# Only codes in this table are ever shown, and the only dynamic values are a
+# clamped integer and a short, Jinja-escaped participant ID prefix -- nothing
+# from the query string is rendered as free text.
+_NOTICES = {
+    "lab_reset": ("success", "Lab reset to its seeded state"),
+    "lab_reset_failed": ("error", "Lab reset failed -- see the trainer container logs"),
+    "redemptions_reset_all": ("success", "All redemptions cleared"),
+    "redemptions_reset_all_failed": ("error", "Reset all redemptions failed -- see the trainer container logs"),
+    "redemptions_reset": ("success", "Redemptions cleared for participant"),
+    "redemptions_reset_failed": ("error", "Reset redemption failed -- see the trainer container logs"),
+    "redemptions_reset_no_id": ("error", "Reset redemption failed -- no participant ID given"),
+}
+
+_NEXT_ENDPOINTS = {"dashboard": "trainer.dashboard", "leaderboard": "trainer.leaderboard"}
+
+
+def _back_to(next_name: str, **params):
+    endpoint = _NEXT_ENDPOINTS.get(next_name, "trainer.dashboard")
+    return redirect(url_for(endpoint, **params), 303)
+
+
+@bp.context_processor
+def _inject_notice():
+    code = request.args.get("notice")
+    if code not in _NOTICES:
+        return {"notice": None}
+    kind, text = _NOTICES[code]
+    if code == "redemptions_reset":
+        pid = personalize.short_participant_id(request.args.get("pid") or "")
+        if pid:
+            text += f" {pid}"
+    count = request.args.get("n", type=int)
+    if count is not None and kind == "success" and code != "lab_reset":
+        text += f" ({max(count, 0)} removed)"
+    return {"notice": {"kind": kind, "text": text + "."}}
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "GET":
@@ -270,31 +309,77 @@ def reset_lab():
     SAME shared DB_PATH, just invoked from the trainer process instead
     of the participant one. See this module's docstring for the one
     known behavioral difference (in-memory counters on the participant
-    side aren't reachable from here)."""
+    side aren't reachable from here).
+
+    Redirects back to the dashboard with a success/failure notice
+    rather than returning a bare JSON body."""
     db_path = current_app.config["DB_PATH"]
     seed_path = os.environ.get("SEED_DB_PATH", "/app/data/seed.db")
 
-    if not os.path.isfile(seed_path):
-        abort(500, "no seed.db to reset from")
-
-    db_dir = os.path.dirname(db_path) or "."
-    fd, tmp_path = tempfile.mkstemp(prefix=".app_db_reset_", dir=db_dir)
     try:
-        os.close(fd)
-        shutil.copyfile(seed_path, tmp_path)
-        os.replace(tmp_path, db_path)
+        if not os.path.isfile(seed_path):
+            raise FileNotFoundError(f"no seed.db to reset from at {seed_path}")
+
+        db_dir = os.path.dirname(db_path) or "."
+        fd, tmp_path = tempfile.mkstemp(prefix=".app_db_reset_", dir=db_dir)
+        try:
+            os.close(fd)
+            shutil.copyfile(seed_path, tmp_path)
+            os.replace(tmp_path, db_path)
+        except Exception:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            raise
+
+        for aux in glob.glob(db_path + "-*"):
+            os.remove(aux)
+
+        fresh_conn = sqlite3.connect(db_path)
+        try:
+            personalize.regenerate_lab_secret(fresh_conn)
+        finally:
+            fresh_conn.close()
     except Exception:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
-        raise
+        current_app.logger.exception("Reset Lab failed")
+        return _back_to("dashboard", notice="lab_reset_failed")
 
-    for aux in glob.glob(db_path + "-*"):
-        os.remove(aux)
+    return _back_to("dashboard", notice="lab_reset")
 
-    fresh_conn = sqlite3.connect(db_path)
+
+@bp.route("/reset_redemptions", methods=["POST"])
+@trainer_login_required
+def reset_all_redemptions():
+    """Clears every participant's flag_redemptions rows -- and nothing
+    else (hardening state, nicknames, accounts, sessions all untouched;
+    that's Reset Lab's job)."""
     try:
-        personalize.regenerate_lab_secret(fresh_conn)
-    finally:
-        fresh_conn.close()
+        db = get_db()
+        removed = db.execute("DELETE FROM flag_redemptions").rowcount
+        db.commit()
+    except sqlite3.Error:
+        current_app.logger.exception("Reset all redemptions failed")
+        return _back_to("dashboard", notice="redemptions_reset_all_failed")
+    return _back_to("dashboard", notice="redemptions_reset_all", n=removed)
 
-    return jsonify({"status": "reset"})
+
+@bp.route("/reset_redemption", methods=["POST"])
+@trainer_login_required
+def reset_participant_redemption():
+    """Clears one participant's flag_redemptions rows by their full
+    participant ID. Nicknames are deliberately left alone. Zero rows
+    removed still counts as success (an ID with no redemptions is
+    already in the requested state)."""
+    next_name = request.form.get("next", "leaderboard")
+    participant_id = (request.form.get("participant_id") or "").strip()
+    if not participant_id:
+        return _back_to(next_name, notice="redemptions_reset_no_id")
+    try:
+        db = get_db()
+        removed = db.execute(
+            "DELETE FROM flag_redemptions WHERE participant_id = ?", (participant_id,)
+        ).rowcount
+        db.commit()
+    except sqlite3.Error:
+        current_app.logger.exception("Reset redemption failed")
+        return _back_to(next_name, notice="redemptions_reset_failed")
+    return _back_to(next_name, notice="redemptions_reset", n=removed, pid=participant_id[:8])

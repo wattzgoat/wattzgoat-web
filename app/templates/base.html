@@ -28,6 +28,7 @@
     <a href="{{ url_for('customer.bills') }}" class="hover:text-white">Bills</a>
     <a href="{{ url_for('customer.account') }}" class="hover:text-white">Account</a>
     <a href="{{ url_for('customer.support') }}" class="hover:text-white">Support</a>
+    <a href="{{ url_for('pages.contact') }}" class="hover:text-white">Contact</a>
     <a href="{{ url_for('progress.progress') }}" class="hover:text-white">Progress</a>
     {% else %}
     <a href="{{ url_for('admin.dashboard') }}" class="hover:text-white">Overview</a>
@@ -40,7 +41,8 @@
     <a href="{{ url_for('leaderboard.leaderboard_page') }}" class="hover:text-white">Solar Leaderboard</a>
     {% endif %}
   </nav>
-  <span class="ml-auto text-sm text-gray-400" title="Your participant nickname — click to change">
+  <span class="ml-auto text-sm text-gray-400">{{ today_utc() }} (UTC)</span>
+  <span class="text-sm text-gray-400" title="Your participant nickname — click to change">
     <button type="button" id="wg-identity-chip" class="hover:text-white underline decoration-dotted">{{ participant_display() }}</button>
   </span>
   <span class="text-sm text-gray-400">{{ g.user['name'] }}</span>
@@ -50,6 +52,7 @@
   {% else %}
   <nav class="ml-auto flex items-center gap-4 text-sm text-gray-300">
     <a href="{{ url_for('leaderboard.leaderboard_page') }}" class="hover:text-white">Solar Leaderboard</a>
+    <a href="{{ url_for('pages.contact') }}" class="hover:text-white">Contact</a>
     <button type="button" id="wg-identity-chip" class="hover:text-white underline decoration-dotted" title="Your participant nickname — click to change">{{ participant_display() }}</button>
   </nav>
   {% endif %}
@@ -63,7 +66,14 @@
     <a href="{{ url_for('pages.terms') }}" class="underline hover:text-gray-600">Terms of Service</a>
     &middot;
     <a href="{{ url_for('pages.privacy') }}" class="underline hover:text-gray-600">Privacy Policy</a>
+    &middot;
+    <a href="{{ url_for('pages.contact') }}" class="underline hover:text-gray-600">Contact us</a>
   </p>
+  {% if g.user %}
+  <p class="mt-1">
+    {% if g.user['previous_login_at'] %}Last logged in: {{ g.user['previous_login_at'][:16] }} UTC{% else %}First login{% endif %}
+  </p>
+  {% endif %}
 </footer>
 
 <!-- Real, serious safety notice -- not part of the in-universe flavor

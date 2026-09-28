@@ -10,7 +10,13 @@ CREATE TABLE users (
     address_service TEXT,
     address_billing TEXT,
     billing_rate REAL NOT NULL DEFAULT 0.28,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    -- Updated only by a successful POST /login (see auth.py). On each such
+    -- login previous_login_at takes the old last_login_at value, so the
+    -- footer can show the *previous* login; both stay NULL for accounts
+    -- that have never logged in through the form.
+    last_login_at TEXT,
+    previous_login_at TEXT
 );
 
 -- Deliberately homemade instead of Flask's signed cookie session -- see
