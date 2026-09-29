@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 420" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <rect width="860" height="420" fill="#F2EFE9"/>
+
+  <!-- Browser -->
+  <rect x="40" y="150" width="160" height="110" rx="10" fill="#ffffff" stroke="#14181C" stroke-width="2"/>
+  <text x="120" y="195" text-anchor="middle" font-size="16" font-weight="600" fill="#14181C">Your browser</text>
+  <text x="120" y="218" text-anchor="middle" font-size="12" fill="#4b5563">(customer or admin</text>
+  <text x="120" y="234" text-anchor="middle" font-size="12" fill="#4b5563">login)</text>
+
+  <!-- Arrow browser -> container -->
+  <line x1="200" y1="205" x2="290" y2="205" stroke="#14181C" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="245" y="192" text-anchor="middle" font-size="11" fill="#4b5563">HTTPS :5000</text>
+  <text x="245" y="228" text-anchor="middle" font-size="11" fill="#4b5563">HTTP :5001</text>
+
+  <!-- Container -->
+  <rect x="290" y="70" width="330" height="280" rx="10" fill="#ffffff" stroke="#F4B41A" stroke-width="3"/>
+  <text x="455" y="100" text-anchor="middle" font-size="16" font-weight="700" fill="#14181C">WattzGOAT container</text>
+  <text x="455" y="120" text-anchor="middle" font-size="11" fill="#6b7280">(one Docker image)</text>
+
+  <!-- Flask app box -->
+  <rect x="315" y="140" width="280" height="70" rx="8" fill="#F2EFE9" stroke="#14181C" stroke-width="1.5"/>
+  <text x="455" y="165" text-anchor="middle" font-size="13" font-weight="600" fill="#14181C">Flask web app</text>
+  <text x="455" y="185" text-anchor="middle" font-size="11" fill="#4b5563">customer + admin pages, flag checks,</text>
+  <text x="455" y="200" text-anchor="middle" font-size="11" fill="#4b5563">meter simulators</text>
+
+  <!-- Arrow app -> db -->
+  <line x1="455" y1="210" x2="455" y2="245" stroke="#14181C" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- DB box -->
+  <rect x="345" y="250" width="220" height="60" rx="8" fill="#F2EFE9" stroke="#14181C" stroke-width="1.5"/>
+  <text x="455" y="275" text-anchor="middle" font-size="13" font-weight="600" fill="#14181C">SQLite database</text>
+  <text x="455" y="293" text-anchor="middle" font-size="11" fill="#4b5563">accounts, meters, flags, progress</text>
+
+  <!-- Volume note -->
+  <line x1="455" y1="310" x2="455" y2="330" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="455" y="345" text-anchor="middle" font-size="11" fill="#6b7280">stored in a Docker volume</text>
+  <text x="455" y="360" text-anchor="middle" font-size="11" fill="#6b7280">(removed = progress reset)</text>
+
+  <!-- Legend: what's inside -->
+  <text x="650" y="140" font-size="12" fill="#6b7280">A single container runs</text>
+  <text x="650" y="158" font-size="12" fill="#6b7280">both listeners and the</text>
+  <text x="650" y="176" font-size="12" fill="#6b7280">whole vulnerable app --</text>
+  <text x="650" y="194" font-size="12" fill="#6b7280">nothing else to install.</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#14181C"/>
+    </marker>
+  </defs>
+</svg>

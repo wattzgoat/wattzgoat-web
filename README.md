@@ -1,18 +1,46 @@
 # WattzGOAT
 
-WattzGOAT is a website that is built to be hacked. It is a made-up smart meter company with a customer portal. Customers can check their meter, top up their balance, report solar power, look at bills and contact support. Admins can manage meters and look after support tickets.
+WattzGOAT is an intentionally vulnerable web application built to be hacked. It is a made-up smart meter company with a customer portal, and it's a lab, not a real product. Customers can check their meter, top up their balance, report solar power, look at bills and contact support. Admins can manage meters and look after support tickets.
 
-The site has security weaknesses on purpose, so you can practise finding them in a safe place.
+The site is vulnerable on purpose, so you can practise finding real security weaknesses in a safe place.
+
+![Login page](docs/screenshots/login.png)
+
+## Key features
+
+- A full customer portal (signup, meter dashboard, recharge, solar export, bills, support tickets) plus an admin side, so there's a realistic amount of surface to explore, not just a single vulnerable form.
+- 48 hidden weaknesses to find and exploit, from easy to hard.
+- A capture-the-flag style Progress page that tracks which ones you've found.
+- A simulated AI assistant with its own set of weaknesses to find.
+- Runs as a single Docker container with no other setup.
 
 ## How you learn with it
 
 WattzGOAT works like a capture the flag (CTF) game. There are 48 flags hidden in the site. You get a flag by finding a weakness and using it. Five of the 48 are bonus flags about a simulated AI assistant.
 
-The weaknesses are the kind of problems described in the OWASP Top 10, so what you practise here applies to real websites too.
+The weaknesses are the kind of problems described in the OWASP Top 10, things like broken access control and injection, so what you practise here applies to real websites too.
 
 To get started, create an account or log in with one of the sample customer accounts, then look around and try things out. When you find a flag, you can enter it on the Progress page, which keeps track of the ones you have found.
 
+![Progress page](docs/screenshots/progress.png)
+
 Sample customer accounts have emails like `alice.smith@example.com`. Their passwords are the first name followed by `123`.
+
+## Quick start
+
+If you already have Docker installed, this gets you running in one step. See "What you need" and "Start WattzGOAT" below for the full explanation.
+
+```
+docker run -d --name wattzgoat -p 5000:5000 -p 5001:5001 -e INSTANCE_HOST=127.0.0.1 -e STANDALONE=true -e STANDALONE_PASSWORD=YourPasswordHere ghcr.io/wattzgoat/wattzgoat-web:latest
+```
+
+Then open https://127.0.0.1:5000 in your browser.
+
+## How it fits together
+
+WattzGOAT runs as a single container: the web app and its database both live inside it, reachable over two ports (one HTTPS, one plain HTTP; a couple of the exercises specifically need the unencrypted one). Nothing else needs to be installed or run alongside it.
+
+![Architecture diagram: your browser connects to the WattzGOAT container over HTTPS on port 5000 and HTTP on port 5001; inside the container, the Flask web app talks to a SQLite database stored in a Docker volume](docs/architecture.svg)
 
 ## Warning
 
