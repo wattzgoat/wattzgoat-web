@@ -44,6 +44,23 @@ def create_app() -> Flask:
         from .trainer import bp as trainer_bp
         app.teardown_appcontext(trainer_auth.close_trainer_db)
         app.register_blueprint(trainer_bp)
+
+        # Bare "/" and the pre-rename "/trainer/..." path (this
+        # blueprint's URL prefix used to be /trainer before it became
+        # /instructor) both 404 with nothing else registered on this
+        # process -- redirect both to the equivalent /instructor/... path
+        # instead of leaving an old bookmark or a bare port dead-end.
+        @app.route("/")
+        def _root_redirect():
+            from flask import redirect, url_for
+            return redirect(url_for("trainer.dashboard"))
+
+        @app.route("/trainer/", defaults={"subpath": ""})
+        @app.route("/trainer/<path:subpath>")
+        def _old_trainer_redirect(subpath):
+            from flask import redirect
+            return redirect(f"/instructor/{subpath}")
+
         return app
 
     # Phase 6: exposed so templates can branch on hardening state and
