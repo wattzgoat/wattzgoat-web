@@ -268,6 +268,17 @@ _login_attempts = defaultdict(int)
 _reset_attempts = defaultdict(int)
 RATE_LIMIT_THRESHOLD = 5
 
+# OLDTOKEN_EXERCISE: user_id -> the participant_id who forged a reset for
+# that account. In memory, not the database, for the same reason
+# _login_attempts is -- ephemeral lab-session state, cleared by a reset.
+# Keyed by user_id rather than carried on the response because the flag
+# isn't claimed here: it's claimed later, on THAT account's dashboard, by
+# whichever participant actually logs in and proves the reset worked --
+# see customer.py:dashboard(). A different participant later viewing
+# the same seeded account (these are shared class-wide) doesn't consume
+# or see someone else's pending entry.
+_forged_reset_pending: dict = {}
+
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
@@ -326,7 +337,13 @@ def login():
 
     dest = "admin.dashboard" if user["role"] == "admin" else "customer.dashboard"
     resp = redirect(url_for(dest))
-    resp.set_cookie("wgs_session", token, httponly=True)
+    # SameSite=None (with the required Secure flag) instead of leaving
+    # the attribute unset -- browsers default an unset SameSite to Lax,
+    # which withholds the cookie on a cross-site POST and silently
+    # neuters CSRF_TEACH/CSRF_EXERCISE/HEADERS_CLICKJACK's whole premise
+    # (no anti-CSRF protection) in any current browser. This restores
+    # the cookie behavior those flags were written to demonstrate.
+    resp.set_cookie("wgs_session", token, httponly=True, samesite="None", secure=True)
 
     # NOTE: this one is set as an ordinary (non-HttpOnly) cookie on
     # purpose -- a working reflected-XSS payload can read it via
@@ -444,6 +461,16 @@ def reset_password():
     db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (weak_hash(new_password), user["id"]))
     db.commit()
 
-    if is_stale:
-        return render_template("reset_password_done.html", oldtoken_flag=get_flag(flags.OLDTOKEN_EXERCISE, g.participant_id))
-    return redirect(url_for("auth.login"))
+    # Phase 7: no longer tied to staleness for flag purposes -- there's no
+    # signature on this token at all (see make_reset_token/decode_reset_
+    # token above), so ANY successful reset via a token that was never
+    # actually emailed proves the same underlying gap a stale one does,
+    # and requiring an old timestamp specifically just meant a freshly-
+    # timestamped forgery got no acknowledgment at all. Recorded against
+    # the account, to be claimed on ITS dashboard once whoever forged it
+    # actually logs in and proves the reset took -- see customer.py:
+    # dashboard() and _forged_reset_pending above. is_stale is still what
+    # the hardened branch above actually rejects; it just no longer gates
+    # whether this counts.
+    _forged_reset_pending[user["id"]] = g.participant_id
+    return render_template("reset_password_done.html")

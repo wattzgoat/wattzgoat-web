@@ -74,6 +74,9 @@ CSRF_TEACH = "CSRF_TEACH"
 CSRF_EXERCISE = "CSRF_EXERCISE"
 FILEUPLOAD_TEACH = "FILEUPLOAD_TEACH"
 FILEUPLOAD_EXERCISE = "FILEUPLOAD_EXERCISE"
+ACCOUNT_IDOR_BONUS = "ACCOUNT_IDOR_BONUS"
+HEADERS_CLICKJACK = "HEADERS_CLICKJACK"
+SQLI_BOOLEAN_BONUS = "SQLI_BOOLEAN_BONUS"
 
 # Category 15 -- Bonus: Simulated AI Assistant. See app/assistant.py.
 ASSISTANT_SYSPROMPT_LEAK = "ASSISTANT_SYSPROMPT_LEAK"
@@ -85,9 +88,11 @@ ASSISTANT_OUTPUT_XSS = "ASSISTANT_OUTPUT_XSS"
 CATALOG = [
     (HEADERS_TEACH, "Missing security headers", "Dashboard"),
     (HEADERS_EXERCISE, "Missing security headers", "Login page"),
+    (HEADERS_CLICKJACK, "Missing security headers", "Recharge"),
     (SQLI_TEACH, "SQL injection", "Meter search"),
     (SQLI_EXERCISE, "SQL injection", "Alarm search"),
     (SQLI_BONUS, "SQL injection", "Usage search"),
+    (SQLI_BOOLEAN_BONUS, "SQL injection", "Usage search"),
     (RXSS_TEACH, "Reflected XSS", "Usage search"),
     (RXSS_EXERCISE, "Reflected XSS", "Password reset"),
     (SXSS_TEACH, "Stored XSS", "Meter nickname"),
@@ -102,6 +107,7 @@ CATALOG = [
     (IDOR_TEACH, "Broken access control", "Readings API"),
     (MASSASSIGN_EXERCISE, "Broken access control", "Account settings"),
     (ROLE_ESCALATION_BONUS, "Broken access control", "Account settings"),
+    (ACCOUNT_IDOR_BONUS, "Broken access control", "Account settings"),
     (PRIVESC_TEACH, "Broken authentication", "Meter control"),
     (OLDTOKEN_EXERCISE, "Broken authentication", "Password reset"),
     (SESSIONREUSE_BONUS, "Broken authentication", "Logout"),
@@ -132,8 +138,8 @@ CATALOG = [
 
 VALID_KEYS = {key for key, _, _ in CATALOG}
 
-assert len(CATALOG) == 45
-assert len(VALID_KEYS) == 45, "flag keys must be unique"
+assert len(CATALOG) == 48
+assert len(VALID_KEYS) == 48, "flag keys must be unique"
 
 # One-line remediation note shown on /progress after a correct
 # submission -- what a developer would actually do to fix this class of
@@ -141,9 +147,11 @@ assert len(VALID_KEYS) == 45, "flag keys must be unique"
 REMEDIATION = {
     HEADERS_TEACH: "Set X-Frame-Options / a CSP frame-ancestors directive on every response.",
     HEADERS_EXERCISE: "Add HSTS, X-Content-Type-Options, and a real Content-Security-Policy app-wide.",
+    HEADERS_CLICKJACK: "Set X-Frame-Options / frame-ancestors on every page, not just the ones an audit happens to sample.",
     SQLI_TEACH: "Use parameterized queries everywhere -- never interpolate user input into SQL.",
     SQLI_EXERCISE: "Same fix as the meter search -- parameterize, don't concatenate.",
     SQLI_BONUS: "The same raw-interpolation pattern needs fixing everywhere it's reused, not just once.",
+    SQLI_BOOLEAN_BONUS: "Parameterize the query -- a boolean-based OR bypass is exactly as fixed by that as a UNION is.",
     RXSS_TEACH: "HTML-escape all user-controlled output; never trust it in a rendered response.",
     RXSS_EXERCISE: "Escape user input even in \"not found\" / error messages -- they're output too.",
     SXSS_TEACH: "Never render stored user input with |safe (or equivalent) -- escape by default.",
@@ -158,6 +166,7 @@ REMEDIATION = {
     IDOR_TEACH: "Check that the requested resource actually belongs to the caller before returning it.",
     MASSASSIGN_EXERCISE: "Explicitly allow-list which fields a client can update -- never trust the payload's keys.",
     ROLE_ESCALATION_BONUS: "Never let a client-supplied field set its own privilege level.",
+    ACCOUNT_IDOR_BONUS: "Derive which account to update from the authenticated session, never from a client-supplied identifier.",
     PRIVESC_TEACH: "Require the correct role, not just any valid session, on privileged actions.",
     OLDTOKEN_EXERCISE: "Check and enforce a reset token's expiry server-side, not just cosmetically.",
     SESSIONREUSE_BONUS: "Invalidate a session token server-side on logout, not just the browser's cookie.",

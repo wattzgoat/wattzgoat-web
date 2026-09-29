@@ -6,7 +6,7 @@ The site has security weaknesses on purpose, so you can practise finding them in
 
 ## How you learn with it
 
-WattzGOAT works like a capture the flag (CTF) game. There are 45 flags hidden in the site. You get a flag by finding a weakness and using it. Five of the 45 are bonus flags about a simulated AI assistant.
+WattzGOAT works like a capture the flag (CTF) game. There are 48 flags hidden in the site. You get a flag by finding a weakness and using it. Five of the 48 are bonus flags about a simulated AI assistant.
 
 The weaknesses are the kind of problems described in the OWASP Top 10, so what you practise here applies to real websites too.
 

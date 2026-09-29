@@ -11,6 +11,13 @@
 </div>
 {% endif %}
 
+{% if oldtoken_flag %}
+<div class="bg-amber-50 border border-amber-300 text-amber-900 rounded-lg p-4 mb-6 text-sm">
+  This account's password was just reset with a forged token —
+  Broken authentication: {{ oldtoken_flag }}
+</div>
+{% endif %}
+
 {% for meter in meters %}
 <div class="bg-white rounded-lg p-6 shadow-sm mb-4" data-meter-card data-meter-id="{{ meter['id'] }}">
   <div class="flex items-start justify-between">

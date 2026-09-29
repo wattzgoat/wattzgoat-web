@@ -4,7 +4,7 @@ This is a plain usability check, independent of hardening state -- it's
 enforced the same way whether the instance is vulnerable or hardened,
 so it lives alongside test_smoke.py rather than under tests/hardening/
 (which is specifically for hardened-vs-vulnerable branches) or
-tests/flags/ (which is specifically for the 45 vulnerability
+tests/flags/ (which is specifically for the 48 vulnerability
 instances). Confirm-password is neither.
 """
 import os

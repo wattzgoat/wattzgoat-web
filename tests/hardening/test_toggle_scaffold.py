@@ -143,3 +143,27 @@ def test_weakpw_change_toggle(base_url, set_hardened, login_fn):
     # works -- proves the rejected change never got written.
     session2, resp2 = login_fn(email, "abc12345")
     assert "wgs_session" in session2.cookies.get_dict()
+
+
+def test_headers_clickjack_toggle(farid, devon, base_url, set_hardened):
+    resp = farid.post(
+        f"{base_url}/recharge",
+        data={"amount_paid": "10", "target_meter_code": "MTR-1004"},
+        headers={"Sec-Fetch-Dest": "iframe"},
+        timeout=10,
+    )
+    assert "FLAG{" in resp.text
+
+    set_hardened("HEADERS_CLICKJACK", True)
+
+    resp = farid.post(
+        f"{base_url}/recharge",
+        data={"amount_paid": "10", "target_meter_code": "MTR-1004"},
+        headers={"Sec-Fetch-Dest": "iframe"},
+        timeout=10,
+    )
+    assert resp.status_code == 200
+    assert "FLAG{" not in resp.text
+    # target_meter_code is ignored outright once hardened -- own meter credited.
+    assert "kWh added" in resp.text
+

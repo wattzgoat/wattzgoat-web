@@ -78,6 +78,7 @@ def _clear_in_memory_state() -> None:
     reset isn't followed by a lockout or a stale confirmation."""
     auth._login_attempts.clear()
     auth._reset_attempts.clear()
+    auth._forged_reset_pending.clear()
     assistant._pending_admin_actions.clear()
 
 

@@ -21,6 +21,9 @@
   {% if negative_flag %}
   <br><span class="text-xs">A negative amount was accepted and applied to the balance — Business logic flaws: {{ negative_flag }}</span>
   {% endif %}
+  {% if clickjack_flag %}
+  <br><span class="text-xs">This recharge credited a different meter than yours, delivered through a framed request — Missing security headers: {{ clickjack_flag }}</span>
+  {% endif %}
 </div>
 {% endif %}
 

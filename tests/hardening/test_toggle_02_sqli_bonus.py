@@ -41,3 +41,24 @@ def test_errhandling_teach_independent_of_sqli_bonus(alice, base_url, set_harden
     resp = alice.get(f"{base_url}/usage", params={"q": "'"}, timeout=10)
     assert resp.status_code == 200
     assert "FLAG{" not in resp.text
+
+
+def test_sqli_boolean_bonus_toggle(alice, base_url, set_hardened):
+    payload = "' OR '1'='1' -- "
+    resp = alice.get(f"{base_url}/usage", params={"q": payload}, timeout=10)
+    assert "FLAG{" in resp.text
+
+    set_hardened("SQLI_BOOLEAN_BONUS", True)
+
+    # Shares its vulnerable code path with SQLI_BONUS (see customer.py's
+    # usage() comment) -- hardening this one alone parameterizes the
+    # SAME query, so the UNION technique stops working too, not just the
+    # boolean one.
+    resp = alice.get(f"{base_url}/usage", params={"q": payload}, timeout=10)
+    assert resp.status_code == 200
+    assert "FLAG{" not in resp.text
+
+    union_payload = "zzz' UNION SELECT reading_kwh, source, recorded_at FROM readings--"
+    resp = alice.get(f"{base_url}/usage", params={"q": union_payload}, timeout=10)
+    assert "FLAG{" not in resp.text
+

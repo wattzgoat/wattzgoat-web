@@ -37,6 +37,28 @@ def patch_account():
     if hardening.is_hardened(flags.ROLE_ESCALATION_BONUS):
         patchable_fields.discard("role")
 
+    db = get_db()
+
+    # NOTE: account_email isn't a database column this route ever writes
+    # -- it's a THIRD hidden field on the account form (account.html),
+    # pre-filled with the caller's own address, that decides which row
+    # every other field in this same payload gets written to. Point it at
+    # someone else's email and their account is the one that gets
+    # updated, not the caller's -- broken access control bonus instance
+    # (a fourth, alongside the readings-API IDOR and the two mass-
+    # assignment flags already on this same page).
+    #
+    # Phase 6: hardened branch ignores this field outright, the same
+    # pattern as billing_rate/role above -- always the caller's own row.
+    target = g.user
+    is_idor = False
+    target_email = payload.get("account_email")
+    if target_email and not hardening.is_hardened(flags.ACCOUNT_IDOR_BONUS):
+        other = db.execute("SELECT * FROM users WHERE email = ?", (target_email,)).fetchone()
+        if other is not None and other["id"] != g.user["id"]:
+            target = other
+            is_idor = True
+
     updates = {k: v for k, v in payload.items() if k in patchable_fields}
     if not updates:
         return jsonify({"error": "no recognized fields in payload"}), 400
@@ -44,21 +66,32 @@ def patch_account():
     if "role" in updates and updates["role"] not in ("customer", "admin"):
         return jsonify({"error": "invalid role"}), 400
 
-    was_customer = g.user["role"] == "customer"
+    was_customer = target["role"] == "customer"
+    # Phase 7: MASSASSIGN_EXERCISE only fires when billing_rate actually
+    # changes -- account.html sends it as a hidden field on EVERY save
+    # (including ones that only touch name/phone/address), so firing on
+    # mere presence awarded the flag on completely unrelated edits.
+    old_billing_rate = target["billing_rate"]
 
-    db = get_db()
     set_clause = ", ".join(f"{field} = ?" for field in updates)
     db.execute(
         f"UPDATE users SET {set_clause} WHERE id = ?",
-        (*updates.values(), g.user["id"]),
+        (*updates.values(), target["id"]),
     )
     db.commit()
 
     result = {"updated": list(updates.keys())}
-    if "billing_rate" in updates:
-        result["flag"] = get_flag(flags.MASSASSIGN_EXERCISE, g.participant_id)
-    if "role" in updates and updates["role"] == "admin" and was_customer:
-        result["role_flag"] = get_flag(flags.ROLE_ESCALATION_BONUS, g.participant_id)
+    if is_idor:
+        # A request that reaches another account at all is the finding --
+        # which specific fields it also touched doesn't earn the
+        # mass-assignment/role flags on top, or one tampered request
+        # could claim three flags at once.
+        result["idor_flag"] = get_flag(flags.ACCOUNT_IDOR_BONUS, g.participant_id)
+    else:
+        if "billing_rate" in updates and float(updates["billing_rate"]) != float(old_billing_rate):
+            result["flag"] = get_flag(flags.MASSASSIGN_EXERCISE, g.participant_id)
+        if "role" in updates and updates["role"] == "admin" and was_customer:
+            result["role_flag"] = get_flag(flags.ROLE_ESCALATION_BONUS, g.participant_id)
     return jsonify(result)
 
 

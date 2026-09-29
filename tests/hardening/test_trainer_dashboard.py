@@ -62,7 +62,7 @@ def test_trainer_login_required(trainer_base_url):
 def test_dashboard_loads_with_all_toggles(trainer_session, trainer_base_url):
     resp = trainer_session.get(f"{trainer_base_url}/instructor/", timeout=10)
     assert resp.status_code == 200
-    assert resp.text.count("data-flag-key=") == 45
+    assert resp.text.count("data-flag-key=") == 48
     # No implementation detail naming the underlying endpoint directly
     # (next-phase item 5) -- this instance doesn't even register
     # ops_bp, so /ops/__set_hardening__ isn't reachable here at all.
@@ -92,7 +92,7 @@ def test_summary_reflects_category_toggle(trainer_session, trainer_base_url):
         timeout=10,
     )
     assert toggle.status_code == 200
-    assert set(toggle.json()["flag_keys"]) == {"HEADERS_TEACH", "HEADERS_EXERCISE"}
+    assert set(toggle.json()["flag_keys"]) == {"HEADERS_TEACH", "HEADERS_EXERCISE", "HEADERS_CLICKJACK"}
 
     resp = trainer_session.get(f"{trainer_base_url}/instructor/api/summary", timeout=10)
     data = resp.json()

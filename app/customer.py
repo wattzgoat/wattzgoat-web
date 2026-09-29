@@ -8,6 +8,7 @@ from flask import Blueprint, abort, g, make_response, redirect, render_template,
 from markupsafe import escape
 
 from .auth import login_required, weak_hash, is_weak_password
+from . import auth
 from .db import get_db, mysql_style_error
 from .devices import issue_device_token
 from .hardening import csrf_token
@@ -79,9 +80,20 @@ def dashboard():
         else None
     )
 
+    # OLDTOKEN_EXERCISE: claimed here, not on the reset-password page
+    # itself -- see auth.py's _forged_reset_pending and reset_password()
+    # for why. Only pops (consumes) the entry when it belongs to the
+    # participant currently viewing, so someone else's pending forgery
+    # on this same shared account isn't lost if another participant
+    # happens to load this page first.
+    oldtoken_flag = None
+    if auth._forged_reset_pending.get(g.user["id"]) == g.participant_id and not hardening.is_hardened(flags.OLDTOKEN_EXERCISE):
+        oldtoken_flag = get_flag(flags.OLDTOKEN_EXERCISE, g.participant_id)
+        del auth._forged_reset_pending[g.user["id"]]
+
     resp = make_response(render_template(
         "dashboard.html", user=g.user, meters=meters, device_tokens=device_tokens,
-        sessionid_flag=sessionid_flag, sxss_title_flag=sxss_title_flag,
+        sessionid_flag=sessionid_flag, sxss_title_flag=sxss_title_flag, oldtoken_flag=oldtoken_flag,
     ))
     # NOTE: no X-Frame-Options / CSP frame-ancestors on this response --
     # the Recharge link on this page is embeddable in an invisible iframe
@@ -157,6 +169,19 @@ def _is_cross_origin(req) -> bool:
     # Neither header present at all -- most consistent with a file://
     # PoC page, where browsers suppress Referer entirely.
     return True
+
+
+def _is_framed(req) -> bool:
+    # HEADERS_CLICKJACK detection. Sec-Fetch-Dest is sent by every current
+    # major browser on same-origin AND cross-origin requests alike, and is
+    # "iframe" specifically when the request is a navigation happening
+    # INSIDE a frame -- unlike _is_cross_origin() above, which can't tell
+    # a plain cross-site top-level form submission (ordinary CSRF) from
+    # one delivered through a hidden frame (clickjacking). A PoC needs an
+    # actual <iframe> (or a form target="..." pointed at one) around the
+    # recharge submission for this to be true, not just an auto-submitting
+    # top-level form.
+    return req.headers.get("Sec-Fetch-Dest") == "iframe"
 
 
 @bp.route("/account", methods=["GET"])
@@ -246,7 +271,14 @@ def change_password():
         if is_weak_password(new_password) and not hardening.is_hardened(flags.WEAKPW_CHANGE)
         else None
     )
-    pwchange_flag = get_flag(flags.PWCHANGE_TEACH, g.participant_id) if not hardening.is_hardened(flags.PWCHANGE_TEACH) else None
+    # Phase 7: only fires past 7 characters, so this flag and
+    # WEAKPW_CHANGE above are earned by two separate actions -- a short
+    # password used to trip both categories in a single submission.
+    pwchange_flag = (
+        get_flag(flags.PWCHANGE_TEACH, g.participant_id)
+        if len(new_password) > 7 and not hardening.is_hardened(flags.PWCHANGE_TEACH)
+        else None
+    )
     # CSRF teach instance: no anti-CSRF token on this form at all, so a
     # forged cross-origin submission works just as well as a real one --
     # combined with the missing current-password check above, that's a
@@ -321,8 +353,30 @@ def recharge():
         units_credited = float(raw_override) if raw_override not in (None, "") else round(amount_paid / RECHARGE_RATE, 2)
         buslogic_flag = get_flag(flags.BUSLOGIC_TEACH, g.participant_id) if raw_override not in (None, "") else None
 
+    # NOTE: a target_meter_code in the request retargets the credit at
+    # THAT meter instead of the caller's own -- no ownership check at
+    # all, and this page carries no framing protection either. A hidden
+    # iframe around this exact form, positioned under a decoy button,
+    # turns an unsuspecting click into a recharge that lands on the
+    # attacker's own meter instead of the victim's -- missing security
+    # headers bonus instance (clickjacking). The rendered form never
+    # sends this field; it's discovered the same way units_credited is.
+    #
+    # Phase 6: hardened branch ignores target_meter_code outright, the
+    # same pattern as billing_rate/role/units_credited elsewhere in this
+    # app -- always the caller's own meter.
     db = get_db()
-    db.execute("UPDATE meters SET balance = balance + ? WHERE id = ?", (units_credited, meter["id"]))
+    credited_meter = meter
+    clickjack_flag = None
+    target_code = request.form.get("target_meter_code")
+    if target_code and not hardening.is_hardened(flags.HEADERS_CLICKJACK):
+        other = db.execute("SELECT * FROM meters WHERE meter_code = ?", (target_code,)).fetchone()
+        if other is not None and other["id"] != meter["id"]:
+            credited_meter = other
+            if _is_framed(request):
+                clickjack_flag = get_flag(flags.HEADERS_CLICKJACK, g.participant_id)
+
+    db.execute("UPDATE meters SET balance = balance + ? WHERE id = ?", (units_credited, credited_meter["id"]))
     db.execute(
         "INSERT INTO recharges (user_id, amount_paid, units_credited) VALUES (?, ?, ?)",
         (g.user["id"], amount_paid, units_credited),
@@ -331,7 +385,7 @@ def recharge():
     meter = _own_meters()[0]
     return render_template(
         "recharge.html", meter=meter, rate=RECHARGE_RATE, paid=amount_paid, credited=units_credited,
-        buslogic_flag=buslogic_flag, negative_flag=negative_flag,
+        buslogic_flag=buslogic_flag, negative_flag=negative_flag, clickjack_flag=clickjack_flag,
     )
 
 
@@ -431,9 +485,14 @@ def usage():
     # ERRHANDLING_TEACH's branch below simply never triggers in that
     # case -- not because it's disabled, but because there's nothing left
     # to mishandle.
+    # Phase 7: SQLI_BOOLEAN_BONUS shares this exact code path with
+    # SQLI_BONUS -- one raw-interpolated query, two different techniques
+    # a participant can use against it. There's no separate "harden just
+    # the boolean route" switch: parameterizing kills both the same way
+    # a real fix would, so either toggle being hardened parameterizes it.
     db = get_db()
     sqli_flag = None
-    if hardening.is_hardened(flags.SQLI_BONUS):
+    if hardening.is_hardened(flags.SQLI_BONUS) or hardening.is_hardened(flags.SQLI_BOOLEAN_BONUS):
         sql = "SELECT reading_kwh, source, recorded_at FROM readings WHERE meter_id = ? AND recorded_at LIKE ?"
         params = (meter_id, f"%{query}%")
     else:
@@ -449,10 +508,20 @@ def usage():
         # row rather than one specific column, since which SELECT
         # position the decoy row's sentinel lands in depends on the
         # exact UNION payload a participant wrote.
+        #
+        # A UNION SELECT and a boolean OR (`' OR '1'='1' -- `, the
+        # trailing comment needed to eat the template's closing `%'` in
+        # THIS query shape) both genuinely surface the sentinel -- the
+        # only difference is which flag they earn, judged by whether the
+        # payload used UNION at all, an easier first step before the
+        # harder UNION technique.
         if results and any(
             flags.SQLI_BONUS_SENTINEL in str(value) for row in results for value in tuple(row)
         ):
-            sqli_flag = get_flag(flags.SQLI_BONUS, g.participant_id)
+            if "union" in query.lower():
+                sqli_flag = get_flag(flags.SQLI_BONUS, g.participant_id)
+            else:
+                sqli_flag = get_flag(flags.SQLI_BOOLEAN_BONUS, g.participant_id)
     except sqlite3.OperationalError as e:
         results = None
         # Phase 6: ERRHANDLING_TEACH's own hardened branch -- a generic

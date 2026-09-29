@@ -45,6 +45,7 @@ def reset_lab():
     # login after a reset would already count as attempt #6.
     auth._login_attempts.clear()
     auth._reset_attempts.clear()
+    auth._forged_reset_pending.clear()
     assistant._pending_admin_actions.clear()
 
     # Browsers (the admin nav button) land back on the login page, since the
