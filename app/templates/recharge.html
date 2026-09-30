@@ -38,6 +38,12 @@
     </div>
     <button id="confirm-recharge" class="w-full bg-[#F4B41A] text-[#14181C] rounded py-2 font-medium">Confirm recharge</button>
   </form>
+  <!-- Deliberately OUTSIDE the <form> above, so it never rides along
+       with a normal submission -- a hint for anyone reading the page
+       source that the server accepts a units_credited field at all,
+       without handing over the fact that it's trusted outright
+       (Business logic flaws: BUSLOGIC_TEACH, see customer.py). -->
+  <input type="hidden" name="units_credited">
   <script>
   (function () {
     var rate = {{ rate }};
