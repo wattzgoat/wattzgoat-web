@@ -1,42 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Create account — WattzGOAT{% endblock %}
 {% block content %}
-<div class="max-w-sm mx-auto mt-12 bg-white rounded-lg p-8 shadow-sm">
-  <h1 class="text-2xl font-semibold mb-6">Create your account</h1>
+{% import "_ui.html" as ui %}
+{% call ui.auth_card('Create your account', 'Set up access to your meter dashboard.', 'user') %}
   {% if weak_password_flag %}
-  <div class="bg-green-50 text-green-800 text-sm rounded p-3 mb-4">
+  <div class="mb-4">{% call ui.alert('success') %}
     Account created with a password under 4 characters, no complexity check stopped it --
     Weak passwords: {{ weak_password_flag }}
-  </div>
+  {% endcall %}</div>
   {% endif %}
   {% if error %}
   {# Shown for a password mismatch (Phase 7) or on WEAKPW_TEACH's
      hardened branch (Phase 6, see auth.py:signup()) -- the vulnerable
      branch never sets this for weak passwords, but a mismatch is
      checked regardless of hardening state. #}
-  <div class="bg-red-50 text-red-800 text-sm rounded p-3 mb-4">{{ error }}</div>
+  <div class="mb-4">{% call ui.alert('error') %}{{ error }}{% endcall %}</div>
   {% endif %}
   <form method="post" class="space-y-4">
-    <div>
-      <label for="name" class="block text-sm mb-1">Full name</label>
-      <input id="name" name="name" type="text" required class="w-full border rounded px-3 py-2">
-    </div>
-    <div>
-      <label for="email" class="block text-sm mb-1">Email</label>
-      <input id="email" name="email" type="text" required class="w-full border rounded px-3 py-2">
-    </div>
-    <div>
-      <label for="password" class="block text-sm mb-1">Password</label>
-      <input id="password" name="password" type="password" required class="w-full border rounded px-3 py-2">
-    </div>
-    <div>
-      <label for="confirm_password" class="block text-sm mb-1">Confirm password</label>
-      <input id="confirm_password" name="confirm_password" type="password" required class="w-full border rounded px-3 py-2">
-    </div>
-    <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Create account</button>
+    {{ ui.field('name', 'name', 'Full name', icon_name='user') }}
+    {{ ui.field('email', 'email', 'Email', icon_name='mail') }}
+    {{ ui.field('password', 'password', 'Password', type='password', icon_name='lock') }}
+    {{ ui.field('confirm_password', 'confirm_password', 'Confirm password', type='password', icon_name='lock') }}
+    <button class="{{ ui.btn_class('primary', full=True) }}">Create account</button>
   </form>
-  <p class="text-sm text-gray-500 mt-4">
-    Already have an account? <a href="{{ url_for('auth.login') }}" class="underline">Log in</a>
+  <p class="mt-6 border-t border-gray-100 pt-4 text-sm text-gray-500">
+    Already have an account? <a href="{{ url_for('auth.login') }}" class="font-medium text-ink underline">Log in</a>
   </p>
-</div>
+{% endcall %}
 {% endblock %}

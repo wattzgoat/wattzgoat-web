@@ -1,80 +1,134 @@
 {% extends "base.html" %}
+{% set page_wide = true %}
 {% block title %}Log in — WattzGOAT{% endblock %}
 {% block content %}
+{% import "_ui.html" as ui %}
 {% if not is_hardened('DEVADMIN_LEAK') %}
 <!-- TODO(dev): remove before release. Temp admin for staging:
      devadmin@example.com / Dev@2024! -->
 {% endif %}
-<div class="grid lg:grid-cols-2 gap-10 items-center mt-6">
+<div class="mt-2 grid items-center gap-12 lg:grid-cols-5">
 
-  <div class="order-2 lg:order-1">
-    <span class="inline-block text-xs font-semibold tracking-wide text-[#F4B41A] bg-[#14181C] rounded-full px-3 py-1 mb-4">
+  <div class="order-2 lg:order-1 lg:col-span-3">
+    <span class="inline-block animate-fade-up motion-reduce:animate-none rounded-full bg-ink px-3 py-1 text-xs font-semibold tracking-wide text-accent">
       WATTZGOAT SMARTMETER X1
     </span>
 
-    <svg viewBox="0 0 320 260" class="w-full max-w-xs mb-6" role="img" aria-label="WattzGOAT SmartMeter X1 device illustration">
-      <ellipse cx="160" cy="238" rx="90" ry="12" fill="#14181C" opacity="0.08"/>
-      <rect x="55" y="28" width="210" height="190" rx="22" fill="#14181C"/>
-      <rect x="55" y="28" width="210" height="190" rx="22" fill="none" stroke="#F4B41A" stroke-opacity="0.15" stroke-width="2"/>
-      <rect x="78" y="52" width="164" height="70" rx="8" fill="#0B0D10"/>
-      <text x="90" y="98" font-family="monospace" font-size="30" fill="#F4B41A" letter-spacing="2">042.7</text>
-      <text x="196" y="98" font-family="monospace" font-size="13" fill="#9CA3AF">kWh</text>
-      <circle cx="234" cy="64" r="5" fill="#22C55E"/>
-      <path d="M172 144 L150 176 L164 176 L150 204 L188 168 L172 168 Z" fill="#F4B41A"/>
-      <text x="160" y="200" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#6B7280" letter-spacing="1">WATTZGOAT</text>
-      <rect x="130" y="216" width="60" height="10" rx="3" fill="#14181C"/>
-    </svg>
-
-    <h1 class="text-3xl font-bold leading-tight mb-3">Powering homes.<br>Know every watt.</h1>
-    <p class="text-gray-600 mb-6">
+    <h1 class="mt-5 animate-fade-up motion-reduce:animate-none text-4xl font-extrabold leading-tight tracking-tight [animation-delay:80ms] sm:text-5xl">
+      Powering homes.<br><span class="rounded-md bg-accent/40 px-1.5">Know every watt.</span>
+    </h1>
+    <p class="mt-5 max-w-xl animate-fade-up motion-reduce:animate-none text-lg text-gray-600 [animation-delay:160ms]">
       The SmartMeter X1 gives your household real-time usage tracking, solar export crediting, and
       cloud-connected diagnostics — all from one dashboard your whole family can log into, and
       apparently so can everyone else's.
     </p>
-    <ul class="space-y-3 mb-8 text-sm text-gray-700">
-      <li class="flex gap-2"><span class="text-[#F4B41A]">&#9679;</span> Real-time kWh usage, updated every 20–40 seconds</li>
-      <li class="flex gap-2"><span class="text-[#F4B41A]">&#9679;</span> Automatic solar export crediting, no cap required</li>
-      <li class="flex gap-2"><span class="text-[#F4B41A]">&#9679;</span> Remote diagnostics your field techs will love</li>
-    </ul>
-    <blockquote class="border-l-4 border-[#F4B41A] pl-4 text-sm text-gray-600 italic mb-2">
+
+    <div class="mt-8 flex animate-fade-up motion-reduce:animate-none flex-col items-center gap-6 [animation-delay:240ms] sm:flex-row">
+      <div class="shrink-0 rounded-3xl bg-white p-3 shadow-card ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lift">
+        <svg viewBox="0 0 320 260" class="h-auto w-44" role="img" aria-label="WattzGOAT SmartMeter X1 device illustration">
+          <ellipse cx="160" cy="238" rx="90" ry="12" fill="#14181C" opacity="0.08"/>
+          <rect x="55" y="28" width="210" height="190" rx="22" fill="#14181C"/>
+          <rect x="55" y="28" width="210" height="190" rx="22" fill="none" stroke="#F4B41A" stroke-opacity="0.15" stroke-width="2"/>
+          <rect x="78" y="52" width="164" height="70" rx="8" fill="#0B0D10"/>
+          <text x="90" y="98" font-family="monospace" font-size="30" fill="#F4B41A" letter-spacing="2">042.7</text>
+          <text x="196" y="98" font-family="monospace" font-size="13" fill="#9CA3AF">kWh</text>
+          <circle cx="234" cy="64" r="5" fill="#22C55E"/>
+          <path d="M172 144 L150 176 L164 176 L150 204 L188 168 L172 168 Z" fill="#F4B41A"/>
+          <text x="160" y="200" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#6B7280" letter-spacing="1">WATTZGOAT</text>
+          <rect x="130" y="216" width="60" height="10" rx="3" fill="#14181C"/>
+        </svg>
+      </div>
+      <ul class="space-y-4 text-sm text-gray-700">
+        <li class="flex items-start gap-3">
+          <span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-ink">{{ ui.icon('chart', 18) }}</span>
+          <span class="pt-1.5">Real-time kWh usage, updated every 20–40 seconds</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-ink">{{ ui.icon('sun', 18) }}</span>
+          <span class="pt-1.5">Automatic solar export crediting, no cap required</span>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/20 text-ink">{{ ui.icon('gauge', 18) }}</span>
+          <span class="pt-1.5">Remote diagnostics your field techs will love</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="mt-8 grid animate-fade-up motion-reduce:animate-none grid-cols-3 gap-3 [animation-delay:320ms]">
+      <div class="rounded-xl bg-white p-4 shadow-card ring-1 ring-black/5">
+        <p class="text-2xl font-extrabold tracking-tight"><span data-count-to="12000" data-suffix="+">12,000+</span></p>
+        <p class="mt-1 text-xs text-gray-500">households</p>
+      </div>
+      <div class="rounded-xl bg-white p-4 shadow-card ring-1 ring-black/5">
+        <p class="text-2xl font-extrabold tracking-tight"><span data-count-to="40" data-suffix="%">40%</span></p>
+        <p class="mt-1 text-xs text-gray-500">faster outage response</p>
+      </div>
+      <div class="rounded-xl bg-white p-4 shadow-card ring-1 ring-black/5">
+        <p class="text-2xl font-extrabold tracking-tight">20–40 s</p>
+        <p class="mt-1 text-xs text-gray-500">between live readings</p>
+      </div>
+    </div>
+
+    <blockquote class="mt-8 animate-fade-up motion-reduce:animate-none border-l-4 border-accent pl-4 text-sm italic text-gray-600 [animation-delay:400ms]">
       "Since switching to WattzGOAT, our outage response time improved by 40%. Our incident
       response time, less so."
+      <footer class="mt-1 text-xs not-italic text-gray-400">— Utility Director, City of Fictional Springs</footer>
     </blockquote>
-    <p class="text-xs text-gray-400">— Utility Director, City of Fictional Springs</p>
-    <p class="text-xs text-gray-400 mt-4">Trusted by 12,000+ households.</p>
   </div>
 
-  <div class="order-1 lg:order-2 max-w-sm w-full mx-auto bg-white rounded-lg p-8 shadow-sm">
-    <h2 class="text-2xl font-semibold mb-6">Log in</h2>
-    {% if notice %}
-    <p class="text-green-700 text-sm mb-3">{{ notice }}</p>
-    {% endif %}
-    {% if error %}
-    <p class="text-red-600 text-sm mb-1">{{ error }}</p>
-    {% if errhandling_flag %}
-    <p class="text-xs text-gray-500">Improper error handling: {{ errhandling_flag }}</p>
-    {% endif %}
-    {% if ratelimit_flag %}
-    <!-- {{ ratelimit_flag }} -->
-    {% endif %}
-    {% endif %}
-    <form method="post" class="space-y-4">
-      <input type="hidden" name="_lab_flag" value="{{ plaintext_flag }}">
-      <div>
-        <label for="email" class="block text-sm mb-1">Email</label>
-        <input id="email" name="email" type="text" required class="w-full border rounded px-3 py-2">
+  <div class="order-1 lg:order-2 lg:col-span-2">
+    <div class="mx-auto w-full max-w-sm animate-fade-up motion-reduce:animate-none rounded-2xl bg-white p-8 shadow-lift ring-1 ring-black/5 [animation-delay:120ms]">
+      <span class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-accent/20 text-ink">{{ ui.icon('bolt', 22) }}</span>
+      <h2 class="text-2xl font-bold tracking-tight">Log in</h2>
+      <p class="mb-6 mt-1 text-sm text-gray-500">Access your meter dashboard.</p>
+      {% if notice %}
+      <div class="mb-4">{% call ui.alert('success') %}{{ notice }}{% endcall %}</div>
+      {% endif %}
+      {% if error %}
+      <div class="mb-4">
+        {% call ui.alert('error') %}{{ error }}{% endcall %}
+        {% if errhandling_flag %}
+        <p class="mt-2 text-xs text-gray-500">Improper error handling: {{ errhandling_flag }}</p>
+        {% endif %}
+        {% if ratelimit_flag %}
+        <!-- {{ ratelimit_flag }} -->
+        {% endif %}
       </div>
-      <div>
-        <label for="password" class="block text-sm mb-1">Password</label>
-        <input id="password" name="password" type="password" required class="w-full border rounded px-3 py-2">
-        <a href="{{ url_for('auth.forgot_password') }}" class="text-xs text-gray-500 underline">Forgot password?</a>
-      </div>
-      <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Log in</button>
-    </form>
-    <p class="text-sm text-gray-500 mt-4">
-      New here? <a href="{{ url_for('auth.signup') }}" class="underline">Create an account</a>
-    </p>
+      {% endif %}
+      <form method="post" class="space-y-4">
+        <input type="hidden" name="_lab_flag" value="{{ plaintext_flag }}">
+        {{ ui.field('email', 'email', 'Email', icon_name='mail') }}
+        {{ ui.field('password', 'password', 'Password', type='password', icon_name='lock') }}
+        <div class="-mt-2 text-right">
+          <a href="{{ url_for('auth.forgot_password') }}" class="text-xs text-gray-500 underline transition hover:text-ink">Forgot password?</a>
+        </div>
+        <button class="{{ ui.btn_class('primary', full=True) }}">Log in {{ ui.icon('arrow-right', 16) }}</button>
+      </form>
+      <p class="mt-6 border-t border-gray-100 pt-4 text-sm text-gray-500">
+        New here? <a href="{{ url_for('auth.signup') }}" class="font-medium text-ink underline">Create an account</a>
+      </p>
+    </div>
   </div>
 
 </div>
+<script>
+(function () {
+  var els = document.querySelectorAll('[data-count-to]');
+  if (!els.length || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+  els.forEach(function (el) {
+    var target = parseInt(el.getAttribute('data-count-to'), 10);
+    var suffix = el.getAttribute('data-suffix') || '';
+    var start = null, duration = 1400;
+    function step(ts) {
+      if (start === null) start = ts;
+      var p = Math.min((ts - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * eased).toLocaleString('en-US') + suffix;
+      if (p < 1) requestAnimationFrame(step);
+    }
+    el.textContent = '0' + suffix;
+    requestAnimationFrame(step);
+  });
+})();
+</script>
 {% endblock %}

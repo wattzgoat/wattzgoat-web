@@ -1,38 +1,42 @@
 {% extends "base.html" %}
 {% block title %}Contact us — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-2">Contact us</h1>
-<p class="text-sm text-gray-600 mb-6">We're here to help with your SmartMeter X1, your bill, or your account.</p>
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Contact us', "We're here to help with your SmartMeter X1, your bill, or your account.", 'Support') }}
 
-<div class="grid sm:grid-cols-2 gap-4 mb-6">
-  <div class="bg-white rounded-lg shadow-sm p-5">
-    <h2 class="font-semibold mb-2">Customer care</h2>
-    <p class="text-sm text-gray-700">1-800-555-0142</p>
-    <p class="text-sm text-gray-700">care@example.com</p>
-    <p class="text-xs text-gray-500 mt-2">Mon–Fri 8:00–18:00, Sat 9:00–13:00 (Fictional Springs time)</p>
+<div class="mb-6 grid gap-4 sm:grid-cols-2">
+  <div class="rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lift">
+    <span class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 text-ink">{{ ui.icon('support', 20) }}</span>
+    <h2 class="mb-2 font-semibold">Customer care</h2>
+    <p class="flex items-center gap-2 text-sm text-gray-700">{{ ui.icon('phone', 15, 'text-gray-400') }} 1-800-555-0142</p>
+    <p class="mt-1 flex items-center gap-2 text-sm text-gray-700">{{ ui.icon('mail', 15, 'text-gray-400') }} care@example.com</p>
+    <p class="mt-3 flex items-center gap-2 text-xs text-gray-500">{{ ui.icon('clock', 14, 'text-gray-400') }} Mon–Fri 8:00–18:00, Sat 9:00–13:00 (Fictional Springs time)</p>
   </div>
-  <div class="bg-white rounded-lg shadow-sm p-5">
-    <h2 class="font-semibold mb-2">Outage line</h2>
-    <p class="text-sm text-gray-700">1-800-555-0177</p>
-    <p class="text-sm text-gray-700">outages@example.com</p>
-    <p class="text-xs text-gray-500 mt-2">Open 24 hours, every day.</p>
+  <div class="rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lift">
+    <span class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 text-ink">{{ ui.icon('bolt', 20) }}</span>
+    <h2 class="mb-2 font-semibold">Outage line</h2>
+    <p class="flex items-center gap-2 text-sm text-gray-700">{{ ui.icon('phone', 15, 'text-gray-400') }} 1-800-555-0177</p>
+    <p class="mt-1 flex items-center gap-2 text-sm text-gray-700">{{ ui.icon('mail', 15, 'text-gray-400') }} outages@example.com</p>
+    <p class="mt-3 flex items-center gap-2 text-xs text-gray-500">{{ ui.icon('clock', 14, 'text-gray-400') }} Open 24 hours, every day.</p>
   </div>
-  <div class="bg-white rounded-lg shadow-sm p-5">
-    <h2 class="font-semibold mb-2">Billing</h2>
-    <p class="text-sm text-gray-700">1-800-555-0163</p>
-    <p class="text-sm text-gray-700">billing@example.com</p>
-    <p class="text-xs text-gray-500 mt-2">Mon–Fri 8:00–17:00</p>
+  <div class="rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lift">
+    <span class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 text-ink">{{ ui.icon('wallet', 20) }}</span>
+    <h2 class="mb-2 font-semibold">Billing</h2>
+    <p class="flex items-center gap-2 text-sm text-gray-700">{{ ui.icon('phone', 15, 'text-gray-400') }} 1-800-555-0163</p>
+    <p class="mt-1 flex items-center gap-2 text-sm text-gray-700">{{ ui.icon('mail', 15, 'text-gray-400') }} billing@example.com</p>
+    <p class="mt-3 flex items-center gap-2 text-xs text-gray-500">{{ ui.icon('clock', 14, 'text-gray-400') }} Mon–Fri 8:00–17:00</p>
   </div>
-  <div class="bg-white rounded-lg shadow-sm p-5">
-    <h2 class="font-semibold mb-2">Mail</h2>
+  <div class="rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-lift">
+    <span class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 text-ink">{{ ui.icon('map-pin', 20) }}</span>
+    <h2 class="mb-2 font-semibold">Mail</h2>
     <p class="text-sm text-gray-700">WattzGOAT Corp<br>100 Grid Street<br>Fictional Springs, FS 00100</p>
   </div>
 </div>
 
-<div class="bg-white rounded-lg shadow-sm p-5 text-sm text-gray-700">
+{% call ui.alert('warn') %}
   <p class="mb-2"><strong>Downed power line or smell of gas?</strong> Stay clear and call your local emergency number first.</p>
   <p>For account-specific issues, you can also
-    <a href="{{ url_for('customer.support') }}" class="underline text-[#14181C]">open a support ticket</a>
+    <a href="{{ url_for('customer.support') }}" class="font-medium underline">open a support ticket</a>
     once you're logged in.</p>
-</div>
+{% endcall %}
 {% endblock %}

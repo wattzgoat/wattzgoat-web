@@ -1,0 +1,74 @@
+{# Shared UI pieces: icon set, buttons, form fields, alerts, cards. Import
+   inside a block with: {% import "_ui.html" as ui %}. Class names are written out in
+   full on purpose -- the Tailwind build only finds classes that appear literally. #}
+{% set ICONS = {
+  "bolt": '<polygon points="13,2 4,14 11,14 11,22 20,9 13,9"/>',
+  "chart": '<polyline points="3,3 3,21 21,21"/><line x1="8" y1="17" x2="8" y2="12"/><line x1="13" y1="17" x2="13" y2="8"/><line x1="18" y1="17" x2="18" y2="5"/>',
+  "sun": '<circle cx="12" cy="12" r="4"/><line x1="19.5" y1="12.0" x2="22.5" y2="12.0"/><line x1="17.3" y1="17.3" x2="19.4" y2="19.4"/><line x1="12.0" y1="19.5" x2="12.0" y2="22.5"/><line x1="6.7" y1="17.3" x2="4.6" y2="19.4"/><line x1="4.5" y1="12.0" x2="1.5" y2="12.0"/><line x1="6.7" y1="6.7" x2="4.6" y2="4.6"/><line x1="12.0" y1="4.5" x2="12.0" y2="1.5"/><line x1="17.3" y1="6.7" x2="19.4" y2="4.6"/>',
+  "gauge": '<circle cx="12" cy="12" r="9"/><line x1="12" y1="12" x2="16" y2="8"/><circle cx="12" cy="12" r="1"/>',
+  "receipt": '<polygon points="6,2 14,2 19,7 19,22 6,22"/><polyline points="14,2 14,7 19,7"/><line x1="9" y1="12" x2="16" y2="12"/><line x1="9" y1="16" x2="16" y2="16"/>',
+  "wallet": '<rect x="3" y="6" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="15" x2="17" y2="15"/>',
+  "shield": '<polygon points="12,3 20,6 20,12 12,21 4,12 4,6"/><polyline points="9,12 11,14 15,10"/>',
+  "lock": '<rect x="5" y="11" width="14" height="10" rx="2"/><polyline points="8,11 8,7 10,4 14,4 16,7 16,11"/>',
+  "user": '<circle cx="12" cy="8" r="4"/><polyline points="4,21 5,17 8,15 16,15 19,17 20,21"/>',
+  "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/>',
+  "phone": '<rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/>',
+  "clock": '<circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 15,14"/>',
+  "map-pin": '<polygon points="12,22 5,12 5,8 8,4 16,4 19,8 19,12"/><circle cx="12" cy="9" r="3"/>',
+  "check-circle": '<circle cx="12" cy="12" r="9"/><polyline points="8,12 11,15 16,9"/>',
+  "alert": '<polygon points="12,3 22,20 2,20"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17" x2="12" y2="17.5"/>',
+  "info": '<circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.5"/>',
+  "arrow-right": '<line x1="4" y1="12" x2="20" y2="12"/><polyline points="14,6 20,12 14,18"/>',
+  "flag": '<line x1="5" y1="3" x2="5" y2="22"/><polygon points="5,4 18,4 15,8 18,12 5,12"/>',
+  "eye": '<polygon points="2,12 7,7 12,5 17,7 22,12 17,17 12,19 7,17"/><circle cx="12" cy="12" r="3"/>',
+  "support": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="5.6" y1="5.6" x2="9.2" y2="9.2"/><line x1="14.8" y1="14.8" x2="18.4" y2="18.4"/><line x1="18.4" y1="5.6" x2="14.8" y2="9.2"/><line x1="9.2" y1="14.8" x2="5.6" y2="18.4"/>',
+  "code": '<polyline points="8,6 2,12 8,18"/><polyline points="16,6 22,12 16,18"/>'
+} %}
+
+{% macro icon(name, size=20, cls='') -%}
+<svg xmlns="http://www.w3.org/2000/svg" width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="{{ cls }}" aria-hidden="true">{{ ICONS[name]|safe }}</svg>
+{%- endmacro %}
+
+{% macro btn_class(kind='primary', full=False) -%}
+inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2{% if kind == 'primary' %} bg-ink text-white hover:bg-ink-700 active:translate-y-px{% elif kind == 'accent' %} bg-accent text-ink hover:brightness-95 active:translate-y-px{% else %} bg-white text-ink ring-1 ring-gray-200 hover:bg-gray-50{% endif %}{% if full %} w-full{% endif %}
+{%- endmacro %}
+
+{% macro field(id, name, label, type='text', icon_name=None, required=True, value=None) -%}
+<div>
+  <label for="{{ id }}" class="block text-sm font-medium text-ink-700 mb-1.5">{{ label }}</label>
+  <div class="relative">
+    {% if icon_name %}<span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">{{ icon(icon_name, 18) }}</span>{% endif %}
+    <input id="{{ id }}" name="{{ name }}" type="{{ type }}"{% if required %} required{% endif %}{% if value is not none %} value="{{ value }}"{% endif %} class="w-full rounded-lg border border-gray-300 bg-white py-2.5 {% if icon_name %}pl-10{% else %}pl-3{% endif %} pr-3 text-sm placeholder-gray-400 transition focus:border-ink focus:outline-none focus:ring-2 focus:ring-accent/60">
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro alert(kind='info') -%}
+<div class="flex gap-3 rounded-lg p-3 text-sm ring-1 {% if kind == 'error' %}bg-red-50 text-red-800 ring-red-200{% elif kind == 'success' %}bg-green-50 text-green-800 ring-green-200{% elif kind == 'warn' %}bg-accent-100 text-ink ring-accent/40{% else %}bg-blue-50 text-blue-800 ring-blue-200{% endif %}" role="alert">
+  <span class="mt-0.5 shrink-0">{{ icon('alert' if kind in ('error', 'warn') else ('check-circle' if kind == 'success' else 'info'), 18) }}</span>
+  <div class="min-w-0">{{ caller() }}</div>
+</div>
+{%- endmacro %}
+
+{% macro card(cls='') -%}
+<div class="rounded-2xl bg-white shadow-card ring-1 ring-black/5 {{ cls }}">{{ caller() }}</div>
+{%- endmacro %}
+
+{% macro auth_card(title, subtitle=None, icon_name=None) -%}
+<div class="mx-auto mt-8 w-full max-w-sm animate-fade-up motion-reduce:animate-none">
+  <div class="rounded-2xl bg-white p-8 shadow-card ring-1 ring-black/5">
+    {% if icon_name %}<span class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-accent/20 text-ink">{{ icon(icon_name, 22) }}</span>{% endif %}
+    <h1 class="text-2xl font-bold tracking-tight">{{ title }}</h1>
+    {% if subtitle %}<p class="mt-1 mb-6 text-sm text-gray-500">{{ subtitle }}</p>{% else %}<div class="mb-6"></div>{% endif %}
+    {{ caller() }}
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro page_header(title, subtitle=None, eyebrow=None) -%}
+<div class="mb-8 animate-fade-up motion-reduce:animate-none">
+  {% if eyebrow %}<p class="mb-2 text-xs font-semibold uppercase tracking-widest text-accent-700">{{ eyebrow }}</p>{% endif %}
+  <h1 class="text-3xl font-bold tracking-tight">{{ title }}</h1>
+  {% if subtitle %}<p class="mt-2 max-w-2xl text-gray-600">{{ subtitle }}</p>{% endif %}
+</div>
+{%- endmacro %}

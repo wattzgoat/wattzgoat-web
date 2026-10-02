@@ -10,8 +10,13 @@
 <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 {% block head_extra %}{% endblock %}
 </head>
-<body class="bg-[#F2EFE9] text-[#14181C] min-h-screen" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-<header class="bg-[#14181C] text-white px-6 py-4 flex items-center gap-3">
+{# Nav link with an active state. Defined here (not in _ui.html) because it needs
+   the request, which imported macros don't get. #}
+{% macro nav_link(endpoint, label) -%}
+<a href="{{ url_for(endpoint) }}" class="rounded-md px-3 py-1.5 transition {% if request.endpoint == endpoint %}bg-white/10 text-white{% else %}hover:bg-white/10 hover:text-white{% endif %}">{{ label }}</a>
+{%- endmacro %}
+<body class="bg-canvas text-ink min-h-screen font-sans antialiased">
+<header class="sticky top-0 z-30 bg-ink/95 text-white px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 shadow-lift backdrop-blur">
 <a href="{{ url_for(('admin.dashboard' if g.user['role'] == 'admin' else 'customer.dashboard') if g.user else 'auth.login') }}" class="flex items-center gap-3 hover:opacity-90">
   <svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true">
     <path d="M60 4 L20 56 L42 56 L34 96 L80 40 L52 40 Z" fill="#F4B41A"/>
@@ -19,55 +24,65 @@
   <span class="font-semibold text-lg">Wattz<span class="text-[#F4B41A] font-bold">GOAT</span></span>
 </a>
   {% if g.user %}
-  <nav class="ml-8 flex gap-4 text-sm text-gray-300">
+  <nav class="ml-4 flex flex-wrap gap-1 text-sm text-gray-300">
     {% if g.user['role'] == 'customer' %}
-    <a href="{{ url_for('customer.dashboard') }}" class="hover:text-white">Dashboard</a>
-    <a href="{{ url_for('customer.usage') }}" class="hover:text-white">Usage</a>
-    <a href="{{ url_for('customer.recharge') }}" class="hover:text-white">Recharge</a>
-    <a href="{{ url_for('customer.solar') }}" class="hover:text-white">Solar</a>
-    <a href="{{ url_for('customer.bills') }}" class="hover:text-white">Bills</a>
-    <a href="{{ url_for('customer.account') }}" class="hover:text-white">Account</a>
-    <a href="{{ url_for('customer.support') }}" class="hover:text-white">Support</a>
-    <a href="{{ url_for('pages.contact') }}" class="hover:text-white">Contact</a>
-    <a href="{{ url_for('progress.progress') }}" class="hover:text-white">Progress</a>
+    {{ nav_link('customer.dashboard', 'Dashboard') }}
+    {{ nav_link('customer.usage', 'Usage') }}
+    {{ nav_link('customer.recharge', 'Recharge') }}
+    {{ nav_link('customer.solar', 'Solar') }}
+    {{ nav_link('customer.bills', 'Bills') }}
+    {{ nav_link('customer.account', 'Account') }}
+    {{ nav_link('customer.support', 'Support') }}
+    {{ nav_link('pages.contact', 'Contact') }}
+    {{ nav_link('progress.progress', 'Progress') }}
     {% else %}
-    <a href="{{ url_for('admin.dashboard') }}" class="hover:text-white">Overview</a>
-    <a href="{{ url_for('admin.meters') }}" class="hover:text-white">Meters</a>
-    <a href="{{ url_for('admin.alarms') }}" class="hover:text-white">Alarms</a>
-    <a href="{{ url_for('admin.tickets') }}" class="hover:text-white">Tickets</a>
-    <a href="{{ url_for('admin.users') }}" class="hover:text-white">Users</a>
-    <a href="{{ url_for('customer.account') }}" class="hover:text-white">Account</a>
-    <a href="{{ url_for('progress.progress') }}" class="hover:text-white">Progress</a>
-    <a href="{{ url_for('leaderboard.leaderboard_page') }}" class="hover:text-white">Solar Leaderboard</a>
+    {{ nav_link('admin.dashboard', 'Overview') }}
+    {{ nav_link('admin.meters', 'Meters') }}
+    {{ nav_link('admin.alarms', 'Alarms') }}
+    {{ nav_link('admin.tickets', 'Tickets') }}
+    {{ nav_link('admin.users', 'Users') }}
+    {{ nav_link('customer.account', 'Account') }}
+    {{ nav_link('progress.progress', 'Progress') }}
+    {{ nav_link('leaderboard.leaderboard_page', 'Solar Leaderboard') }}
     {% endif %}
   </nav>
-  <span class="ml-auto text-sm text-gray-400">{{ today_utc() }} (UTC)</span>
-  <span class="text-sm text-gray-400" title="Your participant nickname — click to change">
-    <button type="button" id="wg-identity-chip" class="hover:text-white underline decoration-dotted">{{ participant_display() }}</button>
-  </span>
-  <span class="text-sm text-gray-400">{{ g.user['name'] }}</span>
-  <form method="post" action="{{ url_for('auth.logout') }}">
-    <button class="text-sm text-gray-300 hover:text-white underline">Log out</button>
-  </form>
+  <div class="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-400">
+    <span>{{ today_utc() }} (UTC)</span>
+    <span title="Your participant nickname — click to change">
+      <button type="button" id="wg-identity-chip" class="rounded-full bg-white/10 px-3 py-1 text-gray-200 transition hover:bg-white/20 hover:text-white">{{ participant_display() }}</button>
+    </span>
+    <span class="text-gray-300">{{ g.user['name'] }}</span>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <button class="rounded-md px-2 py-1 text-gray-300 transition hover:bg-white/10 hover:text-white">Log out</button>
+    </form>
+  </div>
   {% else %}
-  <nav class="ml-auto flex items-center gap-4 text-sm text-gray-300">
-    <a href="{{ url_for('leaderboard.leaderboard_page') }}" class="hover:text-white">Solar Leaderboard</a>
-    <a href="{{ url_for('pages.contact') }}" class="hover:text-white">Contact</a>
-    <button type="button" id="wg-identity-chip" class="hover:text-white underline decoration-dotted" title="Your participant nickname — click to change">{{ participant_display() }}</button>
+  <nav class="ml-auto flex flex-wrap items-center gap-1 text-sm text-gray-300">
+    {{ nav_link('leaderboard.leaderboard_page', 'Solar Leaderboard') }}
+    {{ nav_link('pages.contact', 'Contact') }}
+    <button type="button" id="wg-identity-chip" class="ml-2 rounded-full bg-white/10 px-3 py-1 text-gray-200 transition hover:bg-white/20 hover:text-white" title="Your participant nickname — click to change">{{ participant_display() }}</button>
   </nav>
   {% endif %}
 </header>
-<main class="max-w-4xl mx-auto px-6 py-10">
+{# Optional left column for a page-wide side panel (guided mode will fill this). When a
+   page doesn't provide one, nothing is rendered and the layout is unchanged. A page can
+   also set page_wide to use the wider container without a side panel. #}
+{% set rail_html %}{% block rail %}{% endblock %}{% endset %}
+{% set has_rail = rail_html|trim != '' %}
+<div class="mx-auto px-6 py-10 {% if has_rail %}max-w-6xl flex items-start gap-8{% elif page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
+  {% if has_rail %}<aside class="sticky top-24 hidden w-72 shrink-0 lg:block">{{ rail_html }}</aside>{% endif %}
+  <main class="min-w-0 flex-1">
 {% block content %}{% endblock %}
-</main>
-<footer class="max-w-4xl mx-auto px-6 py-8 text-xs text-gray-400 border-t border-gray-200 mt-8">
+  </main>
+</div>
+<footer class="mx-auto px-6 py-8 text-xs text-gray-500 border-t border-gray-200 mt-8 {% if has_rail or page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
   <p>&copy; {{ current_year() }} WattzGOAT Corp™. All rights reserved.</p>
   <p class="mt-1">
-    <a href="{{ url_for('pages.terms') }}" class="underline hover:text-gray-600">Terms of Service</a>
+    <a href="{{ url_for('pages.terms') }}" class="underline hover:text-gray-700">Terms of Service</a>
     &middot;
-    <a href="{{ url_for('pages.privacy') }}" class="underline hover:text-gray-600">Privacy Policy</a>
+    <a href="{{ url_for('pages.privacy') }}" class="underline hover:text-gray-700">Privacy Policy</a>
     &middot;
-    <a href="{{ url_for('pages.contact') }}" class="underline hover:text-gray-600">Contact us</a>
+    <a href="{{ url_for('pages.contact') }}" class="underline hover:text-gray-700">Contact us</a>
   </p>
   {% if g.user %}
   <p class="mt-1">
@@ -81,7 +96,7 @@
      overlay is deliberate here, unlike the dismissible cookie banner
      below. -->
 <div id="wg-disclaimer" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-xl">
+  <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-lift ring-1 ring-red-200">
     <h2 class="text-lg font-bold text-red-700 mb-3">⚠ Intentionally Vulnerable Application</h2>
     <p class="text-sm text-gray-700 mb-3">
       WattzGOAT is deliberately insecure, built for hands-on security training.
@@ -91,7 +106,7 @@
       <li>Never enter real personal, financial, or credential information.</li>
       <li>Use only in an isolated lab environment.</li>
     </ul>
-    <button id="wg-disclaimer-ack" class="w-full bg-[#14181C] text-white rounded py-2 font-medium">
+    <button id="wg-disclaimer-ack" class="w-full rounded-lg bg-ink text-white py-2.5 font-semibold transition hover:bg-ink-700">
       I Understand — Enter Lab
     </button>
   </div>
@@ -99,13 +114,13 @@
 
 <!-- Lightweight, in-universe cookie banner -- separate from the real
      disclaimer above on purpose: this one's a joke, that one isn't. -->
-<div id="wg-cookie-banner" class="fixed bottom-0 inset-x-0 bg-[#14181C] text-gray-200 text-sm px-4 py-3 hidden z-40">
+<div id="wg-cookie-banner" class="fixed bottom-0 inset-x-0 bg-ink text-gray-200 text-sm px-4 py-3 hidden z-40 shadow-lift">
   <div class="max-w-4xl mx-auto flex flex-wrap items-center gap-3">
     <p class="flex-1">
       WattzGOAT uses cookies, some of which are load-bearing.
       <a href="{{ url_for('pages.privacy') }}" class="underline">Learn more</a>.
     </p>
-    <button id="wg-cookie-ack" class="bg-[#F4B41A] text-[#14181C] rounded px-3 py-1.5 font-medium text-xs">
+    <button id="wg-cookie-ack" class="bg-accent text-ink rounded-lg px-4 py-1.5 font-semibold text-xs transition hover:brightness-95">
       Accept
     </button>
   </div>
@@ -119,18 +134,18 @@
      app/personalize.py:display_identity()); this modal is just how a
      participant sets or changes it. -->
 <div id="wg-nickname-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
-  <div class="bg-white rounded-lg max-w-sm w-full p-6 shadow-xl">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-lift">
     <h2 class="text-lg font-semibold mb-2">Pick a nickname</h2>
     <p class="text-sm text-gray-600 mb-4">
       Shown next to your participant ID on the instructor's leaderboard. Optional --
       skip if you'd rather stay anonymous.
     </p>
     <input type="text" id="wg-nickname-input" maxlength="24" placeholder="e.g. CircuitBreaker"
-           class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2">
+           class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm mb-2 transition focus:border-ink focus:outline-none focus:ring-2 focus:ring-accent/60">
     <p id="wg-nickname-error" class="text-xs text-red-600 mb-2 hidden"></p>
     <div class="flex gap-2">
-      <button id="wg-nickname-save" class="flex-1 bg-[#14181C] text-white rounded py-2 text-sm font-medium">Save</button>
-      <button id="wg-nickname-skip" class="flex-1 bg-gray-100 text-gray-700 rounded py-2 text-sm font-medium">Skip for now</button>
+      <button id="wg-nickname-save" class="flex-1 rounded-lg bg-ink text-white py-2.5 text-sm font-semibold transition hover:bg-ink-700">Save</button>
+      <button id="wg-nickname-skip" class="flex-1 rounded-lg bg-gray-100 text-gray-700 py-2.5 text-sm font-semibold transition hover:bg-gray-200">Skip for now</button>
     </div>
   </div>
 </div>
