@@ -161,6 +161,6 @@ Set `WATTZGOAT_BASE_URL` to the address of your copy if it is not `https://127.0
 
 ## License
 
-WattzGOAT is licensed under the Apache License 2.0. You are free to use, copy and change it. See the [LICENSE](LICENSE) file for the full terms.
+WattzGOAT is licensed under the MIT License. You are free to use, copy and change it. See the [LICENSE](LICENSE) file for the full terms.
 
 Copyright 2026 WattzGOAT
