@@ -343,7 +343,33 @@ def login():
     # neuters CSRF_TEACH/CSRF_EXERCISE/HEADERS_CLICKJACK's whole premise
     # (no anti-CSRF protection) in any current browser. This restores
     # the cookie behavior those flags were written to demonstrate.
-    resp.set_cookie("wgs_session", token, httponly=True, samesite="None", secure=True)
+    #
+    # Phase 8: Secure/SameSite=None only when this login actually came in
+    # over HTTPS. The browser-enforced pairing rule (SameSite=None is
+    # only honored alongside Secure) means a Secure cookie issued on the
+    # plaintext mirror (port 5001, PLAINTEXT_TEACH/EXERCISE) would never
+    # be sent back on the very next plaintext request -- login appears to
+    # succeed but every following page silently bounces back to /login.
+    # A login via the plaintext port gets the ordinary same-site cookie
+    # behavior instead (no SameSite=None, not Secure), which keeps a
+    # plaintext session usable; a login via HTTPS is unaffected and still
+    # gets the cross-site-capable cookie the CSRF/clickjacking flags rely
+    # on, since every documented PoC targets the HTTPS port.
+    if request.is_secure:
+        resp.set_cookie("wgs_session", token, httponly=True, samesite="None", secure=True)
+    else:
+        resp.set_cookie("wgs_session", token, httponly=True)
+
+    # Phase 8: flag wg_pid (the participant-tracking cookie, see
+    # app/personalize.py) for a same Secure/SameSite upgrade as the
+    # session cookie above -- the actual Set-Cookie write happens in
+    # personalize.py's own set_participant_cookie(), which runs after
+    # every request regardless, so there's exactly one place that ever
+    # emits this cookie's header rather than two competing ones. See the
+    # comment there for why this needs to happen at login, not just at a
+    # visitor's first contact with the app.
+    if request.is_secure:
+        g.participant_cookie_needs_upgrade = True
 
     # NOTE: this one is set as an ordinary (non-HttpOnly) cookie on
     # purpose -- a working reflected-XSS payload can read it via

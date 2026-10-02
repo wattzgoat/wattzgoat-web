@@ -91,11 +91,49 @@ def load_participant():
 
 @bp.after_app_request
 def set_participant_cookie(resp):
-    if g.get("new_participant"):
+    # Phase 8: this is the one and only place that ever writes wg_pid's
+    # Set-Cookie header -- a second, independent call elsewhere (e.g. in
+    # auth.py's login()) would produce two Set-Cookie headers for the
+    # same cookie name in one response, and which one a browser keeps
+    # isn't something to rely on. Instead, login() just sets
+    # g.participant_cookie_needs_upgrade when it wants this cookie
+    # (re-)issued with cross-site-capable attributes; this hook is the
+    # only code that actually calls set_cookie() for it.
+    #
+    # Two reasons to (re-)issue it, same request or not:
+    #   - g.new_participant: ordinary first-contact case, unchanged from
+    #     before -- give any brand-new visitor an id, no login needed.
+    #   - g.participant_cookie_needs_upgrade: set by auth.py's login()
+    #     whenever the login itself came in over HTTPS. Needed because
+    #     load_participant() above only reads an EXISTING cookie if one
+    #     is already present -- a participant whose first-ever contact
+    #     with the app happened to be anonymous/pre-login traffic on the
+    #     plaintext mirror would otherwise keep an ordinary same-site
+    #     wg_pid forever, even after logging in over HTTPS later and
+    #     going on to test CSRF_TEACH/CSRF_EXERCISE. A SameSite=Lax-
+    #     default wg_pid gets silently withheld on the forged cross-site
+    #     POST those PoCs send; the server then assumes it's a brand-new
+    #     participant it's never seen, and the fresh replacement id that
+    #     generates gets written back via Set-Cookie -- overwriting the
+    #     victim's real wg_pid in their own browser, with no way back to
+    #     the original. Re-issuing at login, in lockstep with
+    #     wgs_session, closes that gap.
+    #
+    # Secure/SameSite=None only on an HTTPS request -- same pairing rule
+    # and same plaintext-mirror reasoning as wgs_session in auth.py: a
+    # Secure cookie set over plaintext would never be sent back on the
+    # next plaintext request at all.
+    if g.get("new_participant") or g.get("participant_cookie_needs_upgrade"):
         # ~1 year, plain (not HttpOnly) -- this is an identifier, not a
         # secret, and nothing sensitive depends on JS being unable to
         # read it.
-        resp.set_cookie(PARTICIPANT_COOKIE, g.participant_id, max_age=60 * 60 * 24 * 365)
+        if request.is_secure:
+            resp.set_cookie(
+                PARTICIPANT_COOKIE, g.participant_id, max_age=60 * 60 * 24 * 365,
+                samesite="None", secure=True,
+            )
+        else:
+            resp.set_cookie(PARTICIPANT_COOKIE, g.participant_id, max_age=60 * 60 * 24 * 365)
     return resp
 
 
