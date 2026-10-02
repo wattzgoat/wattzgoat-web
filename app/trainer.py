@@ -40,6 +40,7 @@ import sqlite3
 
 from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_template, request, url_for
 
+from .code_examples import example_keys, example_payload
 from .db import get_db
 from .flags import CATALOG
 from . import hardening
@@ -128,6 +129,35 @@ def dashboard():
         trainer_name=g.trainer["name"],
         participant_base_url=current_app.config.get("PARTICIPANT_BASE_URL", ""),
     )
+
+
+@bp.route("/code", methods=["GET"])
+@trainer_login_required
+def code_examples():
+    """The instructor's Code Examples section: every vulnerability with its
+    vulnerable and fixed code on demand. A display aid only -- nothing here
+    changes what participants can see (they unlock code by redeeming the
+    flag, see app/progress.py)."""
+    with_code = example_keys()
+    grouped = {
+        category: [{**item, "has_code": item["key"] in with_code} for item in items]
+        for category, items in _catalog_grouped().items()
+    }
+    return render_template(
+        "trainer_code.html",
+        grouped_catalog=grouped,
+        trainer_name=g.trainer["name"],
+        participant_base_url=current_app.config.get("PARTICIPANT_BASE_URL", ""),
+    )
+
+
+@bp.route("/api/code_example", methods=["GET"])
+@trainer_login_required
+def api_code_example():
+    payload = example_payload(request.args.get("flag_key", ""))
+    if payload is None:
+        abort(404)
+    return jsonify(payload)
 
 
 @bp.route("/api/summary", methods=["GET"])

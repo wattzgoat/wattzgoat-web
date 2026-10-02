@@ -1,6 +1,7 @@
-from flask import Blueprint, abort, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, g, jsonify, redirect, render_template, request, url_for
 
 from .auth import login_required
+from .code_examples import example_keys, example_payload
 from .db import get_db
 from .flags import CATALOG, REMEDIATION
 from .personalize import get_flag
@@ -66,8 +67,9 @@ def progress():
             "SELECT flag_key FROM flag_redemptions WHERE participant_id = ?", (g.participant_id,)
         ).fetchall()
     }
+    with_code = example_keys()
     checklist = [
-        {"category": category, "name": name, "done": key in redeemed}
+        {"key": key, "category": category, "name": name, "done": key in redeemed, "has_code": key in with_code}
         for key, category, name in CATALOG
     ]
     return render_template(
@@ -77,3 +79,24 @@ def progress():
         total_count=len(CATALOG),
         message=message,
     )
+
+
+@bp.route("/progress/code/<flag_key>")
+@login_required()
+def view_code(flag_key):
+    """The vulnerable and fixed code for one flag, as JSON for the Progress
+    page's View Code window. Only available once this participant has
+    redeemed that flag -- enforced here, not just by hiding the button, so
+    a direct request for a flag they haven't solved yet is refused."""
+    if hardening.FORCE_ALL:
+        abort(404)
+    payload = example_payload(flag_key)
+    if payload is None:
+        abort(404)
+    redeemed = get_db().execute(
+        "SELECT 1 FROM flag_redemptions WHERE flag_key = ? AND participant_id = ?",
+        (flag_key, g.participant_id),
+    ).fetchone()
+    if not redeemed:
+        return jsonify({"error": "Redeem this flag to unlock its code."}), 403
+    return jsonify(payload)

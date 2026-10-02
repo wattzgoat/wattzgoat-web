@@ -1,0 +1,79 @@
+{# Renders one code example (see app/code_examples.py) into a container:
+   a short note, language tabs, and the vulnerable and fixed versions side by
+   side (stacked on narrow screens) with the changed lines highlighted.
+   Usage: wgRenderCode(containerElement, payload, { hideHeading: true }).
+   Code is inserted with textContent, never as HTML. The chosen language is
+   remembered in the browser. #}
+<script>
+(function () {
+  var LANG_KEY = 'wg_code_lang';
+
+  function mk(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
+  }
+  function savedLang(ids) {
+    try { var v = localStorage.getItem(LANG_KEY); if (v && ids.indexOf(v) >= 0) return v; } catch (e) {}
+    return ids[0];
+  }
+  function saveLang(v) { try { localStorage.setItem(LANG_KEY, v); } catch (e) {} }
+
+  function panel(label, bad, snippet) {
+    var wrap = mk('div', 'min-w-0');
+    var head = mk('div', 'mb-2 flex items-center gap-2 text-sm font-semibold ' + (bad ? 'text-red-700' : 'text-green-700'));
+    head.appendChild(mk('span', 'inline-block h-2.5 w-2.5 rounded-full ' + (bad ? 'bg-red-500' : 'bg-green-500')));
+    head.appendChild(mk('span', null, label));
+    wrap.appendChild(head);
+    var box = mk('div', 'overflow-x-auto rounded-xl bg-ink py-3 font-mono text-xs leading-relaxed text-gray-100');
+    var hl = {};
+    snippet.highlight.forEach(function (n) { hl[n] = true; });
+    snippet.code.split('\n').forEach(function (line, i) {
+      var n = i + 1;
+      var row = mk('div', 'flex min-w-max px-3 ' + (hl[n] ? (bad ? 'bg-red-500/25' : 'bg-green-500/25') : ''));
+      row.appendChild(mk('span', 'w-7 shrink-0 select-none pr-3 text-right text-gray-500', String(n)));
+      row.appendChild(mk('span', 'whitespace-pre', line === '' ? ' ' : line));
+      box.appendChild(row);
+    });
+    wrap.appendChild(box);
+    return wrap;
+  }
+
+  window.wgRenderCode = function (root, data, opts) {
+    opts = opts || {};
+    var ids = data.languages.map(function (l) { return l.id; });
+    var current = savedLang(ids);
+    root.textContent = '';
+
+    if (!opts.hideHeading) {
+      root.appendChild(mk('p', 'text-xs font-semibold uppercase tracking-widest text-accent-700', data.category));
+      root.appendChild(mk('h3', 'mt-1 text-xl font-bold tracking-tight', data.name));
+    }
+    root.appendChild(mk('p', 'max-w-3xl text-sm text-gray-600 ' + (opts.hideHeading ? '' : 'mt-2'), data.why));
+
+    var tabs = mk('div', 'mb-4 mt-4 inline-flex rounded-lg bg-gray-100 p-1');
+    tabs.setAttribute('role', 'tablist');
+    var body = mk('div', 'grid gap-4 lg:grid-cols-2');
+    root.appendChild(tabs);
+    root.appendChild(body);
+
+    function paint() {
+      tabs.textContent = '';
+      data.languages.forEach(function (l) {
+        var b = mk('button', 'rounded-md px-3 py-1.5 text-sm font-medium transition ' +
+          (l.id === current ? 'bg-white text-ink shadow-card' : 'text-gray-500 hover:text-ink'), l.label);
+        b.type = 'button';
+        b.setAttribute('role', 'tab');
+        b.setAttribute('aria-selected', l.id === current ? 'true' : 'false');
+        b.addEventListener('click', function () { current = l.id; saveLang(current); paint(); });
+        tabs.appendChild(b);
+      });
+      body.textContent = '';
+      body.appendChild(panel('Vulnerable', true, data.vulnerable[current]));
+      body.appendChild(panel('Fixed', false, data.fixed[current]));
+    }
+    paint();
+  };
+})();
+</script>
