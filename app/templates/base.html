@@ -10,6 +10,7 @@
 <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 {% block head_extra %}{% endblock %}
 </head>
+{% import "_ui.html" as ui %}
 {# Nav link with an active state. Defined here (not in _ui.html) because it needs
    the request, which imported macros don't get. #}
 {% macro nav_link(endpoint, label) -%}
@@ -31,7 +32,6 @@
     {{ nav_link('customer.recharge', 'Recharge') }}
     {{ nav_link('customer.solar', 'Solar') }}
     {{ nav_link('customer.bills', 'Bills') }}
-    {{ nav_link('customer.account', 'Account') }}
     {{ nav_link('customer.support', 'Support') }}
     {{ nav_link('pages.contact', 'Contact') }}
     {{ nav_link('progress.progress', 'Progress') }}
@@ -41,7 +41,6 @@
     {{ nav_link('admin.alarms', 'Alarms') }}
     {{ nav_link('admin.tickets', 'Tickets') }}
     {{ nav_link('admin.users', 'Users') }}
-    {{ nav_link('customer.account', 'Account') }}
     {{ nav_link('progress.progress', 'Progress') }}
     {{ nav_link('leaderboard.leaderboard_page', 'Solar Leaderboard') }}
     {% endif %}
@@ -51,7 +50,7 @@
     <span title="Your participant nickname — click to change">
       <button type="button" id="wg-identity-chip" class="rounded-full bg-white/10 px-3 py-1 text-gray-200 transition hover:bg-white/20 hover:text-white">{{ participant_display() }}</button>
     </span>
-    <span class="text-gray-300">{{ g.user['name'] }}</span>
+    <a href="{{ url_for('customer.account') }}" title="Your account" class="inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition {% if request.endpoint == 'customer.account' %}bg-white/10 text-white{% else %}text-gray-300 hover:bg-white/10 hover:text-white{% endif %}">{{ ui.icon('user', 15) }}{{ g.user['name'] }}</a>
     <form method="post" action="{{ url_for('auth.logout') }}">
       <button class="rounded-md px-2 py-1 text-gray-300 transition hover:bg-white/10 hover:text-white">Log out</button>
     </form>
@@ -75,20 +74,19 @@
 {% block content %}{% endblock %}
   </main>
 </div>
-<footer class="mx-auto px-6 py-8 text-xs text-gray-500 border-t border-gray-200 mt-8 {% if has_rail or page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
-  <p>&copy; {{ current_year() }} WattzGOAT Corp™. All rights reserved.</p>
-  <p class="mt-1">
+<footer class="mx-auto px-6 py-6 text-xs text-gray-500 border-t border-gray-200 mt-8 {% if has_rail or page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
+  <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <span>&copy; {{ current_year() }} WattzGOAT Corp™. All rights reserved.</span>
+    <span aria-hidden="true">&middot;</span>
     <a href="{{ url_for('pages.terms') }}" class="underline hover:text-gray-700">Terms of Service</a>
-    &middot;
+    <span aria-hidden="true">&middot;</span>
     <a href="{{ url_for('pages.privacy') }}" class="underline hover:text-gray-700">Privacy Policy</a>
-    &middot;
+    <span aria-hidden="true">&middot;</span>
     <a href="{{ url_for('pages.contact') }}" class="underline hover:text-gray-700">Contact us</a>
-  </p>
-  {% if g.user %}
-  <p class="mt-1">
-    {% if g.user['previous_login_at'] %}Last logged in: {{ g.user['previous_login_at'][:16] }} UTC{% else %}First login{% endif %}
-  </p>
-  {% endif %}
+    {% if g.user %}
+    <span class="sm:ml-auto">{% if g.user['previous_login_at'] %}Last logged in: {{ g.user['previous_login_at'][:16] }} UTC{% else %}First login{% endif %}</span>
+    {% endif %}
+  </div>
 </footer>
 
 <!-- Real, serious safety notice -- not part of the in-universe flavor
