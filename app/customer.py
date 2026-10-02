@@ -599,6 +599,28 @@ def download_bill():
     rel_path = request.args.get("path", "")
     full_path = os.path.normpath(os.path.join(BILLS_DIR, rel_path))
 
+    # Phase 8: containment to BILLS_DIR applies unconditionally, hardened
+    # or not. BILLS_DIR lives inside the app package itself (see its
+    # definition above), so with NO containment at all, going up far
+    # enough doesn't just reach a sibling customer's folder -- it reaches
+    # the app's own source tree and, past that, the rest of the
+    # filesystem (every .py module, the Dockerfile, anything readable).
+    # That was never part of what this flag is meant to teach and isn't
+    # an acceptable side effect of it.
+    #
+    # This check is intentionally narrower than TRAVERSAL_TEACH's
+    # hardened branch below: it only rejects a path that resolves
+    # OUTSIDE BILLS_DIR entirely. It does NOT add an ownership check, so
+    # MTR-1004/../MTR-1002/... -- the actual documented exploit, walking
+    # from a caller's own meter folder into a sibling customer's folder,
+    # both still under BILLS_DIR -- keeps working exactly as before,
+    # vulnerable or hardened. Only the escape past BILLS_DIR's own
+    # boundary is what's newly blocked.
+    real_bills_dir = os.path.realpath(BILLS_DIR)
+    real_full_path = os.path.realpath(full_path)
+    if os.path.commonpath([real_bills_dir, real_full_path]) != real_bills_dir:
+        abort(403)
+
     # Phase 6: TRAVERSAL_TEACH's hardened branch does two things, not
     # one -- containment alone isn't enough here. MTR-1004/../MTR-1002/...
     # never actually leaves BILLS_DIR (MTR-1002 is a legitimate sibling
@@ -606,12 +628,10 @@ def download_bill():
     # still let this exact documented exploit through. The real fix is
     # an ownership check: the first path segment under BILLS_DIR is a
     # meter code, and it has to be one of THIS caller's own meters, not
-    # just "somewhere under bills/ generically."
+    # just "somewhere under bills/ generically." (The containment check
+    # itself is no longer specific to this branch -- see above -- so
+    # only the ownership check is left here.)
     if hardening.is_hardened(flags.TRAVERSAL_TEACH):
-        real_bills_dir = os.path.realpath(BILLS_DIR)
-        real_full_path = os.path.realpath(full_path)
-        if os.path.commonpath([real_bills_dir, real_full_path]) != real_bills_dir:
-            abort(403)
         own_meter_codes = {m["meter_code"] for m in _own_meters()}
         rel_to_bills = os.path.relpath(real_full_path, real_bills_dir)
         requested_meter_code = rel_to_bills.split(os.sep)[0]
