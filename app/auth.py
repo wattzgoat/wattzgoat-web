@@ -372,17 +372,6 @@ def login():
     else:
         resp.set_cookie("wgs_session", token, httponly=True)
 
-    # Phase 8: flag wg_pid (the participant-tracking cookie, see
-    # app/personalize.py) for a same Secure/SameSite upgrade as the
-    # session cookie above -- the actual Set-Cookie write happens in
-    # personalize.py's own set_participant_cookie(), which runs after
-    # every request regardless, so there's exactly one place that ever
-    # emits this cookie's header rather than two competing ones. See the
-    # comment there for why this needs to happen at login, not just at a
-    # visitor's first contact with the app.
-    if request.is_secure:
-        g.participant_cookie_needs_upgrade = True
-
     # NOTE: this one is set as an ordinary (non-HttpOnly) cookie on
     # purpose -- a working reflected-XSS payload can read it via
     # document.cookie. Stored XSS's two flags do NOT live here (see

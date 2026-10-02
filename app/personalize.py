@@ -91,39 +91,39 @@ def load_participant():
 
 @bp.after_app_request
 def set_participant_cookie(resp):
-    # Phase 8: this is the one and only place that ever writes wg_pid's
-    # Set-Cookie header -- a second, independent call elsewhere (e.g. in
-    # auth.py's login()) would produce two Set-Cookie headers for the
-    # same cookie name in one response, and which one a browser keeps
-    # isn't something to rely on. Instead, login() just sets
-    # g.participant_cookie_needs_upgrade when it wants this cookie
-    # (re-)issued with cross-site-capable attributes; this hook is the
-    # only code that actually calls set_cookie() for it.
+    # Phase 8 (revised): only issue wg_pid on genuine first contact
+    # (g.new_participant, same condition as before this project's CSRF
+    # fix) -- NOT on every login, even an HTTPS one. An earlier version
+    # of this also re-issued it at login whenever the login was HTTPS,
+    # to cover a visitor whose first-ever contact happened to be the
+    # plaintext mirror. That traded a narrow edge case for a worse
+    # problem: a server has no way to know from a request alone whether
+    # the client's existing wg_pid already carries the upgraded
+    # Secure/SameSite=None attributes, so re-issuing it identically on
+    # every login is a no-op for a real browser but NOT for a client
+    # that manages its cookie jar by domain -- re-setting the same name
+    # with a concrete request domain, when the client had it stored
+    # under an unspecified/different domain (e.g. a test harness doing
+    # session.cookies.set("wg_pid", ...) with no domain given), produces
+    # a SECOND, distinct cookie entry rather than replacing the first.
+    # Any later read of that cookie by name alone then fails outright
+    # (requests' CookieConflictError is exactly this). This is exactly
+    # what broke tests/hardening/test_toggle_17_assistant.py in CI.
     #
-    # Two reasons to (re-)issue it, same request or not:
-    #   - g.new_participant: ordinary first-contact case, unchanged from
-    #     before -- give any brand-new visitor an id, no login needed.
-    #   - g.participant_cookie_needs_upgrade: set by auth.py's login()
-    #     whenever the login itself came in over HTTPS. Needed because
-    #     load_participant() above only reads an EXISTING cookie if one
-    #     is already present -- a participant whose first-ever contact
-    #     with the app happened to be anonymous/pre-login traffic on the
-    #     plaintext mirror would otherwise keep an ordinary same-site
-    #     wg_pid forever, even after logging in over HTTPS later and
-    #     going on to test CSRF_TEACH/CSRF_EXERCISE. A SameSite=Lax-
-    #     default wg_pid gets silently withheld on the forged cross-site
-    #     POST those PoCs send; the server then assumes it's a brand-new
-    #     participant it's never seen, and the fresh replacement id that
-    #     generates gets written back via Set-Cookie -- overwriting the
-    #     victim's real wg_pid in their own browser, with no way back to
-    #     the original. Re-issuing at login, in lockstep with
-    #     wgs_session, closes that gap.
+    # The dominant real case -- a participant whose first-ever contact
+    # is the normal HTTPS landing page -- is still fully covered by
+    # g.new_participant alone, since this branch already picks Secure/
+    # SameSite=None for an HTTPS first contact. Only the narrower
+    # plaintext-mirror-first case goes back to carrying an ordinary
+    # same-site wg_pid if that same visitor later logs in over HTTPS
+    # and tests CSRF_TEACH/CSRF_EXERCISE -- accepted as a known gap
+    # rather than reintroducing a cookie-identity bug for every client.
     #
     # Secure/SameSite=None only on an HTTPS request -- same pairing rule
     # and same plaintext-mirror reasoning as wgs_session in auth.py: a
     # Secure cookie set over plaintext would never be sent back on the
     # next plaintext request at all.
-    if g.get("new_participant") or g.get("participant_cookie_needs_upgrade"):
+    if g.get("new_participant"):
         # ~1 year, plain (not HttpOnly) -- this is an identifier, not a
         # secret, and nothing sensitive depends on JS being unable to
         # read it.
