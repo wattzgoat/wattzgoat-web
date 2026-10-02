@@ -47,7 +47,7 @@
   <p class="text-sm text-gray-600 mb-3">Weak passwords: {{ weakpw_flag }}</p>
   {% endif %}
   {% if pwchange_flag %}
-  <!-- {{ pwchange_flag }} -->
+  <p class="text-sm text-gray-600 mb-3">Broken authentication: {{ pwchange_flag }}</p>
   {% endif %}
   {% if csrf_flag %}
   <p class="text-sm text-gray-600 mb-3">CSRF: {{ csrf_flag }}</p>

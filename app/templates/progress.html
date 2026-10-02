@@ -9,7 +9,7 @@
   <p class="text-sm mb-4 {{ 'text-green-700' if message[0]=='success' else ('text-red-600' if message[0]=='error' else 'text-gray-600') }}">{{ message[1] }}</p>
   {% endif %}
   <form method="post" class="flex gap-2">
-    <input name="flag" placeholder="FLAG{...}" required class="flex-1 border rounded px-3 py-2 font-mono text-sm">
+    <input name="flag" placeholder="FLAG{...}" required autocomplete="off" class="flex-1 border rounded px-3 py-2 font-mono text-sm">
     <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm font-medium">Submit</button>
   </form>
 </div>

@@ -259,6 +259,36 @@ def api_leaderboard():
     return jsonify({"standings": personalize.participant_standings(), "total_flags": len(CATALOG)})
 
 
+@bp.route("/api/participant_checklist", methods=["GET"])
+@trainer_login_required
+def api_participant_checklist():
+    """Phase 8: backs the leaderboard's "view redeemed flags" modal --
+    one participant's full 48-flag checklist, same category/name/done
+    shape and same CATALOG order as the participant-facing /progress
+    page (app/progress.py), just for an arbitrary participant_id chosen
+    by the instructor instead of g.participant_id. Only redemption
+    status is returned, never a flag's actual value -- same as
+    /progress itself, which never exposes other participants' values
+    either."""
+    participant_id = request.args.get("participant_id", "")
+    if not participant_id:
+        abort(400, "participant_id required")
+    db = get_db()
+    redeemed = {
+        row["flag_key"]
+        for row in db.execute(
+            "SELECT flag_key FROM flag_redemptions WHERE participant_id = ?", (participant_id,)
+        ).fetchall()
+    }
+    checklist = [{"category": category, "name": name, "done": key in redeemed} for key, category, name in CATALOG]
+    return jsonify({
+        "participant_id": participant_id,
+        "checklist": checklist,
+        "done_count": len(redeemed),
+        "total_count": len(CATALOG),
+    })
+
+
 @bp.route("/reset", methods=["POST"])
 @trainer_login_required
 def reset_lab():

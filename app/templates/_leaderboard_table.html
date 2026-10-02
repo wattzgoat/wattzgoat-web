@@ -1,6 +1,10 @@
 {# Participant leaderboard table + polling script, shared by the instructor dashboard's
    leaderboard page and the standalone /participants console. Expects lb_api (JSON
-   endpoint), lb_reset (per-participant reset action URL) and lb_total (flag count). #}
+   endpoint), lb_reset (per-participant reset action URL) and lb_total (flag count).
+   lb_checklist_api (optional, Phase 8) is a per-participant redeemed-flags JSON
+   endpoint (expects a ?participant_id= query param) -- when provided, an extra
+   "View redeemed flags" column/modal is shown; the standalone /participants console
+   doesn't pass this yet, so it keeps its existing five-column layout unchanged. #}
 <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
 <table class="w-full text-sm">
 <thead class="bg-gray-50 text-left text-gray-500">
@@ -10,14 +14,35 @@
   <th class="px-4 py-2">Participant ID</th>
   <th class="px-4 py-2">Flags redeemed</th>
   <th class="px-4 py-2">Last activity</th>
+  {% if lb_checklist_api %}<th class="px-4 py-2">View redeemed flags</th>{% endif %}
   <th class="px-4 py-2">Redemptions</th>
 </tr>
 </thead>
 <tbody class="divide-y" id="leaderboard-rows">
-<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">Loading…</td></tr>
+<tr><td colspan="{{ 7 if lb_checklist_api else 6 }}" class="px-4 py-6 text-center text-gray-500">Loading…</td></tr>
 </tbody>
 </table>
 </div>
+
+{% if lb_checklist_api %}
+{# Minimal modal, hidden by default -- opened via showChecklistModal(), populated
+   from lb_checklist_api, same category/name/done order the API returns (CATALOG
+   order, identical to the participant-facing /progress page). #}
+<div id="checklist-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4" style="z-index: 50;">
+  <div class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto">
+    <div class="flex items-center justify-between px-4 py-3 border-b">
+      <h2 class="font-semibold text-sm" id="checklist-modal-title">Redeemed flags</h2>
+      <button type="button" onclick="document.getElementById('checklist-modal').classList.add('hidden'); document.getElementById('checklist-modal').classList.remove('flex');" class="text-gray-400 hover:text-gray-600 text-sm">Close</button>
+    </div>
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-left text-gray-500">
+        <tr><th class="px-4 py-2">Category</th><th class="px-4 py-2">Name</th><th class="px-4 py-2 text-right">Status</th></tr>
+      </thead>
+      <tbody class="divide-y" id="checklist-modal-rows"></tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 
 <script>
 (function () {
@@ -35,6 +60,37 @@
     });
   }
 
+  {% if lb_checklist_api %}
+  window.showChecklistModal = async function (participantId, display) {
+    const modal = document.getElementById('checklist-modal');
+    const rows = document.getElementById('checklist-modal-rows');
+    document.getElementById('checklist-modal-title').textContent = 'Redeemed flags \u2014 ' + display;
+    rows.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-gray-500">Loading\u2026</td></tr>';
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    try {
+      const res = await fetch("{{ lb_checklist_api }}?participant_id=" + encodeURIComponent(participantId), { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) {
+        rows.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-gray-500">Could not load.</td></tr>';
+        return;
+      }
+      const data = await res.json();
+      rows.innerHTML = data.checklist.map(function (item) {
+        const badge = item.done
+          ? '<span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">solved</span>'
+          : '<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">locked</span>';
+        return '<tr>' +
+          '<td class="px-4 py-2">' + esc(item.category) + '</td>' +
+          '<td class="px-4 py-2 text-gray-500">' + esc(item.name) + '</td>' +
+          '<td class="px-4 py-2 text-right">' + badge + '</td>' +
+          '</tr>';
+      }).join('');
+    } catch (e) {
+      rows.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-center text-gray-500">Could not load.</td></tr>';
+    }
+  };
+  {% endif %}
+
   async function refresh() {
     if (inFlight) return;
     inFlight = true;
@@ -44,7 +100,7 @@
       const data = await res.json();
       const rows = document.getElementById('leaderboard-rows');
       if (data.standings.length === 0) {
-        rows.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">No redemptions yet.</td></tr>';
+        rows.innerHTML = '<tr><td colspan="{{ 7 if lb_checklist_api else 6 }}" class="px-4 py-6 text-center text-gray-500">No redemptions yet.</td></tr>';
         return;
       }
       rows.innerHTML = data.standings.map(function (p, i) {
@@ -54,6 +110,11 @@
           '<td class="px-4 py-2 font-mono text-xs">' + esc(p.participant_id) + '</td>' +
           '<td class="px-4 py-2">' + p.flags_redeemed + ' / {{ lb_total }}</td>' +
           '<td class="px-4 py-2 text-xs text-gray-500">' + fmtTime(p.last_activity) + '</td>' +
+          {% if lb_checklist_api %}
+          '<td class="px-4 py-2">' +
+            '<button type="button" onclick="showChecklistModal(\'' + esc(p.participant_id) + '\', \'' + esc(p.display).replace(/'/g, "\\'") + '\')" class="text-xs text-blue-600 hover:text-blue-800 underline decoration-dotted">View</button>' +
+          '</td>' +
+          {% endif %}
           '<td class="px-4 py-2">' +
             '<form method="post" data-confirm="Clear all redemptions for this participant? Their nickname is left as it is." action="{{ lb_reset }}">' +
               '<input type="hidden" name="participant_id" value="' + esc(p.participant_id) + '">' +

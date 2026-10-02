@@ -180,9 +180,24 @@ def upload_firmware(meter_id):
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     uploaded.save(save_path)
 
+    # Phase 8: detect ANY successful escape from the intended per-meter
+    # folder, not just the one specific depth ("../canary.txt") that
+    # happens to land exactly on CANARY_PATH. The exact-match check below
+    # only ever matched a single-level-up traversal; "../../canary.txt",
+    # "../../../canary.txt", etc. resolve to a different (and, if
+    # anything, more severe -- further outside FIRMWARE_DIR) location
+    # that's neither CANARY_PATH nor intended_dir, so the write still
+    # succeeds but was never detected at all. A containment check --
+    # same technique as /bills/download's -- catches an escape at any
+    # depth. The Instructor Guide already documents an equivalent
+    # fallback ("or by otherwise checking the file landed outside the
+    # intended directory"), so this isn't a new verification path, just
+    # the flag catching up to it.
     fileupload_flag = None
     intended_dir = os.path.normpath(os.path.join(FIRMWARE_DIR, meter["meter_code"]))
-    if save_path == CANARY_PATH:
+    real_intended_dir = os.path.realpath(intended_dir)
+    real_save_path = os.path.realpath(save_path)
+    if os.path.commonpath([real_intended_dir, real_save_path]) != real_intended_dir:
         fileupload_flag = get_flag(flags.FILEUPLOAD_EXERCISE, g.participant_id)
     elif os.path.dirname(save_path) == intended_dir:
         fileupload_flag = get_flag(flags.FILEUPLOAD_TEACH, g.participant_id)

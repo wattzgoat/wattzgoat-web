@@ -158,7 +158,7 @@ REMEDIATION = {
     SXSS_EXERCISE: "Admin-facing views need the same output escaping as customer-facing ones.",
     WEAKPW_TEACH: "Enforce a minimum length/complexity policy server-side at signup.",
     WEAKPW_EXERCISE: "Force a password change on first login for default/shared admin credentials.",
-    WEAKPW_CHANGE: "Apply the same password policy to the change-password form as to signup.",
+    WEAKPW_CHANGE: "Enforce a strong password policy (minimum length, mixed case, numbers) on the change-password form, independent of whatever the signup form currently does.",
     RATELIMIT_TEACH: "Add a lockout or exponential backoff after repeated failed logins.",
     RATELIMIT_EXERCISE: "Rate-limit password-reset requests the same way login attempts should be.",
     DEVADMIN_LEAK: "Remove debug/staging credentials from source before anything ships.",

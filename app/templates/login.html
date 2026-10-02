@@ -52,7 +52,7 @@
     {% if error %}
     <p class="text-red-600 text-sm mb-1">{{ error }}</p>
     {% if errhandling_flag %}
-    <!-- {{ errhandling_flag }} -->
+    <p class="text-xs text-gray-500">Improper error handling: {{ errhandling_flag }}</p>
     {% endif %}
     {% if ratelimit_flag %}
     <!-- {{ ratelimit_flag }} -->

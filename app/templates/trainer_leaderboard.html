@@ -7,7 +7,7 @@
   has set one, with their participant ID as a small parenthetical, plus the full ID in its own column.
 </p>
 
-{% with lb_api=url_for('trainer.api_leaderboard'), lb_reset=url_for('trainer.reset_participant_redemption'), lb_total=total_flags %}
+{% with lb_api=url_for('trainer.api_leaderboard'), lb_reset=url_for('trainer.reset_participant_redemption'), lb_total=total_flags, lb_checklist_api=url_for('trainer.api_participant_checklist') %}
 {% include "_leaderboard_table.html" %}
 {% endwith %}
 {% endblock %}

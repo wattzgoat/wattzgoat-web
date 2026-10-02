@@ -315,10 +315,22 @@ def login():
             else None
         )
         error = "Invalid username" if user is None else "Invalid password"
+        # Phase 8: shown inline now (see login.html), not as a bare
+        # comment -- so unlike RATELIMIT_TEACH/EXERCISE and
+        # INFOLEAK_TEACH, which stay bare-comment, this one needs to stop
+        # reappearing once already redeemed, the same way every other
+        # inline-shown flag on this app implicitly does by virtue of not
+        # being re-earnable. Suppressed only here, not computed-but-
+        # hidden, so this stays a plain presence/absence check -- no
+        # second source of truth for whether it's been claimed.
+        already_redeemed = db.execute(
+            "SELECT 1 FROM flag_redemptions WHERE flag_key = ? AND participant_id = ?",
+            (flags.ERRHANDLING_EXERCISE, g.participant_id),
+        ).fetchone()
         return render_template(
             "login.html",
             error=error,
-            errhandling_flag=get_flag(flags.ERRHANDLING_EXERCISE, g.participant_id),
+            errhandling_flag=None if already_redeemed else get_flag(flags.ERRHANDLING_EXERCISE, g.participant_id),
             ratelimit_flag=ratelimit_flag,
             plaintext_flag=get_flag(flags.PLAINTEXT_TEACH, g.participant_id),
         ), 401
