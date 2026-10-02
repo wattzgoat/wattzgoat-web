@@ -1,0 +1,34 @@
+# Runs WattzGOAT together with its instructor dashboard.
+# Settings are read from a file named .env next to this one (see the README).
+services:
+  wattzgoat:
+    image: ${WATTZGOAT_IMAGE:-ghcr.io/wattzgoat/wattzgoat-web:latest}
+    container_name: wattzgoat
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    environment:
+      INSTANCE_HOST: ${INSTANCE_HOST:-127.0.0.1}
+    volumes:
+      - wattzgoat-data:/app/data
+
+  instructor:
+    image: ${WATTZGOAT_IMAGE:-ghcr.io/wattzgoat/wattzgoat-web:latest}
+    container_name: wattzgoat-instructor
+    depends_on:
+      - wattzgoat
+    ports:
+      - "5004:5004"
+    environment:
+      TRAINER_DASHBOARD: "true"
+      INSTANCE_HOST: ${INSTANCE_HOST:-127.0.0.1}
+      PARTICIPANT_BASE_URL: https://${INSTANCE_HOST:-127.0.0.1}:5000
+      TRAINER1_EMAIL: ${TRAINER1_EMAIL:?Set TRAINER1_EMAIL in the .env file}
+      TRAINER1_PASSWORD: ${TRAINER1_PASSWORD:?Set TRAINER1_PASSWORD in the .env file}
+      TRAINER2_EMAIL: ${TRAINER2_EMAIL:?Set TRAINER2_EMAIL in the .env file}
+      TRAINER2_PASSWORD: ${TRAINER2_PASSWORD:?Set TRAINER2_PASSWORD in the .env file}
+    volumes:
+      - wattzgoat-data:/app/data
+
+volumes:
+  wattzgoat-data:

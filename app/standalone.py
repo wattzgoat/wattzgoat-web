@@ -3,8 +3,8 @@
 A participant-facing instance that is not paired with an instructor
 container has no other way to reset itself or see class progress, so this
 blueprint puts the same tools inside the app itself: the participant
-leaderboard plus Reset Lab, Reset App, Reset All Redemptions and a
-per-participant Reset Redemption.
+leaderboard (with a per-participant redeemed-flags view) plus Reset Lab,
+Reset App, Reset All Redemptions and a per-participant Reset Redemption.
 
 It is only registered when STANDALONE=true (see app/__init__.py). Unset or
 false -- which is what a trainer-paired instance should use -- means the
@@ -26,7 +26,7 @@ import time
 from collections import defaultdict
 from functools import wraps
 
-from flask import Blueprint, current_app, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, url_for
 
 from . import assistant, auth, personalize, resets
 from .db import get_db
@@ -95,6 +95,7 @@ def console():
         total_flags=len(CATALOG),
         standings_url=url_for("standalone.api_leaderboard"),
         reset_participant_url=url_for("standalone.reset_participant_redemption"),
+        checklist_url=url_for("standalone.api_participant_checklist"),
     )
 
 
@@ -134,6 +135,33 @@ def logout():
 @console_required
 def api_leaderboard():
     return jsonify({"standings": personalize.participant_standings(), "total_flags": len(CATALOG)})
+
+
+@bp.route("/api/participant_checklist", methods=["GET"])
+@console_required
+def api_participant_checklist():
+    """Backs the leaderboard's "View" popup, same as the instructor
+    dashboard's endpoint of the same name (app/trainer.py): one
+    participant's full checklist (category/name/done) in CATALOG order,
+    matching the participant-facing /progress page. Redemption status
+    only, never a flag's actual value."""
+    participant_id = request.args.get("participant_id", "")
+    if not participant_id:
+        abort(400, "participant_id required")
+    db = get_db()
+    redeemed = {
+        row["flag_key"]
+        for row in db.execute(
+            "SELECT flag_key FROM flag_redemptions WHERE participant_id = ?", (participant_id,)
+        ).fetchall()
+    }
+    checklist = [{"category": category, "name": name, "done": key in redeemed} for key, category, name in CATALOG]
+    return jsonify({
+        "participant_id": participant_id,
+        "checklist": checklist,
+        "done_count": len(redeemed),
+        "total_count": len(CATALOG),
+    })
 
 
 @bp.route("/reset_lab", methods=["POST"])

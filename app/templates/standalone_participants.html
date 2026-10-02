@@ -24,7 +24,7 @@
   Live participant progress standings, by flags redeemed. Shown nickname-first where a participant
   has set one, with their participant ID as a small parenthetical, plus the full ID in its own column.
 </p>
-{% with lb_api=standings_url, lb_reset=reset_participant_url, lb_total=total_flags %}
+{% with lb_api=standings_url, lb_reset=reset_participant_url, lb_total=total_flags, lb_checklist_api=checklist_url %}
 {% include "_leaderboard_table.html" %}
 {% endwith %}
 {% endblock %}

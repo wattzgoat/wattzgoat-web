@@ -12,7 +12,7 @@ The site is vulnerable on purpose, so you can practise finding real security wea
 - 48 hidden weaknesses to find and exploit, from easy to hard.
 - A capture-the-flag style Progress page that tracks which ones you've found.
 - A simulated AI assistant with its own set of weaknesses to find.
-- Runs as a single Docker container with no other setup.
+- Runs as a single Docker container with no other setup. For groups, an optional instructor dashboard runs alongside it (see [Instructor mode](#instructor-mode)).
 
 ## How you learn with it
 
@@ -108,6 +108,68 @@ The build downloads some packages, so it needs an internet connection and takes 
 Go to https://127.0.0.1:5000 in your browser (or use the IP address you set in `INSTANCE_HOST`).
 
 Your browser will warn you that the connection is not private. This is normal, because the site makes its own security certificate. Choose **Advanced**, then continue to the site.
+
+## Instructor mode
+
+Instructor mode adds a second site, the instructor dashboard, that runs next to the normal site and helps you run WattzGOAT with a group. You log in to it separately, with instructor accounts you create.
+
+- **Vulnerability switches.** Turn any single vulnerability, or a whole group of them, from vulnerable to fixed and back while people watch. Showing the same page both ways is a good way to see what a fix really changes.
+- **Participant leaderboard.** A live list of everyone taking part, ranked by flags found, with their latest activity. Select **View** to see which flags a person has found and which are left, in the same order as their Progress page. Select **Reset** at the end of a person's row to clear that person's progress without touching anyone else's.
+- **Three ways to reset.**
+
+| Reset | What it does |
+| --- | --- |
+| **Reset Lab** | Starts completely fresh. The site goes back to its original state, every switch returns to vulnerable, flag values change, and everyone's progress and nicknames are cleared. |
+| **Reset App** | Restores the shop's own data (accounts, meters, tickets) and returns every switch to vulnerable, but keeps everyone's progress, nicknames and flag values. |
+| **Reset All Redemptions** | Clears everyone's progress only. Nothing else changes. |
+
+### Running a competition instead?
+
+You can skip instructor mode. If you start a single copy as in the Quick start (with `STANDALONE=true` and your `STANDALONE_PASSWORD`), it includes a hidden page at https://127.0.0.1:5000/participants. Sign in with your `STANDALONE_PASSWORD` to get the same participant leaderboard described above.
+
+### Before you start
+
+- Everything in [What you need](#what-you-need) above.
+- Two instructor accounts. Choose an email and a password for each. Instructor mode needs both.
+- One Docker volume shared by the normal site and the dashboard, so the dashboard can see and control the site. Docker Compose creates it for you. With plain Docker commands you create it with one command.
+- Leave out the `STANDALONE` settings from the Quick start. Instructor mode replaces them.
+
+### Start with Docker Compose
+
+1. Get the file `docker-compose.instructor.yml` from the main folder of the project. Clone the project as in "Option 2: build it from the source code" above, or download just that file from GitHub.
+2. In the same folder, create a file named `.env` containing your instructor accounts:
+
+   ```
+   TRAINER1_EMAIL=instructor1@example.com
+   TRAINER1_PASSWORD=YourPasswordHere
+   TRAINER2_EMAIL=instructor2@example.com
+   TRAINER2_PASSWORD=YourPasswordHere
+   ```
+
+   Replace the emails and passwords with your own, and avoid the `$` character in passwords. If your browser is on a different computer, also add `INSTANCE_HOST=192.168.1.50` (use the IP address of the machine running Docker). If you built the image from source, also add `WATTZGOAT_IMAGE=wattzgoat`.
+3. Start both sites:
+
+   ```
+   docker compose -f docker-compose.instructor.yml up -d
+   ```
+
+To stop them, run `docker compose -f docker-compose.instructor.yml down`. Progress is kept. Add `-v` to the end of that command to delete it too.
+
+### Start with Docker commands
+
+Create the shared volume, then start the normal site **first**, then the dashboard. Replace the emails and passwords with your own.
+
+```
+docker volume create wattzgoat-data
+docker run -d --name wattzgoat -p 5000:5000 -p 5001:5001 -e INSTANCE_HOST=127.0.0.1 -v wattzgoat-data:/app/data ghcr.io/wattzgoat/wattzgoat-web:latest
+docker run -d --name wattzgoat-instructor -p 5004:5004 -e TRAINER_DASHBOARD=true -e INSTANCE_HOST=127.0.0.1 -e PARTICIPANT_BASE_URL=https://127.0.0.1:5000 -e TRAINER1_EMAIL=instructor1@example.com -e TRAINER1_PASSWORD=YourPasswordHere -e TRAINER2_EMAIL=instructor2@example.com -e TRAINER2_PASSWORD=YourPasswordHere -v wattzgoat-data:/app/data ghcr.io/wattzgoat/wattzgoat-web:latest
+```
+
+If the browser is on a different computer, use the IP address of the machine running Docker instead of `127.0.0.1`, in all three places. If you built the image from source, use `wattzgoat` instead of `ghcr.io/wattzgoat/wattzgoat-web:latest`.
+
+### Open the dashboard
+
+Go to https://127.0.0.1:5004 and log in with one of your instructor accounts. Everyone else uses the normal site at https://127.0.0.1:5000. Your browser will show the same security warning as before.
 
 ## Everyday commands
 
