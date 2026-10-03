@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, g, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, abort, g, jsonify, render_template, request
 
 from .auth import login_required
 from .code_examples import example_keys, example_payload
@@ -11,24 +11,13 @@ bp = Blueprint("progress", __name__)
 
 
 def _expected_flags_for(participant_id: str) -> dict[str, str]:
-    """Every flag key's expected value for this participant, computed
-    fresh each call (no caching) -- these are cheap HMAC operations, and
-    caching would need to be invalidated on every lab reset anyway (see
-    personalize.regenerate_lab_secret), so it isn't worth the complexity."""
+    """Each flag's expected value for this participant."""
     return {key: get_flag(key, participant_id) for key, _, _ in CATALOG}
 
 
 @bp.route("/progress", methods=["GET", "POST"])
 @login_required()
 def progress():
-    # Phase 6: a HARDENING_MODE=all instance disables flag redemption
-    # entirely rather than leaving it up and letting every submission
-    # fail -- per the project owner's call, a working /progress on a
-    # fully-hardened reference instance would just confuse participants
-    # ("is this broken, or is nothing here findable on purpose?").
-    # Disabled as a flat 404, not a message -- this route genuinely isn't
-    # part of what a hardened instance offers, same as it isn't wired
-    # into base.html's nav for one either (see base.html).
     if hardening.FORCE_ALL:
         abort(404)
 
@@ -84,10 +73,7 @@ def progress():
 @bp.route("/progress/code/<flag_key>")
 @login_required()
 def view_code(flag_key):
-    """The vulnerable and fixed code for one flag, as JSON for the Progress
-    page's View Code window. Only available once this participant has
-    redeemed that flag -- enforced here, not just by hiding the button, so
-    a direct request for a flag they haven't solved yet is refused."""
+    """A flag's code example as JSON, available only once this participant has redeemed that flag."""
     if hardening.FORCE_ALL:
         abort(404)
     payload = example_payload(flag_key)

@@ -10,9 +10,6 @@ def test_fileupload_teach(ops1_admin, base_url, extract_flag_fn, redeem_flag_fn)
 
 
 def test_fileupload_exercise(ops1_admin, base_url, extract_flag_fn, redeem_flag_fn):
-    # Client-supplied filename walks the save path out of the intended
-    # per-meter folder and into the shared canary target one level up --
-    # mirrors the bill-download traversal's simplicity.
     marker = "traversal proof -- landed outside the intended folder"
     resp = ops1_admin.post(
         f"{base_url}/admin/meters/1/firmware",

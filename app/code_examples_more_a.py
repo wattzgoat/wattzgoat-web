@@ -1,7 +1,4 @@
-"""Second batch of code examples (see code_examples.py for the format and how
-they are shown). Plain data: entries keyed by flag, each with a short note and
-vulnerable/fixed snippets in Python, JavaScript and PHP. A line starting with
-"!!" is highlighted as the changed line."""
+"""More code examples, in the same format as code_examples.py."""
 
 ENTRIES_A = {
     "HEADERS_EXERCISE": {

@@ -1,11 +1,4 @@
-{# Guided mode panel (see app/guided.py). Docked along the bottom of the page, over
-   the content, and kept there as the page scrolls. Shows ONE flag's hints at a time.
-   Two separate controls: the arrows and numbered tabs move between FLAGS, and the
-   Previous hint / Show next hint buttons at the bottom of a flag's card move between
-   that flag's HINTS. Each flag is labelled "Flag N of M" with N counted among all the
-   flags on the page, so the number matches the headline and never changes when another
-   flag is solved. Cards carry an opaque id, not the flag key, so the page doesn't spell
-   out which vulnerability a hint is about. Expects gp. #}
+{# Guided mode panel: docked along the bottom of the page. Expects gp. #}
 {% import "_ui.html" as ui %}
 {% set has_body = gp.cards or gp.scope == 'beyond' or gp.unhinted %}
 <section id="wg-guided-panel" class="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-4 pr-24 sm:px-24" aria-label="Guided mode">
@@ -82,15 +75,13 @@
   var tabs = [].slice.call(panel.querySelectorAll('[data-flag-tab]'));
   var body = document.getElementById('wg-guided-body');
 
-  // Keep the end of the page reachable: the bar floats over the content, so the
-  // page gets as much bottom padding as the bar is tall.
+  // Keep the end of the page reachable above the bar.
   function fit() { document.body.style.paddingBottom = panel.offsetHeight + 'px'; }
   if (typeof ResizeObserver !== 'undefined') { new ResizeObserver(fit).observe(panel); }
   window.addEventListener('resize', fit);
   fit();
 
-  // --- hints: one at a time, with a way back. Which hint a flag is on is
-  // remembered in this browser. ---
+  // Hints: one at a time, remembered in this browser.
   function read(id) { try { return parseInt(localStorage.getItem('wg_hints_' + id), 10) || 1; } catch (e) { return 1; } }
   function write(id, n) { try { localStorage.setItem('wg_hints_' + id, String(n)); } catch (e) {} }
   cards.forEach(function (card) {
@@ -115,7 +106,7 @@
     prevHint.addEventListener('click', function () { shown = Math.max(shown - 1, 1); write(id, shown); show(shown); });
   });
 
-  // --- carousel: move between the flags still to find on this page ---
+  // Carousel: move between the flags still to find.
   var current = 0;
   function showCard(i) {
     current = ((i % cards.length) + cards.length) % cards.length;
@@ -136,7 +127,7 @@
   if (next) next.addEventListener('click', function () { showCard(current + 1); });
   tabs.forEach(function (tab, idx) { tab.addEventListener('click', function () { showCard(idx); }); });
 
-  // --- minimize / expand, remembered in this browser ---
+  // Minimize / expand, remembered in this browser.
   var min = document.getElementById('wg-guided-min');
   if (min && body) {
     function setMinimized(on) {

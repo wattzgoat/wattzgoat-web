@@ -4,8 +4,6 @@
 <div class="mx-auto mt-12 max-w-sm rounded-2xl bg-white p-8 text-center shadow-card ring-1 ring-black/5">
   <h1 class="text-xl font-semibold mb-2">{{ "Firmware rejected" if error else "Firmware uploaded" }}</h1>
   {% if error %}
-  {# Phase 6: shown only on FILEUPLOAD_TEACH's hardened branch (see
-     admin.py:upload_firmware()) -- nothing gets saved when this shows. #}
   <p class="text-sm text-red-600 mb-4">{{ error }}</p>
   {% else %}
   <p class="text-sm text-gray-600 mb-4">

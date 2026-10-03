@@ -11,18 +11,11 @@ CREATE TABLE users (
     address_billing TEXT,
     billing_rate REAL NOT NULL DEFAULT 0.28,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    -- Updated only by a successful POST /login (see auth.py). On each such
-    -- login previous_login_at takes the old last_login_at value, so the
-    -- footer can show the *previous* login; both stay NULL for accounts
-    -- that have never logged in through the form.
+    -- Set by a successful form login; previous_login_at holds the one before.
     last_login_at TEXT,
     previous_login_at TEXT
 );
 
--- Deliberately homemade instead of Flask's signed cookie session -- see
--- app/auth.py for why (predictable-session-ID teach instance).
--- logged_out_at is written on logout but never consulted when a token is
--- presented -- session-reuse-after-logout flag (see app/auth.py).
 CREATE TABLE sessions (
     token TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -30,15 +23,7 @@ CREATE TABLE sessions (
     logged_out_at TEXT
 );
 
--- Password-reset tokens are stateless (base64 of email + a timestamp
--- that's never checked -- see app/auth.py), so there's nothing to store
--- for them.
-
--- Backs the separate /mail webmail simulation -- a generic table, not
--- reset-specific, so any future "check your inbox" feature (billing
--- alerts, solar-credit confirmations) can reuse it. /mail's "login" is
--- just naming a mailbox with no password check at all (broken
--- authentication exercise instance, alongside the reset token itself).
+-- Backs the /mail webmail simulation.
 CREATE TABLE emails (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sender_name TEXT NOT NULL DEFAULT 'WattzGOAT',
@@ -57,24 +42,11 @@ CREATE TABLE meters (
     status TEXT NOT NULL DEFAULT 'connected' CHECK (status IN ('connected', 'disconnected')),
     balance REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    -- Which participant (see app/personalize.py) last set this nickname,
-    -- if any. Multiple participants can share the same seeded customer
-    -- account, and the nickname itself is genuinely shared state once
-    -- set (that's the realistic part of stored XSS worth keeping) -- but
-    -- the SXSS_TEACH flag is personalized to whoever actually caused the
-    -- current value, not to whoever happens to view the dashboard
-    -- afterward. NULL until someone actually changes it via
-    -- customer.update_nickname().
-    --
-    -- Deliberately placed LAST, not inserted between existing columns --
-    -- the SQLi teach instance's UNION payload depends on meters.*'s exact
-    -- column order (see app/admin.py:meters(), the instructor guide).
-    -- Appending keeps that a one-column addition to the payload rather
-    -- than a full reshuffle every time this table gains a field.
+    -- The participant who last set the nickname.
     nickname_set_by TEXT
 );
 
--- telemetry from the meter simulators + the field-correction IDOR chain
+-- Meter readings.
 CREATE TABLE readings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     meter_id INTEGER NOT NULL REFERENCES meters(id),
@@ -83,7 +55,7 @@ CREATE TABLE readings (
     recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- generated PDF bills -- directory traversal target
+-- Customer bills (PDF files).
 CREATE TABLE bills (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -93,7 +65,7 @@ CREATE TABLE bills (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- prepaid top-up -- business logic teach instance
+-- Prepaid top-ups.
 CREATE TABLE recharges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -102,7 +74,7 @@ CREATE TABLE recharges (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- net-metering export credit -- business logic exercise instance
+-- Solar export credits.
 CREATE TABLE solar_exports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -111,23 +83,19 @@ CREATE TABLE solar_exports (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Support tickets -- stored XSS exercise instance
+-- Support tickets.
 CREATE TABLE tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
     subject TEXT NOT NULL,
     description TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'open',
-    -- Which participant (see lab_meta below / app/personalize.py) authored
-    -- this ticket, if any -- NULL for anything not created through the
-    -- normal /support flow. Used only to gate the indirect-injection AI
-    -- assistant flag to the same participant who planted it, not to
-    -- restrict who can view the ticket itself.
+    -- The participant who submitted the ticket.
     participant_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- admin alarms/events log -- SQL injection exercise instance target
+-- Admin alarms and events.
 CREATE TABLE alarms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     meter_id INTEGER NOT NULL REFERENCES meters(id),
@@ -136,10 +104,7 @@ CREATE TABLE alarms (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- flag redemption tracking for the /progress page -- one row per
--- (flag_key, participant_id) pair, not per flag_key alone, since flag
--- VALUES are now personalized per participant (see app/personalize.py)
--- and only the stable key identifies which of the 37 flags this is.
+-- One row per (flag_key, participant_id).
 CREATE TABLE flag_redemptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     flag_key TEXT NOT NULL,
@@ -149,55 +114,19 @@ CREATE TABLE flag_redemptions (
     UNIQUE(flag_key, participant_id)
 );
 
--- Single-row-per-key settings table. Currently holds one row: the random
--- secret personalized flag values are derived from (see
--- app/personalize.py). Regenerated at seed time and again on every
--- /ops/__reset_lab__ run, so flag values also rotate on a lab reset, not
--- just at first boot.
+-- Key/value settings, such as the flag secret.
 CREATE TABLE lab_meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
 
--- Phase 6: hardening-mode toggle state. One row per flag_key that's ever
--- been flipped to hardened -- a key with NO row here is implicitly
--- vulnerable (see app/hardening.py:is_hardened()'s default), so a
--- freshly seeded DB needs zero rows here and every instance starts fully
--- vulnerable with no seed data required for this table at all.
---
--- Lives in the same app.db that /ops/__reset_lab__ wholesale-swaps back
--- to seed.db's contents (see app/ops.py) -- so a lab reset also resets
--- every hardening toggle back to vulnerable, for free, via the exact
--- same file-swap mechanism that already resets everything else in this
--- DB. No extra reset-lab code needed for this table specifically.
---
--- Not consulted at all when the app is booted with HARDENING_MODE=all
--- (see app/hardening.py) -- that mode is a whole separate, standalone
--- hardened container/port and short-circuits before ever querying this
--- table, so it works even against a DB that predates this table's
--- existence.
+-- Flags switched to hardened; a flag with no row is vulnerable.
 CREATE TABLE hardening_state (
     flag_key TEXT PRIMARY KEY,
     hardened INTEGER NOT NULL DEFAULT 0
 );
 
--- Next-phase: participant nicknames. One row per participant_id (see
--- app/personalize.py's wg_pid cookie) -- a display name a participant
--- picks for themselves the first time they're prompted, shown
--- nickname-first with their participant_id as a small parenthetical
--- both in their own view and on the trainer dashboard's Participant
--- Leaderboard. Deliberately NOT unique/enforced: two participants
--- picking the same nickname is resolved by silently appending a short
--- suffix to whichever one asks second (see
--- app/personalize.py:set_nickname()), not by rejecting the request --
--- this is a display convenience, not an identity system, and the real
--- identity is always the participant_id underneath.
---
--- Lives in the same app.db that /ops/__reset_lab__ (and the trainer
--- dashboard's own reset, see app/trainer.py) wholesale-swaps back to
--- seed.db's contents, so nicknames reset along with everything else on
--- a lab reset, the same way hardening_state does -- no extra reset-lab
--- code needed for this table either.
+-- Display names participants choose for themselves.
 CREATE TABLE participant_nicknames (
     participant_id TEXT PRIMARY KEY,
     nickname TEXT NOT NULL,

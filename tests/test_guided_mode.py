@@ -1,10 +1,4 @@
-"""Guided mode (app/guided.py, app/guidance.py).
-
-It is only ever OFFERED where an operator asked for it, so a default instance
-must show nothing, even if a participant forces the cookie on. These run
-against the normal test instance. The data checks need the app package
-importable (Flask installed) and are skipped otherwise.
-"""
+"""Guided mode."""
 import importlib.util
 import os
 import secrets

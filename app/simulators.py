@@ -8,10 +8,6 @@ import urllib3
 from .db import get_db
 from .devices import issue_device_token
 
-# The main app's cert is self-signed (see entrypoint.sh) -- fine for a
-# simulator that's part of the lab's own plumbing, not part of what a
-# participant is meant to attack, so silence the warning rather than
-# actually verify it.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 TELEMETRY_URL = "https://127.0.0.1:5000/api/telemetry"

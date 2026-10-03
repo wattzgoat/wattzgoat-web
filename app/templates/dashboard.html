@@ -22,9 +22,6 @@
 <div class="mb-5 rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5" data-meter-card data-meter-id="{{ meter['id'] }}">
   <div class="flex items-start justify-between gap-4">
     <div class="min-w-0">
-      {# |safe on purpose -- stored XSS teach instance (nickname is
-         unescaped). Phase 6: SXSS_TEACH hardened escapes it, matching
-         Jinja's normal autoescape (no |safe branch at all). #}
       {% if is_hardened('SXSS_TEACH') %}
       <h2 class="text-lg font-semibold tracking-tight">{{ meter['nickname'] }}</h2>
       {% else %}

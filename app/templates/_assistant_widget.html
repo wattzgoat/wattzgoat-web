@@ -1,6 +1,3 @@
-<!-- Simulated AI assistant widget -- rule-based, NOT a real model (see
-     app/assistant.py). Visible on every authenticated page, customer and
-     admin alike; capability set differs by role, handled server-side. -->
 <div id="wg-assistant-root">
   <button id="wg-assistant-toggle" type="button" aria-label="Chat with WattzBot"
     style="position:fixed;bottom:20px;right:20px;z-index:9999;background:#F4B41A;color:#14181C;
@@ -46,21 +43,10 @@
     bubble.style.maxWidth = '85%';
     bubble.style.background = who === 'me' ? '#F4B41A' : '#E5E7EB';
     if (who === 'me') {
-      // The user's own message is always rendered safely.
       bubble.textContent = text;
     } else if ({{ 'true' if is_hardened('ASSISTANT_OUTPUT_XSS') else 'false' }}) {
-      // Phase 6: ASSISTANT_OUTPUT_XSS hardened -- bot replies rendered
-      // the same safe way as the user's own messages. This is the
-      // actual fix (matches the remediation note word for word: "never
-      // render assistant output with innerHTML"), not a server-side
-      // stub -- a working marker in the echoed text is now just inert
-      // text on the page either way.
       bubble.textContent = text;
     } else {
-      // NOTE: bot replies are rendered with innerHTML, not textContent.
-      // The simulated bot's fallback echoes unrecognized input back
-      // verbatim -- this line is the actual mechanism behind the
-      // insecure-output-handling bonus flag, not an accidental bug.
       bubble.innerHTML = text;
     }
     row.appendChild(bubble);
@@ -69,9 +55,6 @@
     return row;
   }
 
-  // Simulated "thinking" delay with rotating status text, so the bot
-  // reads more like a real agent working through a request than an
-  // instant lookup. Purely cosmetic -- no bearing on any flag.
   var STATUS_STEPS = {{ ('["Checking meter records\u2026", "Looking up account details\u2026", "Preparing a response\u2026"]' if g.user['role'] == 'admin' else '["Checking your account\u2026", "Looking that up\u2026", "Preparing a response\u2026"]') | safe }};
 
   function showThinking() {

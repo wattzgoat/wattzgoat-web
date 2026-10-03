@@ -1,38 +1,3 @@
-# The master flag catalog. Each entry is (flag_key, category, name) where
-# name is a short 1-2 word location hint -- e.g. "Login page" or "Meter
-# search" -- shown on /progress instead of the flag itself.
-#
-# CHANGED (Phase 3): these constants used to hold the actual displayed
-# FLAG{...} string. They now hold a stable KEY -- the constant's own name,
-# as a plain string -- and the real, per-participant value is computed at
-# request time via personalize.get_flag(key, participant_id). Every
-# vulnerable route imports the key the same way it always imported the
-# flag, and calls get_flag() at the point it used to just embed the
-# constant directly.
-#
-# ONE EXCEPTION, structural, not an oversight: SQLI_TEACH / SQLI_EXERCISE
-# / SQLI_BONUS. A UNION-based injection returns whatever's sitting in the
-# table to WHOEVER runs the query -- there's no way to make planted row
-# DATA itself differ per requester without breaking how real UNION SQLi
-# behaves. Instead, the planted rows now hold a SENTINEL marker (see
-# *_SENTINEL below, seeded by scripts/seed.py) rather than a flag string;
-# the vulnerable routes detect the sentinel in the query results
-# server-side (proof a UNION genuinely succeeded, same rigor as before)
-# and THEN compute a personalized flag to display separately, rather than
-# the flag ever being the exfiltrated data itself.
-#
-# TRAVERSAL_TEACH was a second exception (baked into a static PDF at
-# Docker image build time) until app/billing.py started regenerating that
-# one file at request time instead -- it's a fully ordinary personalized
-# flag now, same as everything else in this file.
-#
-# Every core category (1-14) has a teach and an exercise instance, with
-# three named exceptions: Broken authentication carries a third ("bonus")
-# instance (session reuse after logout), Broken access control carries a
-# third bonus instance (role escalation via mass assignment), and SQL
-# injection carries a third bonus instance (usage search). Category 15
-# ("Bonus — Simulated AI Assistant") is a standalone set of 5 flags with
-# no teach/exercise pairing -- see app/assistant.py.
 
 HEADERS_TEACH = "HEADERS_TEACH"
 HEADERS_EXERCISE = "HEADERS_EXERCISE"
@@ -141,9 +106,6 @@ VALID_KEYS = {key for key, _, _ in CATALOG}
 assert len(CATALOG) == 48
 assert len(VALID_KEYS) == 48, "flag keys must be unique"
 
-# One-line remediation note shown on /progress after a correct
-# submission -- what a developer would actually do to fix this class of
-# bug, not a restatement of the exploit.
 REMEDIATION = {
     HEADERS_TEACH: "Set X-Frame-Options / a CSP frame-ancestors directive on every response.",
     HEADERS_EXERCISE: "Add HSTS, X-Content-Type-Options, and a real Content-Security-Policy app-wide.",
@@ -195,31 +157,11 @@ REMEDIATION = {
     ASSISTANT_OUTPUT_XSS: "Never render assistant output with innerHTML; escape it like any other untrusted string.",
 }
 
-# The dedicated, undisclosed account that hosts the relocated predictable-
-# session-ID flag (SESSIONID_TEACH). It has no meter and isn't listed in
-# any class materials -- it's reached only by guessing/walking a sequential
-# wgs_session token, never by logging in directly. Its very first session
-# (token "100000", the lowest token this app ever issues) is planted by
-# scripts/seed.py and therefore also restored by every /ops/__reset_lab__
-# run, so the account's flag-bearing token is always that same known,
-# fixed value -- this bounds how long the guessing exercise can take.
 SESSIONID_ACCOUNT_EMAIL = "fieldrelay@example.com"
 SESSIONID_ACCOUNT_BASELINE_TOKEN = "100000"
 
-# The leaked dev-admin account (advertised in an HTML comment on the login
-# page) -- DEVADMIN_LEAK is shown on this account's own dashboard once
-# logged into, tying the previously-unflagged credential leak to a real,
-# flagged payoff.
 DEVADMIN_ACCOUNT_EMAIL = "devadmin@example.com"
 
-# --- SQLi sentinel markers -- see the module docstring note above. These
-# are what actually get planted in the DB by scripts/seed.py; detecting
-# one of these in a query's results (not the marker's literal text) is
-# what triggers computing and displaying the real, personalized flag.
-# Must match scripts/fixtures.py exactly (duplicated there for the same
-# reason the rest of that file's constants are -- scripts/ can't import
-# app/). Deliberately NOT formatted like FLAG{...} so they're never
-# mistakable for (or acceptable as) a real submission on /progress.
 SQLI_TEACH_SENTINEL = "__WG_SENTINEL_SQLI_TEACH__"
 SQLI_EXERCISE_SENTINEL = "__WG_SENTINEL_SQLI_EXERCISE__"
 SQLI_BONUS_SENTINEL = "__WG_SENTINEL_SQLI_BONUS__"

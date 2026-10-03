@@ -1,18 +1,4 @@
-"""CSV export of participant progress, for the instructor dashboard and the
-standalone /participants console. Two files:
-
-- summary: one row per participant (rank, nickname, flags found, first and
-  last activity), in leaderboard order.
-- detail: one row per redeemed flag (who, which flag, when, which account).
-
-Only redemption status and timestamps are exported, never a flag's actual
-value. Times are UTC, as stored.
-
-Spreadsheet formula injection: nicknames are typed by participants, so a
-cell that starts with = + - @ (or a tab or carriage return) could be run as
-a formula when the file is opened in Excel or Sheets. Any such text cell gets
-a leading apostrophe, which spreadsheets show as plain text.
-"""
+"""CSV export of participant progress: a summary file and a per-flag detail file. Times are UTC and flag values are never exported."""
 import csv
 import io
 from datetime import datetime, timezone

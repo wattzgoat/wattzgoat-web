@@ -1,19 +1,4 @@
-"""Next-phase item 1: the trainer role's own auth, completely decoupled
-from the participant app's users/sessions tables and its deliberately
-weak admin stack.
-
-- Own database (TRAINER_DB_PATH, see app/trainer_schema.sql), separate
-  from app.db and never touched by a lab reset.
-- Real, salted password hashing (werkzeug.security), not weak_hash().
-- Real, unguessable session tokens (secrets.token_hex), not the
-  participant app's deliberately sequential issue_session_token().
-- Own cookie name (wgt_session) so it can never be confused with, or
-  accidentally read as, the participant app's wgs_session.
-
-This module is only ever imported by app/trainer.py, and only matters
-when TRAINER_DASHBOARD=true (see app/__init__.py) -- the participant-
-facing app never touches trainer_accounts/trainer_sessions at all.
-"""
+"""Instructor sign-in, separate from the participant app's accounts."""
 import secrets
 import sqlite3
 from functools import wraps
@@ -56,11 +41,6 @@ def authenticate(email: str, password: str) -> bool:
     row = db.execute(
         "SELECT password_hash FROM trainer_accounts WHERE email = ?", (email,)
     ).fetchone()
-    # Still run check_password_hash against SOME hash on a miss (a
-    # throwaway one, computed fresh) rather than short-circuiting on
-    # "no such account" -- a real, if minor, timing-safety habit worth
-    # keeping in code that's explicitly meant to be the hardened
-    # counter-example to the participant app's own auth.
     if row is None:
         check_password_hash("scrypt:32768:8:1$0" * 8, password)
         return False

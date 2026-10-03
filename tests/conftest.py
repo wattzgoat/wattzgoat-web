@@ -1,23 +1,4 @@
-"""
-Shared fixtures for the WattzGOAT flag test suite.
-
-IMPORTANT — these tests are NOT independent of each other or of
-execution order. This app has one shared SQLite DB per running
-instance, no per-test isolation, and several flags are only reachable
-by permanently changing state (promoting an account to admin,
-resetting a password, disconnecting a meter, inflating a balance).
-Rather than resetting the lab between every test (slow, and defeats
-the point of testing reset_lab() as its own thing), tests are ordered
-to match the instructor guide's own category sequence via numbered
-filenames (test_01_*, test_02_*, ...), and account assignments are
-chosen deliberately to avoid one test's side effects breaking a later
-one's assumptions -- see the comment above each account choice in the
-test files themselves.
-
-Because of this, the suite must be run against a freshly-reset (or
-freshly-booted) instance, top to bottom, in one pass -- not cherry-
-picked or reordered.
-"""
+"""Shared fixtures for the flag test suite."""
 import base64
 import json
 import os
@@ -30,26 +11,15 @@ import requests
 
 BASE_URL = os.environ.get("WATTZGOAT_BASE_URL", "https://127.0.0.1:5000")
 
-# Phase 3: flags are personalized per participant_id (see
-# app/personalize.py), assigned via a cookie on first visit. Every
-# account fixture below shares this ONE value rather than letting each
-# requests.Session pick up its own -- this suite models a single
-# participant moving between accounts over the course of a class (submit
-# a ticket as a customer, summarize it as admin, etc.), which is also
-# what several flags (TROJAN_MEMO in particular) actually require to work
-# at all.
 PARTICIPANT_ID = secrets.token_hex(8)
 
 FLAG_RE = re.compile(r"FLAG\{[A-Z0-9_]+\}")
 
-# Seeded accounts (see scripts/seed.py / the instructor guide's roster).
-# Reused deliberately across test files to mirror how a real participant
-# session progresses through the categories on one shared instance.
 CUSTOMER_ALICE = ("alice.smith@example.com", "alice123")   # general-purpose customer
 CUSTOMER_DEVON = ("devon.reed@example.com", "devon123")     # kept as the IDOR/privesc "attacker" -- never promoted to admin
-CUSTOMER_BEN = ("ben.wood@example.com", "ben123")            # bill-traversal target; password reset in test_09 (not needed as ben elsewhere)
+CUSTOMER_BEN = ("ben.wood@example.com", "ben123")
 CUSTOMER_CARLA = ("carla.clark@example.com", "carla123")     # session-reuse test only
-CUSTOMER_FARID = ("farid.shaw@example.com", "farid123")      # mass-assignment + role-escalation pair (kept off devon on purpose)
+CUSTOMER_FARID = ("farid.shaw@example.com", "farid123")
 ADMIN_OPS1 = ("ops1@example.com", "changeme")
 ADMIN_DEVADMIN = ("devadmin@example.com", "Dev@2024!")
 
@@ -72,14 +42,7 @@ def base_url():
 
 @pytest.fixture(scope="session")
 def plaintext_base_url():
-    """The deliberate unencrypted mirror. Defaults to base_url's port + 1,
-    matching the container's own internal 5000 (HTTPS) / 5001 (plaintext)
-    pair as preserved by CI's `docker run -p 5000:5000 -p 5001:5001` and
-    a plain local `docker run`. This can't be reliably inferred for other
-    port schemes -- e.g. this project's own Portainer convention maps
-    HTTPS/plaintext pairs 10 apart (4581/4591) -- so set
-    WATTZGOAT_PLAINTEXT_URL explicitly for those deployments rather than
-    relying on a guessed offset."""
+    """Base URL of the plaintext (HTTP) listener."""
     override = os.environ.get("WATTZGOAT_PLAINTEXT_URL")
     if override:
         return override
@@ -102,18 +65,7 @@ def extract_flag(text: str) -> str:
 
 
 def redeem_flag(session: requests.Session, base_url: str, flag_value: str) -> bool:
-    """POSTs a flag to /progress and reports whether the app recognized it
-    as a genuinely valid flag for this participant. Accepts either a
-    fresh correct submission or "already redeemed" -- both confirm the
-    submitted string matched one of the 37 computed values; the
-    difference between them is bookkeeping (which test claimed credit
-    first), not validity. Several pages legitimately embed more than one
-    valid flag in the same response (e.g. dashboard's <title> always
-    carries SXSS_TEACH's value regardless of account, ahead of
-    SESSIONID_TEACH's in document order), so a different test extracting
-    the "other" valid flag from a shared page first is expected, not a
-    bug -- only "Not a recognized flag" should ever count as failure
-    here."""
+    """POST a flag to /progress and report whether it was accepted."""
     resp = session.post(f"{base_url}/progress", data={"flag": flag_value}, timeout=10)
     assert resp.status_code == 200
     return "Correct!" in resp.text or "Already redeemed" in resp.text
@@ -124,12 +76,7 @@ def extract_all_flags(text: str) -> list:
 
 
 def checklist_status(session: requests.Session, base_url: str, category: str, name: str) -> bool:
-    """Reads /progress directly and reports whether the specific
-    (category, name) row is marked solved. More robust than plain
-    extraction for responses that can legitimately carry more than one
-    valid flag at once (e.g. the account page after a password change) --
-    this confirms the SPECIFIC category under test actually fired, rather
-    than just that some valid-looking flag was accepted somewhere."""
+    """Whether a given (category, name) row is marked solved on /progress."""
     resp = session.get(f"{base_url}/progress", timeout=10)
     assert resp.status_code == 200
     pattern = re.compile(

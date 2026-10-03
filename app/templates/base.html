@@ -13,11 +13,6 @@
 {% import "_ui.html" as ui %}
 {% set guided = guided_state() %}
 {% set gp = guided_panel() %}
-{# Nav link with an active state. Defined here (not in _ui.html) because it needs
-   the request, which imported macros don't get. #}
-{# The participant's own Guided mode switch, shown only where guided mode is offered
-   (see app/guided.py). It sets a cookie in this browser, so it never affects anyone else
-   using the same instance. #}
 {% macro guided_switch() -%}
 {% if guided.available %}
 <button type="button" id="wg-guided-toggle" role="switch" aria-checked="{{ 'true' if guided.on else 'false' }}" title="Hints for the page you are on" class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-gray-200 transition hover:bg-white/20 hover:text-white">
@@ -78,19 +73,12 @@
   </nav>
   {% endif %}
 </header>
-{# Optional left column for a page-wide side panel. When a page doesn't provide one,
-   nothing is rendered and the layout is unchanged. A page can also set page_wide to use
-   the wider container without a side panel. (Guided mode docks along the bottom instead,
-   see _guided_panel.html.) #}
-{% set rail_html %}{% block rail %}{% endblock %}{% endset %}
-{% set has_rail = rail_html|trim != '' %}
-<div class="mx-auto px-6 py-10 {% if has_rail %}max-w-6xl flex flex-col items-stretch gap-6 lg:flex-row lg:items-start lg:gap-8{% elif page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
-  {% if has_rail %}<aside class="w-full shrink-0 lg:sticky lg:top-24 lg:w-72">{{ rail_html }}</aside>{% endif %}
-  <main class="min-w-0 flex-1">
+<div class="mx-auto px-6 py-10 {% if page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
+  <main class="min-w-0">
 {% block content %}{% endblock %}
   </main>
 </div>
-<footer class="mx-auto px-6 py-6 text-xs text-gray-500 border-t border-gray-200 mt-8 {% if has_rail or page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
+<footer class="mx-auto px-6 py-6 text-xs text-gray-500 border-t border-gray-200 mt-8 {% if page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
   <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
     <span>&copy; {{ current_year() }} WattzGOAT Corp™. All rights reserved.</span>
     <span aria-hidden="true">&middot;</span>
@@ -107,10 +95,6 @@
 
 {% if gp %}{% include "_guided_panel.html" %}{% endif %}
 
-<!-- Real, serious safety notice -- not part of the in-universe flavor
-     content above. Shown once per browser via localStorage; a blocking
-     overlay is deliberate here, unlike the dismissible cookie banner
-     below. -->
 <div id="wg-disclaimer" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-lift ring-1 ring-red-200">
     <h2 class="text-lg font-bold text-red-700 mb-3">⚠ Intentionally Vulnerable Application</h2>
@@ -128,8 +112,6 @@
   </div>
 </div>
 
-<!-- Lightweight, in-universe cookie banner -- separate from the real
-     disclaimer above on purpose: this one's a joke, that one isn't. -->
 <div id="wg-cookie-banner" class="fixed bottom-0 inset-x-0 bg-ink text-gray-200 text-sm px-4 py-3 hidden z-40 shadow-lift">
   <div class="max-w-4xl mx-auto flex flex-wrap items-center gap-3">
     <p class="flex-1">
@@ -142,13 +124,6 @@
   </div>
 </div>
 
-<!-- Next-phase item 6: participant nickname prompt, tied to the wg_pid
-     cookie (see app/personalize.py) -- asked on first visit, but also
-     reachable any time via the identity chip in the header above.
-     Nickname-first display with participant ID as a small parenthetical
-     is handled server-side by participant_display() (Jinja global,
-     app/personalize.py:display_identity()); this modal is just how a
-     participant sets or changes it. -->
 <div id="wg-nickname-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-lift">
     <h2 class="text-lg font-semibold mb-2">Pick a nickname</h2>
@@ -183,11 +158,6 @@
   function closeModal() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
-    // The cookie banner was deferred until this step resolved (see the
-    // disclaimer/cookie script block below) -- show it now if it's
-    // still owed. Guarded because this script loads before that one
-    // defines the function, but closeModal() is never actually called
-    // until after both have loaded and a click has happened.
     if (window.__wgMaybeShowCookieBanner) {
       window.__wgMaybeShowCookieBanner();
     }
@@ -226,12 +196,6 @@
       });
   });
 
-  // Asked on first visit, right after the safety disclaimer -- NOT
-  // gated behind the cookie banner (an earlier version was, and that
-  // banner has no forced interaction, so a participant who never
-  // happened to click its "Accept" button would never reach the
-  // nickname step at all). Auto-opens once per browser (via
-  // localStorage) if this participant has no nickname yet server-side.
   window.__wgMaybePromptNickname = function () {
     var hasNickname = {{ 'true' if participant_has_nickname() else 'false' }};
     var alreadyPrompted = false;
@@ -251,11 +215,6 @@
     var disclaimer = document.getElementById('wg-disclaimer');
     var cookieBanner = document.getElementById('wg-cookie-banner');
 
-    // Cookie banner is deferred until the nickname step has been
-    // resolved (saved or skipped) -- shows immediately if there's no
-    // nickname prompt pending. Called after the disclaimer is
-    // dismissed, and again from the nickname modal's Save/Skip
-    // handlers (see the script above) once that step is done.
     window.__wgMaybeShowCookieBanner = function () {
       if (!localStorage.getItem('wg_cookie_ack')) {
         cookieBanner.classList.remove('hidden');
@@ -283,8 +242,7 @@
       cookieBanner.classList.add('hidden');
     });
   } catch (e) {
-    // localStorage unavailable (privacy mode, etc.) -- fail open rather
-    // than block the page.
+    // localStorage unavailable: carry on.
   }
 })();
 </script>

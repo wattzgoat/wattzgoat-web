@@ -1,9 +1,4 @@
-{# Renders one code example (see app/code_examples.py) into a container:
-   a short note, language tabs, and the vulnerable and fixed versions side by
-   side (stacked on narrow screens) with the changed lines highlighted.
-   Usage: wgRenderCode(containerElement, payload, { hideHeading: true }).
-   Code is inserted with textContent, never as HTML. The chosen language is
-   remembered in the browser. #}
+{# Renders a code example: vulnerable and fixed side by side, with language tabs. Use wgRenderCode(container, payload, options). #}
 <script>
 (function () {
   var LANG_KEY = 'wg_code_lang';

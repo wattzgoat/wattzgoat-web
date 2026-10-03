@@ -1,6 +1,4 @@
-{# Shared UI pieces: icon set, buttons, form fields, alerts, cards. Import
-   inside a block with: {% import "_ui.html" as ui %}. Class names are written out in
-   full on purpose -- the Tailwind build only finds classes that appear literally. #}
+{# Shared UI pieces: icons, buttons, form fields, alerts and cards. #}
 {% set ICONS = {
   "bolt": '<polygon points="13,2 4,14 11,14 11,22 20,9 13,9"/>',
   "chart": '<polyline points="3,3 3,21 21,21"/><line x1="8" y1="17" x2="8" y2="12"/><line x1="13" y1="17" x2="13" y2="8"/><line x1="18" y1="17" x2="18" y2="5"/>',
@@ -8,7 +6,6 @@
   "gauge": '<circle cx="12" cy="12" r="9"/><line x1="12" y1="12" x2="16" y2="8"/><circle cx="12" cy="12" r="1"/>',
   "receipt": '<polygon points="6,2 14,2 19,7 19,22 6,22"/><polyline points="14,2 14,7 19,7"/><line x1="9" y1="12" x2="16" y2="12"/><line x1="9" y1="16" x2="16" y2="16"/>',
   "wallet": '<rect x="3" y="6" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="15" x2="17" y2="15"/>',
-  "shield": '<polygon points="12,3 20,6 20,12 12,21 4,12 4,6"/><polyline points="9,12 11,14 15,10"/>',
   "lock": '<rect x="5" y="11" width="14" height="10" rx="2"/><polyline points="8,11 8,7 10,4 14,4 16,7 16,11"/>',
   "user": '<circle cx="12" cy="8" r="4"/><polyline points="4,21 5,17 8,15 16,15 19,17 20,21"/>',
   "mail": '<rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/>',
@@ -20,7 +17,6 @@
   "info": '<circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><line x1="12" y1="8" x2="12" y2="8.5"/>',
   "arrow-right": '<line x1="4" y1="12" x2="20" y2="12"/><polyline points="14,6 20,12 14,18"/>',
   "flag": '<line x1="5" y1="3" x2="5" y2="22"/><polygon points="5,4 18,4 15,8 18,12 5,12"/>',
-  "eye": '<polygon points="2,12 7,7 12,5 17,7 22,12 17,17 12,19 7,17"/><circle cx="12" cy="12" r="3"/>',
   "support": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="5.6" y1="5.6" x2="9.2" y2="9.2"/><line x1="14.8" y1="14.8" x2="18.4" y2="18.4"/><line x1="18.4" y1="5.6" x2="14.8" y2="9.2"/><line x1="9.2" y1="14.8" x2="5.6" y2="18.4"/>',
   "code": '<polyline points="8,6 2,12 8,18"/><polyline points="16,6 22,12 16,18"/>'
 } %}
@@ -50,10 +46,6 @@ inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm fon
 </div>
 {%- endmacro %}
 
-{% macro card(cls='') -%}
-<div class="rounded-2xl bg-white shadow-card ring-1 ring-black/5 {{ cls }}">{{ caller() }}</div>
-{%- endmacro %}
-
 {% macro auth_card(title, subtitle=None, icon_name=None) -%}
 <div class="mx-auto mt-8 w-full max-w-sm animate-fade-up motion-reduce:animate-none">
   <div class="rounded-2xl bg-white p-8 shadow-card ring-1 ring-black/5">
@@ -73,7 +65,6 @@ inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm fon
 </div>
 {%- endmacro %}
 
-{# Shared bits for the app pages (customer, admin, instructor). #}
 {% macro input_class(mono=False) -%}
 w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm placeholder-gray-400 transition focus:border-ink focus:outline-none focus:ring-2 focus:ring-accent/60{% if mono %} font-mono{% endif %}
 {%- endmacro %}
@@ -82,7 +73,6 @@ w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm placeholde
 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {% if kind == 'good' %}bg-green-100 text-green-700{% elif kind == 'bad' %}bg-red-100 text-red-700{% elif kind == 'warn' %}bg-yellow-100 text-yellow-700{% elif kind == 'info' %}bg-indigo-100 text-indigo-700{% else %}bg-gray-100 text-gray-600{% endif %}
 {%- endmacro %}
 
-{# A flag shown to the participant when an exercise pays off. Wording stays with each page. #}
 {% macro flag_note(label=None) -%}
 <div class="flex gap-3 rounded-xl bg-accent-100 p-3 text-sm text-ink ring-1 ring-accent/40" role="note">
   <span class="mt-0.5 shrink-0 text-accent-700">{{ icon('flag', 18) }}</span>

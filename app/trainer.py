@@ -1,40 +1,4 @@
-"""Trainer dashboard -- a live-class tool for toggling hardening state,
-resetting the lab, and watching participant progress, now running as
-its OWN decoupled role (next-phase item 1), not an admin-gated page
-inside the participant app.
-
-TRAINER_DASHBOARD=true (see app/__init__.py) makes a container boot as
-this role INSTEAD OF the participant-facing app -- same image, same
-boot-time role-selection pattern entrypoint.sh already uses for
-HARDENING_MODE=all. Only this blueprint is registered on that process;
-there is no auth/customer/admin surface here at all.
-
-Two databases, two purposes:
-- current_app.config["DB_PATH"] (app/db.py:get_db()) -- the SAME app.db
-  the target participant instance uses (shared volume). Hardening
-  state, flag redemptions, participant nicknames, and the reset-lab
-  file-swap all read/write here, exactly as they did when this was an
-  in-process blueprint.
-- current_app.config["TRAINER_DB_PATH"] (app/trainer_auth.py) -- the
-  trainer role's OWN accounts/sessions, entirely separate, never
-  touched by a reset.
-
-Known, accepted limitation of the decoupling (not fixed here, not an
-oversight): ops.py's original reset_lab() also cleared a few in-memory
-dicts living inside the PARTICIPANT process (auth._login_attempts,
-auth._reset_attempts, assistant._pending_admin_actions) -- rate-limit
-counters and pending AI-assistant confirmations. Now that the trainer
-runs as a separate process, it has no way to reach into that other
-process's memory to clear them; reset_lab() below can only reset what
-actually lives in the shared DB. In practice this means a lab reset no
-longer clears an in-progress rate-limit lockout or a pending assistant
-confirmation on the participant side until that process's own counters
-age out or it restarts -- a real, minor regression from the in-process
-version, traded for genuine auth decoupling. Revisit if/when the parked
-multi-instance-sync work (Design Reference S10.1) picks up a
-trainer-to-participant command channel for other reasons anyway; not
-worth building a one-off endpoint just for this alone.
-"""
+"""The instructor dashboard: toggle vulnerabilities, offer guided mode, watch progress and reset the lab. It runs as its own process, separate from the participant app."""
 import os
 import sqlite3
 
@@ -55,10 +19,7 @@ bp = Blueprint("trainer", __name__, url_prefix="/instructor")
 
 
 def _catalog_grouped():
-    """CATALOG (key, category, name) tuples grouped by category, in
-    catalog order -- the same grouping the instructor guide and
-    progress.py use, so the dashboard's layout matches what a trainer
-    already recognizes from the walkthrough."""
+    """Flags grouped by category, in catalog order."""
     grouped = {}
     for key, category, name in CATALOG:
         grouped.setdefault(category, []).append({"key": key, "name": name})
@@ -116,11 +77,6 @@ def logout():
 @bp.route("/", methods=["GET"])
 @trainer_login_required
 def dashboard():
-    # See app/hardening.py -- FORCE_ALL is read from THIS process's own
-    # HARDENING_MODE env var. A trainer container has no ordinary reason
-    # to set that on itself, but the check is kept for the same defensive
-    # reason the original v1 blueprint had it: better a clean 404 than a
-    # toggle page whose switches are all inert.
     if hardening.FORCE_ALL:
         abort(404)
     return render_template(
@@ -149,10 +105,7 @@ def export_detail():
 @bp.route("/code", methods=["GET"])
 @trainer_login_required
 def code_examples():
-    """The instructor's Code Examples section: every vulnerability with its
-    vulnerable and fixed code on demand. A display aid only -- nothing here
-    changes what participants can see (they unlock code by redeeming the
-    flag, see app/progress.py)."""
+    """The Code Examples page: vulnerable and fixed code for every flag."""
     with_code = example_keys()
     grouped = {
         category: [{**item, "has_code": item["key"] in with_code} for item in items]
@@ -210,10 +163,6 @@ def api_summary():
 
     total_redemptions = db.execute("SELECT COUNT(*) AS c FROM flag_redemptions").fetchone()["c"]
 
-    # Next-phase item 2: category-level state -- "on" only when every
-    # flag in that category is currently hardened, so the dashboard's
-    # per-category switch reflects true/mixed/false accurately rather
-    # than guessing from just the first flag in the group.
     category_state = {
         category: all(hardening_state.get(key, False) for key in keys)
         for category, keys in ((c, _keys_in_category(c)) for c in _catalog_grouped().keys())
@@ -252,12 +201,7 @@ def api_guided_mode():
 @bp.route("/api/toggle_flag", methods=["POST"])
 @trainer_login_required
 def api_toggle_flag():
-    """Single-flag toggle -- the trainer role's own equivalent of
-    app/ops.py's /ops/__set_hardening__. Needed because ops_bp isn't
-    registered on the trainer-only process at all (see
-    app/__init__.py's TRAINER_DASHBOARD branch) -- this is the same
-    hardening.set_hardened() call, just reached through this
-    blueprint's own auth instead."""
+    """Switch one flag between vulnerable and fixed."""
     if hardening.FORCE_ALL:
         abort(404)
 
@@ -278,11 +222,7 @@ def api_toggle_flag():
 @bp.route("/api/toggle_category", methods=["POST"])
 @trainer_login_required
 def api_toggle_category():
-    """Next-phase item 2: one switch per category, flipping every flag
-    key in that group -- via the exact same per-flag mechanism
-    (hardening.set_hardened) the individual toggles already use, so
-    there's no second, parallel hardening code path to keep in sync
-    with the first."""
+    """Switch every flag in a category between vulnerable and fixed."""
     if hardening.FORCE_ALL:
         abort(404)
 
@@ -305,10 +245,7 @@ def api_toggle_category():
 @bp.route("/leaderboard", methods=["GET"])
 @trainer_login_required
 def leaderboard():
-    """Next-phase item 4: Participant Leaderboard -- participant
-    progress/redemption standings, nickname-first. NOT the existing
-    public solar leaderboard (app/leaderboard.py), which is a separate,
-    unrelated over-exposure vulnerability and stays exactly as it is."""
+    """The participant leaderboard."""
     return render_template(
         "trainer_leaderboard.html",
         trainer_name=g.trainer["name"],
@@ -326,14 +263,7 @@ def api_leaderboard():
 @bp.route("/api/participant_checklist", methods=["GET"])
 @trainer_login_required
 def api_participant_checklist():
-    """Phase 8: backs the leaderboard's "view redeemed flags" modal --
-    one participant's full 48-flag checklist, same category/name/done
-    shape and same CATALOG order as the participant-facing /progress
-    page (app/progress.py), just for an arbitrary participant_id chosen
-    by the instructor instead of g.participant_id. Only redemption
-    status is returned, never a flag's actual value -- same as
-    /progress itself, which never exposes other participants' values
-    either."""
+    """One participant's flag checklist, as JSON."""
     participant_id = request.args.get("participant_id", "")
     if not participant_id:
         abort(400, "participant_id required")
@@ -356,15 +286,7 @@ def api_participant_checklist():
 @bp.route("/reset", methods=["POST"])
 @trainer_login_required
 def reset_lab():
-    """Trainer-side equivalent of app/ops.py's /ops/__reset_lab__ --
-    same file-swap-then-regenerate-secret mechanism, operating on the
-    SAME shared DB_PATH, just invoked from the trainer process instead
-    of the participant one. See this module's docstring for the one
-    known behavioral difference (in-memory counters on the participant
-    side aren't reachable from here).
-
-    Redirects back to the dashboard with a success/failure notice
-    rather than returning a bare JSON body."""
+    """Restore the whole lab to its seeded state."""
     db_path = current_app.config["DB_PATH"]
     seed_path = os.environ.get("SEED_DB_PATH", "/app/data/seed.db")
 
@@ -380,12 +302,7 @@ def reset_lab():
 @bp.route("/reset_app", methods=["POST"])
 @trainer_login_required
 def reset_app():
-    """Middle ground between Reset Lab and Reset All Redemptions: restores
-    the app's own data (accounts, meters, tickets, ...) to the seeded state,
-    returns every hardening toggle to vulnerable, expires every login
-    session, and removes uploaded firmware files -- while keeping
-    redemptions, participant IDs, nicknames and the flag secret exactly as
-    they are. See app/resets.py."""
+    """Restore the app's own data to its seeded state, keeping progress."""
     db_path = current_app.config["DB_PATH"]
     seed_path = os.environ.get("SEED_DB_PATH", "/app/data/seed.db")
 
@@ -423,10 +340,7 @@ def reset_all_redemptions():
 @bp.route("/reset_redemption", methods=["POST"])
 @trainer_login_required
 def reset_participant_redemption():
-    """Clears one participant's flag_redemptions rows by their full
-    participant ID. Nicknames are deliberately left alone. Zero rows
-    removed still counts as success (an ID with no redemptions is
-    already in the requested state)."""
+    """Clear one participant's progress."""
     next_name = request.form.get("next", "leaderboard")
     participant_id = (request.form.get("participant_id") or "").strip()
     if not participant_id:

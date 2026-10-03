@@ -1,4 +1,4 @@
-"""Second batch of code examples, part B (see code_examples_more_a.py)."""
+"""More code examples, in the same format as code_examples.py."""
 
 ENTRIES_B = {
     "PWCHANGE_TEACH": {

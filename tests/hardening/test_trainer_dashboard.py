@@ -1,21 +1,4 @@
-"""Next-phase item 1: the trainer dashboard now runs as its own
-decoupled role (TRAINER_DASHBOARD=true, own auth, own DB -- see
-app/trainer.py), not an admin-gated page inside the main participant
-instance. These tests target that SEPARATE instance
-(WATTZGOAT_TRAINER_URL) and are skipped entirely if it isn't
-configured -- same optional-second-container convention as
-test_hardened_reference.py's WATTZGOAT_HARDENED_URL, since not every
-environment running this suite has that second container up (current
-CI doesn't -- see .github/workflows/ci.yml's own comment on why).
-
-Two instances, two roles, one shared DB: base_url/ops1_admin (from
-tests/conftest.py) talk to the participant instance; trainer_base_url/
-trainer_session (from tests/hardening/conftest.py) talk to the trainer
-instance. Both are expected to point at the SAME underlying app.db (a
-shared volume in the real deployment) for the redemption-tracking test
-below to make sense at all.
-"""
-import re
+"""Tests for the instructor dashboard."""
 
 import pytest
 
@@ -26,10 +9,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def _fresh_customer_session(base_url):
-    """A brand-new participant identity on a brand-new throwaway
-    account -- see the equivalent helper's docstring in
-    tests/flags/test_05_weak_passwords.py-adjacent files for why this
-    is a signup, not a login with any seeded account's credentials."""
+    """A new participant on a new throwaway account."""
     import secrets
 
     import requests
@@ -63,9 +43,6 @@ def test_dashboard_loads_with_all_toggles(trainer_session, trainer_base_url):
     resp = trainer_session.get(f"{trainer_base_url}/instructor/", timeout=10)
     assert resp.status_code == 200
     assert resp.text.count("data-flag-key=") == 48
-    # No implementation detail naming the underlying endpoint directly
-    # (next-phase item 5) -- this instance doesn't even register
-    # ops_bp, so /ops/__set_hardening__ isn't reachable here at all.
     assert "/ops/__set_hardening__" not in resp.text
 
 
@@ -100,10 +77,6 @@ def test_summary_reflects_category_toggle(trainer_session, trainer_base_url):
     assert data["hardening"]["HEADERS_EXERCISE"] is True
     assert data["category_hardening"]["Missing security headers"] is True
 
-    # Flip back off so this doesn't leak into another test run against
-    # the same shared instance -- same teardown discipline as
-    # set_hardened's fixture-level version above, done manually here
-    # since this isn't going through that fixture.
     trainer_session.post(
         f"{trainer_base_url}/instructor/api/toggle_category",
         data={"category": "Missing security headers", "hardened": "0"},
@@ -112,10 +85,6 @@ def test_summary_reflects_category_toggle(trainer_session, trainer_base_url):
 
 
 def test_summary_reflects_redemption(trainer_session, trainer_base_url, base_url):
-    # Redeem a header-delivered flag on the PARTICIPANT instance, then
-    # confirm the TRAINER instance's summary (reading the same shared
-    # DB) reflects it -- this is the actual point of decoupling: two
-    # separate processes, one source of truth.
     fresh = _fresh_customer_session(base_url)
     dash = fresh.get(f"{base_url}/dashboard", timeout=10)
     flag = dash.headers.get("X-Lab-Flag")
@@ -152,19 +121,11 @@ def test_participant_leaderboard_nickname_first(trainer_session, trainer_base_ur
 
     api = trainer_session.get(f"{trainer_base_url}/instructor/api/leaderboard", timeout=10).json()
     entry = next((row for row in api["standings"] if row["participant_id"] == pid), None)
-    # Only present once this participant has redeemed at least one flag
-    # (standings are built from flag_redemptions) -- if the shared
-    # instance already has other coverage this may be empty for a
-    # brand-new pid with no redemptions, which is expected, not a bug.
     if entry is not None:
         assert entry["display"].startswith("LeaderboardTestNick")
 
 
 def test_reset_lab_control_moved_to_trainer(ops1_admin, base_url, trainer_base_url):
-    # Reset Lab lives on the trainer dashboard now, not the general
-    # admin nav (see base.html / app/templates/trainer_base.html) --
-    # and not on the participant instance's own /instructor/ at all, since
-    # that route doesn't exist there anymore.
     admin_page = ops1_admin.get(f"{base_url}/admin/", timeout=10)
     assert "Reset Lab" not in admin_page.text
 

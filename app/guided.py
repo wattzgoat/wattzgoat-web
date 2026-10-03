@@ -1,20 +1,4 @@
-"""Guided mode: an optional hint panel, docked along the bottom of the page,
-for the page a participant is on.
-
-Whether it is OFFERED is decided per instance, never by a participant:
-
-- A STANDALONE instance (the /participants console is enabled) offers it only
-  when started with GUIDED_MODE=true.
-- Anywhere else it is offered only while an instructor has switched it on in
-  the instructor dashboard. That switch is stored in lab_meta, in the
-  database shared with the instructor instance, so it covers every
-  participant instance using that data. Resets carry it over.
-- Otherwise it is not offered at all: no switch, no panel.
-
-Whether it is ON is each participant's own choice, kept in a cookie in their
-own browser (the same way their identity is tracked), so one person turning
-it on never affects anyone else sharing the instance.
-"""
+"""Guided mode: an optional hint panel for the page a participant is on. It is offered per instance, and each participant chooses whether to use it."""
 import hashlib
 import sqlite3
 from types import SimpleNamespace
@@ -103,9 +87,6 @@ def panel():
             "SELECT flag_key FROM flag_redemptions WHERE participant_id = ?", (g.participant_id,)
         ).fetchall()
     }
-    # Flags are numbered by their place among ALL the flags on the page, in
-    # catalog order, so a number never changes when another flag is solved
-    # and always lines up with the "N of M" in the headline.
     unhinted_numbers = []
     for number, key in enumerate(keys, start=1):
         if key in redeemed:

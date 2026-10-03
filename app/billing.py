@@ -1,30 +1,9 @@
-"""
-Request-time bill PDF generation -- specifically for Ben Wood's bill
-(MTR-1002), the one that carries the TRAVERSAL_TEACH flag.
-
-Every other customer's bill stays a plain static file baked in at image
-build time by scripts/generate_bills.py, exactly as before -- there's
-nothing to personalize about them. Ben's is the one exception: since
-scripts/generate_bills.py runs once at Docker image build time, long
-before any participant_id exists, a flag baked into that file at build
-time could never be personalized. This module regenerates just that one
-PDF in memory, at request time, with a flag computed for whoever's
-asking -- see app/customer.py:download_bill().
-
-Deliberately NOT imported by scripts/generate_bills.py, and vice versa --
-scripts/ and app/ stay decoupled (see the existing duplication of small
-fixture constants between scripts/fixtures.py and app/flags.py for the
-same reason). This is a second, small copy of the same drawing code, not
-a shared import.
-"""
+"""Generates a customer's bill PDF on request."""
 import io
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-# Must match scripts/fixtures.py's CUSTOMERS[1] / METER_CODES[1] /
-# BILL_AMOUNTS[1] and BILL_PERIOD exactly (Ben Wood, index 1) --
-# duplicated here for the same reason the rest of these constants are.
 BEN_NAME = "Ben Wood"
 BEN_ADDRESS = "48 Oak Ave, Riverton"
 BEN_METER_CODE = "MTR-1002"

@@ -1,8 +1,5 @@
-# Compiles a real, static Tailwind stylesheet from the actual templates
-# (replacing the Play CDN <script>, which regenerates CSS client-side via
-# JS and requires internet on every page load) and vendors Chart.js, so the
-# runtime image below never needs to reach the internet to render correctly
-# in an isolated/air-gapped lab environment.
+# Build stage: compile the Tailwind stylesheet and vendor Chart.js, so the app
+# needs no internet access at runtime.
 FROM node:20-slim AS assets
 WORKDIR /assets
 COPY build/tailwind.config.js build/input.css build/fetch-vendor.mjs ./
@@ -13,8 +10,7 @@ RUN npm install -D tailwindcss@3 \
 
 FROM python:3.12-slim
 
-# openssl CLI for the entrypoint's self-signed cert generation -- not present
-# in the slim base image by default.
+# openssl creates the self-signed certificate.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl iputils-ping \
     && rm -rf /var/lib/apt/lists/*
@@ -31,8 +27,7 @@ COPY scripts ./scripts
 COPY run.py entrypoint.sh ./
 RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
-# Bills are static per-customer fixtures -- generated once here, not at
-# container startup, since they never differ per instance.
+# Generate the bill PDFs at build time.
 RUN python scripts/generate_bills.py
 
 ENV DB_PATH=/app/data/app.db \
@@ -40,9 +35,7 @@ ENV DB_PATH=/app/data/app.db \
     CERT_DIR=/app/certs \
     TRAINER_DB_PATH=/app/trainer_data/trainer.db
 
-# 5000/5001: participant-facing role (HTTPS / plaintext mirror).
-# 5004: trainer role (TRAINER_DASHBOARD=true, see entrypoint.sh/run.py) --
-# same image, only one role's ports are actually listened on per container.
+# 5000/5001: participant app (HTTPS / HTTP). 5004: instructor dashboard.
 EXPOSE 5000 5001 5004
 
 ENTRYPOINT ["./entrypoint.sh"]

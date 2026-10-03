@@ -18,46 +18,22 @@ from .personalize import get_flag
 
 bp = Blueprint("auth", __name__)
 
-# ---------------------------------------------------------------------------
-# WattzGOAT rolls its own session handling ON PURPOSE. Flask's default cookie
-# session is HMAC-signed and not guessable, which would rule out the
-# "predictable session ID" teach instance entirely (this is the exact gap
-# Juice Shop's JWT-everywhere auth left us with). Do not "fix" this by
-# swapping in flask.session -- ask before changing it.
-# ---------------------------------------------------------------------------
 _session_counter = itertools.count(100000)
 
 
 def issue_session_token() -> str:
-    # Phase 6: SESSIONID_TEACH's hardened branch issues a real,
-    # cryptographically random token instead of the next value in a
-    # sequential counter -- the actual fix, not a stub. Note this makes
-    # the flag structurally unreachable in hardened mode: there's no
-    # sequence left to walk, and the dedicated account
-    # (SESSIONID_ACCOUNT_EMAIL, see app/flags.py) never gets a
-    # guessable token to land on.
     if hardening.is_hardened(flags.SESSIONID_TEACH):
         return secrets.token_hex(24)
     return str(next(_session_counter))
 
 
 def weak_hash(password: str) -> str:
-    """Deliberately weak, unsalted hash -- part of the lab, not a bug."""
+    """Unsalted password hash."""
     return hashlib.md5(password.encode()).hexdigest()
 
 
 def is_weak_password(password: str) -> bool:
-    """Shared weak-password policy check -- used by both signup
-    (WEAKPW_TEACH) and account password changes (WEAKPW_CHANGE), so the
-    two stay in sync rather than drifting apart as separate copies.
-
-    Flags a password as weak if ANY of:
-    - under 7 characters
-    - entirely alphabetic (no digits, no symbols)
-    - entirely numeric (no letters, no symbols)
-    - alphanumeric (letters + digits, no symbols) but single-case --
-      no mix of upper and lower case anywhere
-    """
+    """True if a password fails the strength policy (length and a mix of letters, case and numbers)."""
     if len(password) < 7:
         return True
     if password.isalpha():
@@ -72,23 +48,11 @@ def is_weak_password(password: str) -> bool:
 
 
 def init_counters(db_path: str) -> None:
-    """Resume the session counter from the DB's existing high-water mark.
-    Without this, a container restart resets it to its starting value
-    while old session rows with those same tokens are still sitting in
-    the DB -- the very next login would crash on a primary-key collision.
-    Doesn't make the tokens any less predictable, it just keeps the app
-    from breaking the first time someone restarts the lab."""
+    """Resume the session counter from the highest token already in the database."""
     global _session_counter
     conn = sqlite3.connect(db_path)
     try:
         rows = conn.execute("SELECT token FROM sessions").fetchall()
-        # Phase 6: a hardened-mode token (secrets.token_hex()) isn't a
-        # base-10 integer, so it can't feed the sequential counter's
-        # high-water mark -- skip those rather than letting one crash
-        # this whole function (which would otherwise take the container
-        # down on next boot if SESSIONID_TEACH was ever toggled hardened
-        # before a restart, since some session rows would carry
-        # non-numeric tokens).
         numeric_tokens = []
         for (t,) in rows:
             try:
@@ -102,17 +66,6 @@ def init_counters(db_path: str) -> None:
     conn.close()
 
 
-# ---------------------------------------------------------------------------
-# Password-reset tokens are base64 of "<email>:<issued-at unix timestamp>".
-# Fully stateless -- decode it, check the email exists, done, nothing to
-# store or clean up. The timestamp LOOKS like it should matter (why else
-# would it be in a field seemingly there for that purpose?) but nothing
-# ever reads it back out to reject an old link. Base64 is an encoding, not
-# encryption: decode one in CyberChef and both the target email and the
-# fact that "expiry" is decorative are immediately obvious. Broken
-# authentication exercise instance -- flagged below once a stale token is
-# actually used successfully.
-# ---------------------------------------------------------------------------
 def make_reset_token(email: str) -> str:
     payload = f"{email}:{int(time.time())}"
     return base64.urlsafe_b64encode(payload.encode()).decode()
@@ -141,12 +94,6 @@ def current_user():
         "WHERE sessions.token = ?",
         (token,),
     ).fetchone()
-    # Phase 6: SESSIONREUSE_BONUS's hardened branch -- a session already
-    # marked logged-out is treated as if it doesn't exist at all, rather
-    # than the row being returned as a valid session regardless. This is
-    # the actual server-side invalidation logout() never did (see
-    # logout() below); the flag becomes unreachable once this is on,
-    # since a replayed post-logout token now just looks logged-out.
     if row is not None and row["session_logged_out_at"] and hardening.is_hardened(flags.SESSIONREUSE_BONUS):
         return None
     return row
@@ -160,9 +107,6 @@ def load_user():
 
 @bp.after_app_request
 def flag_session_reuse(resp):
-    # A token that was already logged out is accepted anyway (see logout()
-    # below) -- broken authentication bonus instance. Delivered as a
-    # non-HttpOnly cookie, same as the XSS flags.
     if g.get("session_reused"):
         resp.set_cookie("flag_session_reuse", get_flag(flags.SESSIONREUSE_BONUS, g.participant_id))
     return resp
@@ -170,18 +114,6 @@ def flag_session_reuse(resp):
 
 @bp.after_app_request
 def flag_missing_hsts(resp):
-    # Missing security headers exercise instance. Relocated off the login
-    # page's own HTML (a comment merely describing a missing header was a
-    # mismatch -- this puts the flag in the actual artifact, the response
-    # headers themselves) onto a small custom header sent alongside every
-    # /login response. Real HSTS is still genuinely absent app-wide; this
-    # header doesn't pretend to be HSTS, it's just where the flag rides.
-    #
-    # Phase 6: hardened branch adds the actual missing headers instead of
-    # just withholding the flag -- X-Content-Type-Options plus a real
-    # Strict-Transport-Security, matching the remediation note in
-    # flags.py word for word ("Add HSTS, X-Content-Type-Options, and a
-    # real Content-Security-Policy app-wide").
     if request.path == "/login":
         if hardening.is_hardened(flags.HEADERS_EXERCISE):
             resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -216,33 +148,10 @@ def signup():
     password = request.form.get("password", "")
     name = request.form.get("name", "")
 
-    # Phase 7: plain usability check, independent of hardening state (a
-    # mismatched confirmation field is a data-entry error, not a security
-    # control) -- checked server-side so it can't be skipped by disabling
-    # JS, consistent with how every other check in this app works.
-    #
-    # NOTE: .get(..) with no default, not .get(.., "") -- a request that
-    # omits the field ENTIRELY (every pre-existing API-style caller: the
-    # test suite, curl, any script) is treated as "no confirmation was
-    # asked for" and skips this check, rather than being treated as an
-    # empty-string mismatch against a non-empty password. The real HTML
-    # form always sends both fields (see signup.html's `required` inputs),
-    # so this only relaxes the check for callers that were never filling
-    # out that field in the first place -- it doesn't weaken what a real
-    # signup through the browser enforces.
     confirm_password = request.form.get("confirm_password")
     if confirm_password is not None and password != confirm_password:
         return render_template("signup.html", error="Passwords don't match.")
 
-    # NOTE: no length/complexity check on purpose -- "weak passwords" teach
-    # instance.
-    #
-    # Phase 6: hardened branch rejects the signup outright and re-renders
-    # the form with an error, reusing the exact same is_weak_password()
-    # policy WEAKPW_CHANGE already enforces on the password-change form
-    # (see customer.py:change_password()) rather than inventing a second,
-    # possibly-inconsistent rule -- one real policy, applied everywhere
-    # it should have been applied all along.
     if hardening.is_hardened(flags.WEAKPW_TEACH) and is_weak_password(password):
         return render_template(
             "signup.html",
@@ -261,22 +170,10 @@ def signup():
     return redirect(url_for("auth.login"))
 
 
-# In-memory only -- resets on restart, which is fine, this is just what
-# proves the login and forgot-password endpoints never throttle no matter
-# how many times you hit them in a running instance.
 _login_attempts = defaultdict(int)
 _reset_attempts = defaultdict(int)
 RATE_LIMIT_THRESHOLD = 5
 
-# OLDTOKEN_EXERCISE: user_id -> the participant_id who forged a reset for
-# that account. In memory, not the database, for the same reason
-# _login_attempts is -- ephemeral lab-session state, cleared by a reset.
-# Keyed by user_id rather than carried on the response because the flag
-# isn't claimed here: it's claimed later, on THAT account's dashboard, by
-# whichever participant actually logs in and proves the reset worked --
-# see customer.py:dashboard(). A different participant later viewing
-# the same seeded account (these are shared class-wide) doesn't consume
-# or see someone else's pending entry.
 _forged_reset_pending: dict = {}
 
 
@@ -290,10 +187,6 @@ def login():
     password = request.form.get("password", "")
     db = get_db()
 
-    # Phase 6: RATELIMIT_TEACH's hardened branch actually locks the
-    # account out once the threshold is hit, instead of merely no longer
-    # withholding the flag -- checked BEFORE looking up credentials at
-    # all, so a correct password doesn't slip through mid-lockout either.
     if hardening.is_hardened(flags.RATELIMIT_TEACH) and _login_attempts.get(email, 0) >= RATE_LIMIT_THRESHOLD:
         return render_template(
             "login.html",
@@ -303,26 +196,14 @@ def login():
 
     user = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
 
-    # NOTE: two distinct messages on purpose -- "improper error handling"
-    # exercise instance (username enumeration).
     if user is None or user["password_hash"] != weak_hash(password):
         _login_attempts[email] += 1
-        # NOTE: no lockout at any attempt count -- lack of rate limiting
-        # teach instance.
         ratelimit_flag = (
             get_flag(flags.RATELIMIT_TEACH, g.participant_id)
             if _login_attempts[email] >= RATE_LIMIT_THRESHOLD and not hardening.is_hardened(flags.RATELIMIT_TEACH)
             else None
         )
         error = "Invalid username" if user is None else "Invalid password"
-        # Phase 8: shown inline now (see login.html), not as a bare
-        # comment -- so unlike RATELIMIT_TEACH/EXERCISE and
-        # INFOLEAK_TEACH, which stay bare-comment, this one needs to stop
-        # reappearing once already redeemed, the same way every other
-        # inline-shown flag on this app implicitly does by virtue of not
-        # being re-earnable. Suppressed only here, not computed-but-
-        # hidden, so this stays a plain presence/absence check -- no
-        # second source of truth for whether it's been claimed.
         already_redeemed = db.execute(
             "SELECT 1 FROM flag_redemptions WHERE flag_key = ? AND participant_id = ?",
             (flags.ERRHANDLING_EXERCISE, g.participant_id),
@@ -338,9 +219,6 @@ def login():
     _login_attempts.pop(email, None)
     token = issue_session_token()
     db.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user["id"]))
-    # Footer "Last logged in" shows the previous login, so rotate the old
-    # value across before stamping this one. Only this form login writes
-    # these columns -- planted/replayed session cookies never do.
     db.execute(
         "UPDATE users SET previous_login_at = last_login_at, last_login_at = datetime('now') WHERE id = ?",
         (user["id"],),
@@ -349,35 +227,11 @@ def login():
 
     dest = "admin.dashboard" if user["role"] == "admin" else "customer.dashboard"
     resp = redirect(url_for(dest))
-    # SameSite=None (with the required Secure flag) instead of leaving
-    # the attribute unset -- browsers default an unset SameSite to Lax,
-    # which withholds the cookie on a cross-site POST and silently
-    # neuters CSRF_TEACH/CSRF_EXERCISE/HEADERS_CLICKJACK's whole premise
-    # (no anti-CSRF protection) in any current browser. This restores
-    # the cookie behavior those flags were written to demonstrate.
-    #
-    # Phase 8: Secure/SameSite=None only when this login actually came in
-    # over HTTPS. The browser-enforced pairing rule (SameSite=None is
-    # only honored alongside Secure) means a Secure cookie issued on the
-    # plaintext mirror (port 5001, PLAINTEXT_TEACH/EXERCISE) would never
-    # be sent back on the very next plaintext request -- login appears to
-    # succeed but every following page silently bounces back to /login.
-    # A login via the plaintext port gets the ordinary same-site cookie
-    # behavior instead (no SameSite=None, not Secure), which keeps a
-    # plaintext session usable; a login via HTTPS is unaffected and still
-    # gets the cross-site-capable cookie the CSRF/clickjacking flags rely
-    # on, since every documented PoC targets the HTTPS port.
     if request.is_secure:
         resp.set_cookie("wgs_session", token, httponly=True, samesite="None", secure=True)
     else:
         resp.set_cookie("wgs_session", token, httponly=True)
 
-    # NOTE: this one is set as an ordinary (non-HttpOnly) cookie on
-    # purpose -- a working reflected-XSS payload can read it via
-    # document.cookie. Stored XSS's two flags do NOT live here (see
-    # dashboard.html / admin_tickets.html) -- if they did, exploiting the
-    # reflected instance on /usage would incidentally hand over both
-    # stored-XSS flags too, without ever touching either vulnerable page.
     if user["role"] == "customer":
         resp.set_cookie("flag_reflected_xss", get_flag(flags.RXSS_TEACH, g.participant_id))
 
@@ -386,10 +240,6 @@ def login():
 
 @bp.route("/logout", methods=["POST"])
 def logout():
-    # NOTE: logout only stamps logged_out_at and clears the browser cookie.
-    # current_user() never checks that column, so a captured token keeps
-    # working after logout, and there's no expiry either -- session
-    # invalidation flaw, broken authentication bonus instance.
     token = request.cookies.get("wgs_session")
     if token:
         db = get_db()
@@ -408,10 +258,6 @@ def forgot_password():
     email = request.form.get("email", "")
     db = get_db()
 
-    # Phase 6: RATELIMIT_EXERCISE's hardened branch, same real-lockout
-    # shape as RATELIMIT_TEACH on /login above -- checked before doing
-    # any work for this request, so a locked-out email doesn't even get
-    # a fresh reset email queued.
     if hardening.is_hardened(flags.RATELIMIT_EXERCISE) and _reset_attempts.get(email, 0) >= RATE_LIMIT_THRESHOLD:
         return render_template("forgot_password.html", ratelimit_error=True), 429
 
@@ -425,18 +271,6 @@ def forgot_password():
     )
 
     if user is None:
-        # Confirms account existence AND echoes the raw email back
-        # unescaped -- reflected XSS exercise instance. Delivered via this
-        # page's <title> (not a cookie) -- a working payload here is
-        # `alert(document.title)`, not `alert(document.cookie)`. Moved off
-        # cookies for the same reason stored XSS was: a cookie-delivered
-        # flag is readable from ANY XSS anywhere in the session, not just
-        # this specific injection point, which let one working payload
-        # hand over flags that had nothing to do with where it fired.
-        #
-        # Phase 6: RXSS_EXERCISE's hardened branch escapes the echoed
-        # email before it reaches the template, same pattern as
-        # RXSS_TEACH on /usage (see customer.py).
         return render_template(
             "forgot_password.html",
             not_found_email=escape(email) if hardening.is_hardened(flags.RXSS_EXERCISE) else email,
@@ -471,33 +305,13 @@ def reset_password():
 
     new_password = request.form.get("password", "")
 
-    # NOTE: an hour-old (or decades-old) token resets the password just
-    # fine -- the timestamp embedded in it is never checked. Broken
-    # authentication exercise instance.
     is_stale = issued_at is not None and (time.time() - issued_at) > 3600
 
-    # Phase 6: hardened branch actually rejects a stale token BEFORE
-    # applying the update, instead of applying it unconditionally and
-    # only noting the staleness afterward -- the real fix. A token with
-    # no timestamp at all (issued_at is None, i.e. it never parsed as
-    # "email:timestamp") is left alone here since that's decode_reset_
-    # token()'s own concern, not this one.
     if is_stale and hardening.is_hardened(flags.OLDTOKEN_EXERCISE):
         return render_template("reset_password.html", error="This reset link has expired. Please request a new one."), 400
 
     db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (weak_hash(new_password), user["id"]))
     db.commit()
 
-    # Phase 7: no longer tied to staleness for flag purposes -- there's no
-    # signature on this token at all (see make_reset_token/decode_reset_
-    # token above), so ANY successful reset via a token that was never
-    # actually emailed proves the same underlying gap a stale one does,
-    # and requiring an old timestamp specifically just meant a freshly-
-    # timestamped forgery got no acknowledgment at all. Recorded against
-    # the account, to be claimed on ITS dashboard once whoever forged it
-    # actually logs in and proves the reset took -- see customer.py:
-    # dashboard() and _forged_reset_pending above. is_stale is still what
-    # the hardened branch above actually rejects; it just no longer gates
-    # whether this counts.
     _forged_reset_pending[user["id"]] = g.participant_id
     return render_template("reset_password_done.html")

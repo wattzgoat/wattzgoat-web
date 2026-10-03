@@ -1,16 +1,4 @@
-"""Before-and-after code examples shown on the Progress page (once a flag is
-redeemed) and in the instructor dashboard's Code Examples section.
-
-Each entry has a short plain-language note on why it matters and, for both
-the vulnerable and the fixed version, a snippet in Python, JavaScript and
-PHP. Snippets are written by hand for teaching -- the Python ones follow the
-app's real vulnerable and hardened branches, trimmed down; the JavaScript
-(Express) and PHP (PDO) ones are the equivalent patterns.
-
-Authoring format: a line that starts with "!!" is a changed line and gets
-highlighted (the marker is stripped before display). Everything else is
-shown as written.
-"""
+"""Before-and-after code examples for each flag. A line starting with "!!" is highlighted as a changed line."""
 from . import flags
 
 LANGUAGES = [("python", "Python"), ("javascript", "JavaScript"), ("php", "PHP")]
@@ -879,7 +867,6 @@ function runTool(array $call, array $user): string {
 }
 
 
-# Second batch: the remaining flags, kept in their own modules to keep each file readable.
 from .code_examples_more_a import ENTRIES_A as _ENTRIES_A  # noqa: E402
 from .code_examples_more_b import ENTRIES_B as _ENTRIES_B  # noqa: E402
 
@@ -899,10 +886,6 @@ def _build():
 
 
 EXAMPLES = _build()
-
-
-def has_example(flag_key):
-    return flag_key in EXAMPLES
 
 
 def example_keys():

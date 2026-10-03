@@ -1,19 +1,4 @@
-"""Phase 6 scaffold: one test per hardened instance built so far.
-
-Per-test pattern, consistently: confirm the vulnerable flag exists
-first (same request tests/flags/ makes), flip that one key hardened,
-re-send the SAME request, and assert two things -- not just one:
-
-1. the flag is gone
-2. the actual fix is visibly in effect (an escaped payload, a rejected
-   signup, a real header, a query that returns nothing) -- distinguishes
-   "genuinely hardened" from "this route started 500ing" or some other
-   accidental breakage that would also make the flag disappear.
-
-Each test uses set_hardened's auto-teardown (tests/hardening/conftest.py)
-rather than leaving state altered for whatever runs against this
-instance next.
-"""
+"""Hardening tests, one per hardened flag."""
 
 
 def test_headers_teach_toggle(alice, base_url, set_hardened):
@@ -141,7 +126,7 @@ def test_weakpw_change_toggle(base_url, set_hardened, login_fn):
 
     # Confirm login with the OLD (weak-but-already-set) password still
     # works -- proves the rejected change never got written.
-    session2, resp2 = login_fn(email, "abc12345")
+    session2, _ = login_fn(email, "abc12345")
     assert "wgs_session" in session2.cookies.get_dict()
 
 
@@ -166,4 +151,3 @@ def test_headers_clickjack_toggle(farid, devon, base_url, set_hardened):
     assert "FLAG{" not in resp.text
     # target_meter_code is ignored outright once hardened -- own meter credited.
     assert "kWh added" in resp.text
-

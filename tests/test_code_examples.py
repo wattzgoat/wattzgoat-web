@@ -1,11 +1,4 @@
-"""Code examples (View Code on the Progress page, see app/code_examples.py
-and app/progress.py:view_code).
-
-The access rules are the part that matters: a participant gets a flag's code
-only after redeeming that flag, enforced on the server. These tests use a
-brand-new participant identity (its own participant cookie) so they don't
-depend on which flags the rest of the suite has already redeemed.
-"""
+"""Code examples on the Progress page."""
 import importlib.util
 import os
 import secrets

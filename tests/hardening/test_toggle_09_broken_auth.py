@@ -21,9 +21,6 @@ def test_privesc_teach_toggle(devon, base_url, set_hardened):
 
 
 def test_oldtoken_exercise_toggle(base_url, set_hardened):
-    # Phase 7: the flag is claimed on ben's own dashboard now, not on
-    # this response -- see auth.py's _forged_reset_pending and
-    # customer.py:dashboard().
     email = "ben.wood@example.com"
     stale_ts = int(time.time()) - 7200  # 2 hours old
     token = base64.urlsafe_b64encode(f"{email}:{stale_ts}".encode()).decode()

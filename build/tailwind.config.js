@@ -1,18 +1,11 @@
-/** Scans the actual Jinja templates for class names (including Tailwind's
- *  arbitrary-value bracket syntax, e.g. bg-[#F2EFE9]) and compiles only the
- *  utilities this app actually uses into a static stylesheet -- replacing
- *  the Play CDN script, which only works by re-scanning the DOM client-side
- *  every page load and requires fetching that script from the internet.
- *
- *  Brand tokens live here so templates can say bg-ink / text-accent
- *  instead of repeating hex values. Pages not yet moved over still use the
- *  arbitrary-value form, which keeps working alongside these. */
+/** Compiles the utilities the templates use into a static stylesheet.
+ *  Brand colors live here so templates can use bg-ink, text-accent and so on. */
 module.exports = {
   content: ["./templates/**/*.html"],
   theme: {
     extend: {
       colors: {
-        ink: { DEFAULT: "#14181C", 700: "#2A323A", 800: "#1C2228" },
+        ink: { DEFAULT: "#14181C", 700: "#2A323A" },
         accent: { DEFAULT: "#F4B41A", 100: "#FDF1CE", 700: "#8F5F00" },
         canvas: "#F2EFE9",
       },

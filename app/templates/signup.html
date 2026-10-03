@@ -10,10 +10,6 @@
   {% endcall %}</div>
   {% endif %}
   {% if error %}
-  {# Shown for a password mismatch (Phase 7) or on WEAKPW_TEACH's
-     hardened branch (Phase 6, see auth.py:signup()) -- the vulnerable
-     branch never sets this for weak passwords, but a mismatch is
-     checked regardless of hardening state. #}
   <div class="mb-4">{% call ui.alert('error') %}{{ error }}{% endcall %}</div>
   {% endif %}
   <form method="post" class="space-y-4">

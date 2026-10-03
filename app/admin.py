@@ -12,15 +12,6 @@ from .resets import firmware_dir
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
-# Intended firmware storage: FIRMWARE_DIR/<meter_code>/<filename>. canary.txt
-# sits one level up, directly inside FIRMWARE_DIR -- reachable via exactly
-# "../canary.txt" from within any meter's own subfolder, mirroring the
-# bill-download traversal's simplicity (MTR-1004/../MTR-1002/...). It's a
-# small, dedicated, harmless target purpose-built for this exercise, not a
-# real app file -- so a participant's traversal has a real, visible,
-# non-destructive thing to prove impact against (see admin.firmware_canary
-# below), rather than something that could break the rest of the app for
-# everyone on a shared instance.
 FIRMWARE_DIR = firmware_dir()
 CANARY_PATH = os.path.normpath(os.path.join(FIRMWARE_DIR, "canary.txt"))
 
@@ -35,20 +26,7 @@ def dashboard():
         "customer_count": db.execute("SELECT COUNT(*) FROM users WHERE role='customer'").fetchone()[0],
         "open_tickets": db.execute("SELECT COUNT(*) FROM tickets WHERE status='open'").fetchone()[0],
     }
-    # NOTE: there's no "change password" flow anywhere in this app for
-    # admin accounts -- the seeded default is the only password they'll
-    # ever have. Weak passwords exercise instance.
     weakpw_flag = get_flag(flags.WEAKPW_EXERCISE, g.participant_id) if g.user["password_hash"] == weak_hash("changeme") else None
-    # Sensitive information disclosure teach instance: this account's own
-    # dashboard confirms whoever's here followed the credential leaked on
-    # the login page to somewhere real.
-    #
-    # Phase 6: DEVADMIN_LEAK's actual hardened branch is on login.html
-    # (the comment stops being rendered at all -- see there) -- this
-    # display is gated the same way for consistency (once the leak is
-    # fixed, nobody should be discovering this account through the
-    # leaked path in the first place, so nothing here should still hand
-    # out credit for having done so).
     devadmin_flag = (
         get_flag(flags.DEVADMIN_LEAK, g.participant_id)
         if g.user["email"] == flags.DEVADMIN_ACCOUNT_EMAIL and not hardening.is_hardened(flags.DEVADMIN_LEAK)
@@ -64,20 +42,6 @@ def dashboard():
 def meters():
     query = request.args.get("q", "")
     db = get_db()
-    # NOTE: raw string interpolation into the query -- SQL injection teach
-    # instance. A UNION SELECT against `meters` (the table this query
-    # already reads) is enough to pull in a row ordinary browsing would
-    # otherwise exclude. The `AND users.role != 'service'` lives in the
-    # JOIN condition, not the WHERE clause, specifically so a UNION's
-    # trailing `--` (which only truncates the WHERE clause) doesn't need
-    # to account for it -- the exact same technique as before still works.
-    # Phase 6: hardened branch is a genuinely different code path, not a
-    # gate in front of the same one -- a real parameterized query, so a
-    # UNION payload in `query` is bound as a literal LIKE pattern (a
-    # string almost never matches by coincidence) instead of being
-    # spliced into the SQL text. The sentinel check below still runs
-    # unconditionally either way; it just never finds anything to trip
-    # on once the query itself can't be broken out of.
     if hardening.is_hardened(flags.SQLI_TEACH):
         if query:
             sql = (
@@ -145,13 +109,6 @@ def upload_firmware(meter_id):
     if uploaded is None or uploaded.filename == "":
         return redirect(url_for("admin.meter_detail", meter_id=meter_id))
 
-    # Insecure file upload teach instance: no restriction at all on file
-    # type, extension, or size -- whatever gets sent, gets saved.
-    #
-    # Phase 6: FILEUPLOAD_TEACH's hardened branch rejects anything that
-    # isn't a small .bin/.hex file before it ever gets saved -- reads the
-    # stream once to check size (and rewinds), rather than trusting
-    # Content-Length, since that header is client-supplied too.
     if hardening.is_hardened(flags.FILEUPLOAD_TEACH):
         ext = os.path.splitext(uploaded.filename)[1].lower()
         uploaded.stream.seek(0, os.SEEK_END)
@@ -163,36 +120,11 @@ def upload_firmware(meter_id):
                 flag=None, error="Rejected: firmware must be a .bin or .hex file under 2 MB.",
             ), 400
 
-    # Insecure file upload exercise instance: the save path is built
-    # directly from the client-supplied filename (uploaded.filename),
-    # completely unsanitized -- no secure_filename()-style cleanup, no
-    # check that the resolved path stays inside the intended per-meter
-    # folder. A filename like "../canary.txt" walks the save location
-    # right out of that folder.
-    #
-    # Phase 6: FILEUPLOAD_EXERCISE's hardened branch generates the saved
-    # filename server-side instead of trusting the client's -- os.path.
-    # basename() strips any directory components (including ../), so
-    # there's no path left in the value to walk out with, independent of
-    # whether FILEUPLOAD_TEACH is separately hardened.
     save_filename = os.path.basename(uploaded.filename) if hardening.is_hardened(flags.FILEUPLOAD_EXERCISE) else uploaded.filename
     save_path = os.path.normpath(os.path.join(FIRMWARE_DIR, meter["meter_code"], save_filename))
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     uploaded.save(save_path)
 
-    # Phase 8: detect ANY successful escape from the intended per-meter
-    # folder, not just the one specific depth ("../canary.txt") that
-    # happens to land exactly on CANARY_PATH. The exact-match check below
-    # only ever matched a single-level-up traversal; "../../canary.txt",
-    # "../../../canary.txt", etc. resolve to a different (and, if
-    # anything, more severe -- further outside FIRMWARE_DIR) location
-    # that's neither CANARY_PATH nor intended_dir, so the write still
-    # succeeds but was never detected at all. A containment check --
-    # same technique as /bills/download's -- catches an escape at any
-    # depth. The Instructor Guide already documents an equivalent
-    # fallback ("or by otherwise checking the file landed outside the
-    # intended directory"), so this isn't a new verification path, just
-    # the flag catching up to it.
     fileupload_flag = None
     intended_dir = os.path.normpath(os.path.join(FIRMWARE_DIR, meter["meter_code"]))
     real_intended_dir = os.path.realpath(intended_dir)
@@ -208,10 +140,6 @@ def upload_firmware(meter_id):
 @bp.route("/firmware-canary")
 @login_required(role="admin")
 def firmware_canary():
-    # Visible proof the traversal write actually landed somewhere real --
-    # a small, dedicated, harmless target (see FIRMWARE_DIR/CANARY_PATH
-    # above), not a live app file that overwriting would actually break
-    # for other people on a shared instance.
     try:
         with open(CANARY_PATH, "r", errors="replace") as f:
             content = f.read()
@@ -223,19 +151,10 @@ def firmware_canary():
 @bp.route("/meters/<int:meter_id>/disconnect", methods=["POST"])
 @login_required()
 def disconnect_meter(meter_id):
-    # NOTE: login_required() with no role= -- ANY logged-in customer can
-    # call this directly for a meter that isn't theirs, not just admins.
-    # Broken authentication / privilege escalation teach instance. This is
-    # the flagship impact chain: a customer flips a stranger's power off,
-    # visible live on that stranger's own dashboard.
     db = get_db()
     meter = db.execute("SELECT user_id FROM meters WHERE id = ?", (meter_id,)).fetchone()
     is_escalation = meter is not None and g.user["role"] != "admin" and meter["user_id"] != g.user["id"]
 
-    # Phase 6: hardened branch actually enforces the missing role check
-    # -- a non-admin acting on a meter that isn't theirs is rejected
-    # outright, not just left un-flagged while the disconnect still goes
-    # through.
     if is_escalation and hardening.is_hardened(flags.PRIVESC_TEACH):
         abort(403)
 
@@ -250,7 +169,6 @@ def disconnect_meter(meter_id):
 @bp.route("/meters/<int:meter_id>/reconnect", methods=["POST"])
 @login_required()
 def reconnect_meter(meter_id):
-    # Same missing role check as disconnect above.
     db = get_db()
     meter = db.execute("SELECT user_id FROM meters WHERE id = ?", (meter_id,)).fetchone()
     is_escalation = meter is not None and g.user["role"] != "admin" and meter["user_id"] != g.user["id"]
@@ -271,13 +189,6 @@ def reconnect_meter(meter_id):
 def alarms():
     query = request.args.get("q", "")
     db = get_db()
-    # NOTE: same raw-interpolation pattern as the meters search above --
-    # SQL injection exercise instance, different page, same technique, and
-    # a UNION here targets `alarms` (what this query reads) rather than
-    # `meters`, which is why the two pages' flags don't show up together.
-    #
-    # Phase 6: same real fix as SQLI_TEACH above -- parameterized, not
-    # gated.
     if hardening.is_hardened(flags.SQLI_EXERCISE):
         if query:
             sql = (
@@ -336,12 +247,6 @@ def tickets():
         "FROM tickets JOIN users ON users.id = tickets.user_id "
         "ORDER BY tickets.created_at DESC"
     ).fetchall()
-    # Stored XSS exercise instance: personalized to whoever submitted the
-    # most recent ticket, not to whoever's currently viewing as admin --
-    # same reasoning as SXSS_TEACH's nickname_set_by (see
-    # customer.py:dashboard()). rows[0] is the newest ticket given the
-    # ORDER BY above; participant_id is NULL for anything not created
-    # through the normal /support flow.
     newest_submitter = rows[0]["participant_id"] if rows else None
     sxss_meta_flag = (
         get_flag(flags.SXSS_EXERCISE, newest_submitter)
@@ -353,25 +258,10 @@ def tickets():
 
 @bp.route("/diagnostics", methods=["GET", "POST"])
 def diagnostics():
-    # NOTE: no @login_required at all -- an internal tool nobody got
-    # around to locking down, sitting at an admin-sounding path that
-    # implies protection it doesn't have. Security misconfiguration
-    # exercise instance.
     output = None
     host = ""
     if request.method == "POST":
         host = request.form.get("host", "")
-        # NOTE: shells out with the raw input -- OS command injection.
-        #
-        # Phase 6: hardened branch uses subprocess's argument-list form
-        # with shell=False (the default, made explicit here) instead of
-        # a shell=True string -- `host` is passed to ping as a single
-        # literal argument, so shell metacharacters in it (;, &&, |, a
-        # backtick, $(...)) are never interpreted, just handed to ping
-        # itself as part of the hostname it tries to resolve (and fails
-        # to, harmlessly). This is the real fix, not a stub -- arbitrary
-        # hosts still get pinged either way, only command chaining stops
-        # working.
         try:
             if hardening.is_hardened(flags.CMDINJECT_EXERCISE):
                 result = subprocess.run(
@@ -396,9 +286,5 @@ def diagnostics():
         except subprocess.TimeoutExpired:
             output = "(timed out)"
         except FileNotFoundError:
-            # ping isn't on PATH in this environment (the shipped image
-            # installs iputils-ping in the Dockerfile, so this shouldn't
-            # happen there) -- fail closed with a message rather than a
-            # 500, since a missing binary isn't this route's concern.
             output = "(ping is not available on this host)"
     return render_template("admin_diagnostics.html", output=output, host=host)

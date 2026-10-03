@@ -38,9 +38,6 @@
 <div class="max-w-md rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5">
   <h2 class="mb-4 text-lg font-semibold tracking-tight">Change password</h2>
   {% if error %}
-  {# Phase 6: shown only on WEAKPW_CHANGE's hardened branch (see
-     customer.py:change_password()) -- the vulnerable branch never sets
-     this, and the password is never written when it's shown. #}
   <div class="mb-4">{% call ui.alert('error') %}{{ error }}{% endcall %}</div>
   {% endif %}
   {% if password_changed %}
@@ -57,13 +54,9 @@
   {% endif %}
   <form method="post" action="{{ url_for('customer.change_password') }}" class="space-y-4">
     {% if is_hardened('CSRF_TEACH') %}
-    {# Phase 6: CSRF_TEACH hardened -- a real anti-CSRF token, checked in
-       customer.py:change_password() before anything else on this route. #}
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% endif %}
     {% if is_hardened('PWCHANGE_TEACH') %}
-    {# Phase 6: PWCHANGE_TEACH hardened -- the current-password field this
-       form always should have had. #}
     <div>
       <label class="mb-1.5 block text-sm font-medium text-ink-700">Current password</label>
       <input name="current_password" type="password" required class="{{ ui.input_class() }}">

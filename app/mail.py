@@ -15,10 +15,6 @@ def login():
         return render_template("mail_login.html")
 
     email = request.form.get("email", "")
-    # NOTE: password is accepted by the form but never checked against
-    # anything -- "logging in" here is really just naming a mailbox to
-    # view. Broken authentication exercise instance, independent of the
-    # reset token's own weakness. Expected behavior, no flag attached.
     request.form.get("password", "")
 
     resp = redirect(url_for("mail.inbox"))

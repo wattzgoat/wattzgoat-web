@@ -1,18 +1,6 @@
-"""Content for guided mode: which page each flag's exercise starts on, and the
-hints for it. Plain data -- no logic -- so it can be read and checked without
-the rest of the app.
+"""Guided mode content: the page each flag's exercise starts on, and two hints per flag."""
 
-Each flag with hints has exactly two: a nudge (where to look) and a
-technique (what to try). Hints point the way; they never give a ready-made
-payload and never contain a flag value.
-
-A flag mapped to BEYOND is one whose exercise doesn't live on a single page
-(a hidden page found through robots.txt, another port, the device API, the
-assistant). Its hints are shown on the Contact, Terms and Privacy pages.
-"""
-
-# Key of the shared setting (stored in lab_meta) that an instructor switches on
-# to let participants use guided mode. Resets carry it over.
+# Setting (in lab_meta) that an instructor switches on to offer guided mode.
 GUIDED_META_KEY = "guided_mode"
 
 BEYOND = "beyond"
@@ -70,7 +58,7 @@ FLAG_PAGE = {
     "ASSISTANT_OUTPUT_XSS": BEYOND,
 }
 
-# flag key -> (nudge, technique). The first batch covers one flag per category.
+# flag key -> (nudge, technique)
 HINTS = {
     "HEADERS_TEACH": (
         "Every page load carries information your browser doesn't show you. Open your browser's developer tools, go to the Network tab, reload this page, and look at what the server sent back.",

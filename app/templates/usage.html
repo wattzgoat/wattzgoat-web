@@ -17,7 +17,6 @@
 {% endif %}
 
 {% if db_error %}
-{# Raw DB error shown to the page on purpose -- improper error handling teach instance. #}
 <div class="whitespace-pre-wrap rounded-xl bg-red-50 p-4 font-mono text-sm text-red-800 ring-1 ring-red-200">Search failed: {{ db_error }}</div>
 {% elif results is not none %}
   {% if results %}
@@ -30,12 +29,6 @@
     {% endfor %}
   </ul>
   {% else %}
-  {# |safe on purpose -- reflected XSS teach instance. Phase 6: the
-     hardened/vulnerable branch is decided in customer.py:usage(), not
-     here -- `query` arrives pre-escaped (markupsafe.escape()) when
-     RXSS_TEACH is hardened, so |safe on an already-escaped Markup value
-     is a no-op either way. Don't try to branch on hardening state
-     inside this template instead. #}
   <p class="text-gray-500 text-sm">No results found for: {{ query|safe }}</p>
   {% endif %}
 {% endif %}

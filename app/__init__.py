@@ -19,25 +19,9 @@ def create_app() -> Flask:
 
     db_module.init_app(app)
 
-    # Next-phase item 1: TRAINER_DASHBOARD=true switches this container
-    # to run as a dedicated trainer-dashboard role INSTEAD OF the
-    # participant-facing app -- same image, same INSTANCE_HOST-style
-    # boot-time role selection entrypoint.sh/run.py already use for
-    # HARDENING_MODE=all (see app/hardening.py), extended to a third
-    # role. The trainer role registers only app/trainer.py's blueprint
-    # (own login, own DB, own everything -- see that module's docstring)
-    # and returns early: no auth/customer/admin/participant surface at
-    # all on this process, on purpose -- there is nothing here for a
-    # participant to ever reach.
     app.config["TRAINER_MODE"] = _truthy_env("TRAINER_DASHBOARD")
     if app.config["TRAINER_MODE"]:
         app.config["TRAINER_DB_PATH"] = os.environ.get("TRAINER_DB_PATH", "/app/trainer_data/trainer.db")
-        # Pure UI convenience -- the "WattzGOAT Portal" nav link's target.
-        # No API calls ever go out over this; the participant app's own
-        # index() route (below) already does the context-aware
-        # dashboard/admin-dashboard/login redirect on ITS OWN session
-        # state once the browser follows the link there, so the trainer
-        # process itself doesn't need to know or care which one applies.
         app.config["PARTICIPANT_BASE_URL"] = os.environ.get("PARTICIPANT_BASE_URL", "")
 
         from . import trainer_auth
@@ -45,11 +29,6 @@ def create_app() -> Flask:
         app.teardown_appcontext(trainer_auth.close_trainer_db)
         app.register_blueprint(trainer_bp)
 
-        # Bare "/" and the pre-rename "/trainer/..." path (this
-        # blueprint's URL prefix used to be /trainer before it became
-        # /instructor) both 404 with nothing else registered on this
-        # process -- redirect both to the equivalent /instructor/... path
-        # instead of leaving an old bookmark or a bare port dead-end.
         @app.route("/")
         def _root_redirect():
             from flask import redirect, url_for
@@ -63,13 +42,6 @@ def create_app() -> Flask:
 
         return app
 
-    # Phase 6: exposed so templates can branch on hardening state and
-    # embed a real anti-CSRF token directly (see CSRF_TEACH/CSRF_EXERCISE
-    # in customer.py + account.html/dashboard.html, SXSS_TEACH/
-    # SXSS_EXERCISE in dashboard.html/admin_tickets.html, DEVADMIN_LEAK in
-    # login.html, ASSISTANT_OUTPUT_XSS in _assistant_widget.html) without
-    # every view function having to thread an extra flag through its own
-    # render_template() call.
     app.jinja_env.globals["is_hardened"] = hardening.is_hardened
     app.jinja_env.globals["csrf_token"] = hardening.csrf_token
     # Header date (base.html) -- server-rendered, UTC, date only.
@@ -91,8 +63,6 @@ def create_app() -> Flask:
     from .personalize import bp as personalize_bp
     from .personalize import current_participant_display, current_participant_has_nickname
 
-    # Next-phase item 6: participant nickname display, read by
-    # base.html's identity chip and nickname-prompt trigger.
     app.jinja_env.globals["participant_display"] = current_participant_display
     app.jinja_env.globals["guided_state"] = guided.state
     app.jinja_env.globals["guided_panel"] = guided.panel
@@ -114,11 +84,6 @@ def create_app() -> Flask:
     app.register_blueprint(pages_bp)
     app.register_blueprint(personalize_bp)
 
-    # Hidden /participants console (leaderboard + the three resets) for
-    # instances WITHOUT a paired instructor container. Off unless
-    # STANDALONE=true, and it also needs STANDALONE_PASSWORD -- see
-    # app/standalone.py. A HARDENING_MODE=all reference instance never gets
-    # it (hardening toggles and redemptions don't apply there).
     if _truthy_env("STANDALONE"):
         password = os.environ.get("STANDALONE_PASSWORD", "")
         if hardening.FORCE_ALL:
@@ -130,16 +95,10 @@ def create_app() -> Flask:
         else:
             from .standalone import bp as standalone_bp
             app.config["STANDALONE_PASSWORD"] = password
-            # Guided mode is only ever offered on a standalone instance when asked for
-            # explicitly (see app/guided.py); paired instances use the instructor's switch.
+            # Guided mode is offered on a standalone instance only when GUIDED_MODE=true.
             app.config["GUIDED_MODE"] = _truthy_env("GUIDED_MODE")
             app.register_blueprint(standalone_bp)
             app.logger.warning("STANDALONE=true -- hidden /participants console is ENABLED on this instance.")
-
-    # Next-phase item 1: app/trainer.py's blueprint is registered ONLY
-    # under TRAINER_DASHBOARD=true (see above) -- no longer part of the
-    # participant-facing app at all. base.html's admin nav no longer
-    # links to it either (see base.html).
 
     @app.route("/")
     def index():
@@ -149,19 +108,6 @@ def create_app() -> Flask:
             return redirect(url_for("admin.dashboard"))
         return redirect(url_for("customer.dashboard"))
 
-    # Phase 6: PLAINTEXT_TEACH and PLAINTEXT_EXERCISE's hardened
-    # branches -- both entry points genuinely stop being reachable over
-    # the plaintext port, rather than just withholding the flag while
-    # still serving the request in the clear. Scoped to exactly the two
-    # flagged paths (not every route on port 5001) so each flag's toggle
-    # stays independent, matching the pattern everywhere else in this
-    # app. code=308 (not 301/302) so /api/telemetry's POST body and
-    # method survive the redirect -- a 301/302 would silently turn a
-    # device's POST into a GET on most clients, which would look like
-    # "the device stopped working" rather than "TLS is now required".
-    # Hardcodes the internal port pair (5000 HTTPS / 5001 plaintext, see
-    # run.py) rather than the external Portainer mapping, which varies
-    # per instance and isn't what this process itself is listening on.
     @app.before_request
     def _plaintext_hardening_redirect():
         if request.environ.get("SERVER_PORT") != "5001":
@@ -174,22 +120,10 @@ def create_app() -> Flask:
 
     @app.route("/favicon.ico")
     def favicon():
-        # Browsers request this exact path automatically on first load,
-        # independent of any <link rel="icon"> tag and regardless of which
-        # page (portal or /mail) they landed on first -- without a route
-        # here that request 404s and some browsers never pick up the SVG
-        # declared in <head> as a result. Explicit mimetype rather than
-        # relying on auto-detection, which depends on the container's own
-        # mimetypes database and isn't guaranteed to match dev environments.
         return send_from_directory(app.static_folder, "favicon.ico", mimetype="image/x-icon")
 
     @app.route("/robots.txt")
     def robots_txt():
-        # /admin/diagnostics and /tools/meter-lookup are real; /backup/ and
-        # /old/ are decoys that don't resolve to anything -- normal
-        # robots.txt noise, and it keeps the real hints from being the
-        # only lines here. /ops/ is deliberately NOT hinted at -- that one
-        # stays found by accident or not at all.
         body = "User-agent: *\nDisallow: /admin/diagnostics\nDisallow: /tools/meter-lookup\nDisallow: /backup/\nDisallow: /old/\n"
         return Response(body, mimetype="text/plain")
 

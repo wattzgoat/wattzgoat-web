@@ -4,15 +4,6 @@ from .db import get_db
 
 bp = Blueprint("leaderboard", __name__)
 
-# Public and unauthenticated on purpose -- a "top solar exporters this
-# month" page is a plausible real feature for a utility to publish with no
-# login. Linked from the pre-login nav and the admin console; never shown
-# to a logged-in customer. Deliberately unflagged -- an "advanced
-# discovery" bonus path, same spirit as the /usage SQL injection
-# side-channel, for a participant who inspects the API response rather
-# than just the rendered page. Unlike the field-technician lookup (which
-# deliberately excludes password_hash to avoid fully overlapping with the
-# SQL injection category), this one includes it.
 
 
 @bp.route("/leaderboard")

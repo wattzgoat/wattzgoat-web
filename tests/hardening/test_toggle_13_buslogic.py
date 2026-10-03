@@ -51,4 +51,3 @@ def test_buslogic_negative_solar_toggle(alice, base_url, set_hardened):
     resp = alice.post(f"{base_url}/solar", data={"exported_kwh": "10"}, timeout=10)
     assert resp.status_code == 200
     assert "kWh added" in resp.text
-

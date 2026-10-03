@@ -4,12 +4,6 @@ import requests
 
 
 def test_sessionid_teach_toggle(base_url, set_hardened, login_fn):
-    # Use a fresh signup account, not a seeded one -- the original
-    # tests/flags/ exploit suite deliberately takes over seeded accounts'
-    # passwords (that's the actual broken-authentication / PWCHANGE_TEACH
-    # exploit it's demonstrating), so hardcoding a seeded account's
-    # password here is fragile when this runs in the same session, on
-    # the same live instance, alongside that suite.
     email = f"sessionid-test-{secrets.token_hex(4)}@example.com"
     password = "Str0ngPassw0rd"
     requests.post(f"{base_url}/signup", data={"email": email, "password": password, "name": "Fixture Account ZzQx"}, verify=False, timeout=10)
@@ -25,10 +19,6 @@ def test_sessionid_teach_toggle(base_url, set_hardened, login_fn):
     assert not token2.isdigit()  # hardened: random hex, unguessable
     assert len(token2) == 48
 
-    # The pre-seeded baseline fixture token still technically resolves
-    # to an account (it's planted directly at seed time, independent of
-    # issue_session_token()), but no longer awards the flag -- see the
-    # gating note in customer.py:dashboard().
     guess = requests.Session()
     guess.verify = False
     guess.cookies.set("wgs_session", "100000")

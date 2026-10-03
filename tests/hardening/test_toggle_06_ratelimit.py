@@ -34,12 +34,6 @@ def test_ratelimit_teach_toggle(base_url, set_hardened):
 
 
 def test_ratelimit_exercise_toggle(base_url, set_hardened):
-    # NOTE: forgot_password.html's not-found branch ALWAYS embeds
-    # RXSS_EXERCISE's flag too, independent of rate limiting (see
-    # auth.py:forgot_password()) -- a naive "FLAG{ not in resp.text"
-    # check would therefore always fail regardless of whether rate
-    # limiting itself is fixed. Same baseline-diff approach as
-    # test_ratelimit_teach_toggle above, for the same reason.
     email = f"rle-vuln-{secrets.token_hex(4)}@example.com"
     s = requests.Session()
     s.verify = False

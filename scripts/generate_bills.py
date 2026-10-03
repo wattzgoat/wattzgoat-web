@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-"""Generates one PDF bill per customer, baked into the image at build time
-(app/bills/<meter_code>/<period>.pdf). Run from the Dockerfile, not at
-container startup -- these never change per-instance.
-
-Note on the library: the original plan called for fpdf2 (pure Python, no
-system dependency), but this sandbox only has reportlab available to
-actually test against, and shipping untested PDF-generation code wasn't a
-trade worth making. reportlab is also pure Python for this kind of basic
-canvas drawing -- no system binary dependency either -- so the "keep the
-image lean" reasoning still holds.
-"""
+"""Generates one PDF bill per customer, at image build time."""
 import os
 import sys
 
@@ -58,15 +48,9 @@ def draw_bill(path: str, name: str, address: str, meter_code: str, amount: float
 
 
 def main() -> None:
-    for (email, password, name, service_addr, billing_addr), meter_code, amount in zip(
+    for (_email, _password, name, service_addr, _billing_addr), meter_code, amount in zip(
         CUSTOMERS, METER_CODES, BILL_AMOUNTS
     ):
-        # No flag baked in at build time, even for Ben Wood's bill
-        # (TRAVERSAL_FLAG_METER) -- that one is now regenerated at
-        # request time with a personalized flag (see app/billing.py,
-        # app/customer.py:download_bill()). This build-time copy exists
-        # only so the on-disk file/directory structure still matches
-        # what a normal (non-traversal) request would expect to find.
         path = os.path.join(OUT_DIR, meter_code, f"{BILL_PERIOD}.pdf")
         draw_bill(path, name, service_addr, meter_code, amount, flag=None)
         print(f"wrote {path}" + (" (flag account, regenerated per-request)" if meter_code == TRAVERSAL_FLAG_METER else ""))

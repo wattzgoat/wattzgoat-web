@@ -90,9 +90,6 @@
       if (!res.ok) return;
       const data = await res.json();
 
-      // Toggle checkboxes -- reflect actual DB state, not just what
-      // this browser tab last clicked (another instructor tab, or a lab
-      // reset, can change it independently).
       let hardenedCount = 0;
       document.querySelectorAll('input[data-flag-key]').forEach(function (input) {
         const key = input.dataset.flagKey;
@@ -110,9 +107,6 @@
       document.getElementById('total-redemptions').textContent = data.total_redemptions;
       document.getElementById('participant-count').textContent = data.participants.length;
 
-      // Category switches -- "on" only when every flag in that
-      // category is currently hardened (see app/trainer.py's
-      // category_state computation).
       document.querySelectorAll('input[data-category-key]').forEach(function (input) {
         const key = input.dataset.categoryKey;
         const isHardened = !!(data.category_hardening && data.category_hardening[key]);
@@ -133,8 +127,7 @@
         }
       });
     } catch (e) {
-      // Transient network error mid-poll -- try again next tick rather
-      // than surfacing anything to the instructor.
+      // Transient network error: try again next poll.
     } finally {
       inFlight = false;
     }

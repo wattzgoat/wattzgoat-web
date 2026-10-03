@@ -6,22 +6,6 @@ import jwt
 from . import flags
 from . import hardening
 
-# ---------------------------------------------------------------------------
-# Device tokens authenticate a METER (not a person) to /api/telemetry.
-# Issued the same way jwt.io itself would build one: HS256, a short fixed
-# secret. Weak two ways -- the secret is a guessable string if it ever
-# leaks, and more importantly, the verifier below trusts whatever
-# algorithm the token itself claims in its header and skips signature
-# checking entirely when that claim is "none". Insecure JWT exercise
-# instance -- flagged in app/api.py's telemetry() when this path is taken.
-#
-# Note for anyone tempted to "simplify" this with a plain jwt.decode(...,
-# algorithms=["HS256", "none"]) call: PyJWT's NoneAlgorithm.verify() is
-# hardcoded to always return False, specifically to stop exactly that
-# shortcut from working. The branch below deliberately bypasses the
-# library for the alg=none case instead of fighting it -- which is also
-# the more realistic shape of how this bug shows up in real code.
-# ---------------------------------------------------------------------------
 DEVICE_JWT_SECRET = "wattzgoat-device-key"
 
 
@@ -43,10 +27,6 @@ def verify_device_token(token: str):
         return None, False
 
     if header.get("alg") == "none":
-        # Phase 6: hardened branch pins the expected algorithm and
-        # rejects alg=none outright, instead of accepting it and just not
-        # flagging the outcome -- the real fix, matching the remediation
-        # note in flags.py word for word.
         if hardening.is_hardened(flags.JWT_EXERCISE):
             return None, False
         try:

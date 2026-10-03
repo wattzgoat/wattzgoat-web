@@ -1,8 +1,4 @@
-"""The prepaid balance is energy (kWh), bought in dollars at a fixed rate --
-these check the conversion and that the UI says so, independent of any flag.
-Uses alice, whose balance is already large by the time this file runs
-(tests/flags/test_13 tops it up), so the small amounts here can't push it
-negative."""
+"""Conversions between dollars and kWh on the recharge and solar pages."""
 import re
 
 

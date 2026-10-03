@@ -1,12 +1,4 @@
-{# Participant leaderboard table + polling script, shared by the instructor dashboard's
-   leaderboard page and the standalone /participants console. Expects lb_api (JSON
-   endpoint), lb_reset (per-participant reset action URL) and lb_total (flag count).
-   lb_checklist_api (optional, Phase 8) is a per-participant redeemed-flags JSON
-   endpoint (expects a ?participant_id= query param) -- when provided, an extra
-   "View redeemed flags" column/modal is shown. Both the instructor dashboard and the
-   standalone /participants console pass it.
-   lb_export_summary and lb_export_detail (optional) are the CSV download URLs for the
-   Export buttons above the table. #}
+{# Participant leaderboard table, shared by the instructor dashboard and the /participants console. #}
 {% if lb_export_summary %}
 <div class="mb-3 flex flex-wrap items-center justify-end gap-2 text-sm">
   <span class="text-gray-500">Export CSV</span>
@@ -34,9 +26,6 @@
 </div>
 
 {% if lb_checklist_api %}
-{# Minimal modal, hidden by default -- opened via showChecklistModal(), populated
-   from lb_checklist_api, same category/name/done order the API returns (CATALOG
-   order, identical to the participant-facing /progress page). #}
 <div id="checklist-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4" style="z-index: 50;">
   <div class="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-lift">
     <div class="flex items-center justify-between px-4 py-3 border-b">

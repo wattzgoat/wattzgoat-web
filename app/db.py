@@ -22,12 +22,6 @@ def init_app(app) -> None:
     app.teardown_appcontext(close_db)
 
 
-# The engine underneath is genuinely SQLite (see the raw sqlite3.OperationalError
-# this wraps), but that's not what trainees pattern-match against -- the classic
-# "You have an error in your SQL syntax..." MySQL banner is what nearly every
-# SQLi tutorial and write-up trains people to recognize on sight, so every
-# improper-error-handling instance in this app renders its caught error
-# through this instead of the raw SQLite text.
 _NEAR_FRAGMENT = re.compile(r'near "(.+?)"|unrecognized token: "(.+?)"')
 
 

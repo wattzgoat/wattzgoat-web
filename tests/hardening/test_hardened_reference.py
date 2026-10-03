@@ -1,16 +1,4 @@
-"""Tests against the standalone HARDENING_MODE=all reference instance
-(WATTZGOAT_HARDENED_URL). Skipped entirely if that env var isn't set --
-this is an optional second container, not something every environment
-running the suite is expected to have up.
-
-Deliberately independent of tests/hardening/test_toggle_scaffold.py:
-those flip toggles on the MAIN instance one at a time via
-/ops/__set_hardening__; this file boots against an entirely separate
-instance where every check is force-True at the app level and never
-touches hardening_state at all (see app/hardening.py's FORCE_ALL). Both
-paths need their own coverage -- a bug in the DB-toggle path wouldn't
-necessarily show up here, and vice versa.
-"""
+"""Tests against the fully hardened reference instance (skipped unless its URL is set)."""
 import secrets
 import re
 
@@ -84,13 +72,6 @@ def test_weakpw_change_rejected(hardened_base_url):
         timeout=10,
     )
     s = _login(hardened_base_url, email, "Str0ngPassw0rd")
-    # Two of THIS SAME instance's other hardened flags gate this exact
-    # route ahead of WEAKPW_CHANGE (see customer.py:change_password()):
-    # CSRF_TEACH requires a real token, and PWCHANGE_TEACH requires the
-    # correct current_password. Under HARDENING_MODE=all every flag is
-    # hardened at once, so both have to be satisfied before the weak-
-    # password check is ever reached, not just the one this test is
-    # actually about.
     account_page = s.get(f"{hardened_base_url}/account", timeout=10)
     m = CSRF_TOKEN_RE.search(account_page.text)
     assert m is not None

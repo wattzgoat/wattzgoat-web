@@ -1,23 +1,4 @@
-"""Hidden /participants console for STANDALONE (trainer-less) instances.
-
-A participant-facing instance that is not paired with an instructor
-container has no other way to reset itself or see class progress, so this
-blueprint puts the same tools inside the app itself: the participant
-leaderboard (with a per-participant redeemed-flags view) plus Reset Lab,
-Reset App, Reset All Redemptions and a per-participant Reset Redemption.
-
-It is only registered when STANDALONE=true (see app/__init__.py). Unset or
-false -- which is what a trainer-paired instance should use -- means the
-routes don't exist at all (plain 404). It is deliberately not linked from
-anywhere and not listed in robots.txt, but it is reachable on the same
-ports as the rest of the app by anyone who guesses the path, so it sits
-behind a password (STANDALONE_PASSWORD). Without that variable the console
-stays disabled.
-
-Because it runs inside the participant process, resets here can also clear
-the in-memory rate-limit counters and pending assistant confirmations,
-which the separate instructor container cannot reach.
-"""
+"""The /participants console for standalone instances: a password-protected leaderboard with resets and CSV export."""
 import hmac
 import os
 import secrets
@@ -154,11 +135,7 @@ def export_detail():
 @bp.route("/api/participant_checklist", methods=["GET"])
 @console_required
 def api_participant_checklist():
-    """Backs the leaderboard's "View" popup, same as the instructor
-    dashboard's endpoint of the same name (app/trainer.py): one
-    participant's full checklist (category/name/done) in CATALOG order,
-    matching the participant-facing /progress page. Redemption status
-    only, never a flag's actual value."""
+    """One participant's flag checklist, as JSON."""
     participant_id = request.args.get("participant_id", "")
     if not participant_id:
         abort(400, "participant_id required")

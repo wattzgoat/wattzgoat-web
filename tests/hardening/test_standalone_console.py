@@ -1,12 +1,4 @@
-"""The hidden /participants console (app/standalone.py). Two situations:
-
-- STANDALONE unset/false (the default, and what CI runs): the routes must
-  not exist at all.
-- WATTZGOAT_STANDALONE_PASSWORD set to the instance's STANDALONE_PASSWORD:
-  the console must be locked behind it. Only non-destructive checks run
-  here -- the reset actions are exercised by hand, since running them
-  would wipe the shared instance the rest of this suite depends on.
-"""
+"""The /participants console, on instances that have it enabled."""
 import os
 
 import pytest

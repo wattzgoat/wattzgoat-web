@@ -1,21 +1,4 @@
-"""All 5 AI assistant flags.
-
-Each test uses its OWN freshly signed-up customer account rather than
-sharing the `alice` fixture across tests. The simulated assistant keeps
-in-memory, per-participant "pending confirmation" conversational state
-(see ops.py's /ops/__reset_lab__ comment, which explicitly calls out
-clearing it) that's never reset between these tests -- reusing one
-session across many sequential assistant calls risks one test's reply
-being shaped by state a PREVIOUS test's conversation left behind, not
-by the message that test itself just sent. A fresh account has no
-conversational history for the assistant to be mid-flow with.
-
-Account names deliberately avoid short/common substrings (e.g. never
-just "T") -- assistant.py's _find_account() does a naive
-`row["name"].lower() in message.lower()` match against every customer,
-so a short name can spuriously match unrelated messages containing that
-substring.
-"""
+"""Hardening tests for the five AI assistant flags."""
 import secrets
 
 import requests
@@ -96,21 +79,6 @@ def test_assistant_direct_dataleak_toggle(base_url, set_hardened):
 
 
 def test_assistant_indirect_injection_toggle(ops1_admin, base_url, set_hardened):
-    # ASSISTANT_INDIRECT_INJECTION only fires when the SAME participant_id
-    # created the ticket and is the one triggering its summary as admin
-    # (see assistant.py:_summarize_ticket()'s same_participant check).
-    #
-    # NOTE: neither cookiejar.set_cookie() (previous attempt) nor a
-    # per-request `cookies=` dict on a Session.post() call (also tried
-    # here, also failed) reliably override wg_pid. In both cases the
-    # customer session's OWN already-stored wg_pid cookie and the
-    # admin's injected value end up stored under different (domain,
-    # path) keys, so BOTH get sent in one Cookie header -- and the
-    # server ends up reading the customer's own value, not the admin's.
-    # The only reliable fix is to not use a Session at all for this one
-    # call: a bare module-level requests.post() with an explicit,
-    # complete cookie dict has no pre-existing jar to conflict with, so
-    # exactly the two cookies given are what gets sent, unambiguously.
     admin_pid = ops1_admin.cookies.get("wg_pid")
     assert admin_pid, "ops1_admin has no wg_pid cookie -- can't test same-participant matching without it"
 
@@ -146,6 +114,7 @@ def test_assistant_output_xss_toggle(base_url, set_hardened):
     customer = _fresh_customer(base_url)
     resp = customer.post(f"{base_url}/assistant/chat", json={"message": "<img src=x onerror=alert(1)>"}, timeout=10)
     assert "FLAG{" in resp.json()["reply"]
+    assert "else if (false)" in customer.get(f"{base_url}/dashboard", timeout=10).text
 
     set_hardened("ASSISTANT_OUTPUT_XSS", True)
 
@@ -153,7 +122,5 @@ def test_assistant_output_xss_toggle(base_url, set_hardened):
     resp = customer2.post(f"{base_url}/assistant/chat", json={"message": "<img src=x onerror=alert(1)>"}, timeout=10)
     assert "FLAG{" not in resp.json()["reply"]
 
-    dashboard = customer2.get(f"{base_url}/dashboard", timeout=10).text
-    idx = dashboard.find("ASSISTANT_OUTPUT_XSS")
-    snippet = dashboard[max(0, idx - 60):idx + 10]
-    assert "true" in snippet
+    # The widget script renders assistant replies as plain text once hardened.
+    assert "else if (true)" in customer2.get(f"{base_url}/dashboard", timeout=10).text

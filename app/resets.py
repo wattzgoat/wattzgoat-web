@@ -1,24 +1,4 @@
-"""Shared reset helpers, used by the separate instructor process
-(app/trainer.py), the standalone /participants console (app/standalone.py)
-and the participant-side /ops/__reset_lab__. Only stdlib at import time --
-the one personalize import is deferred into reset_lab_state() -- so this
-module never drags a role's blueprints into another role's process.
-
-What lives here:
-
-- firmware_dir(): where the insecure-file-upload exercises write. It sits
-  next to the database (DB_PATH's directory) rather than inside the app
-  package, so that in a paired deployment it lives on the SAME shared volume
-  both containers already mount at /app/data -- which is the only reason the
-  instructor process can clear uploads that were written by the participant
-  process at all (two containers don't otherwise share a filesystem).
-- reset_lab_state(): the full wipe (seed.db file-swap, new flag secret,
-  uploaded files removed).
-- reset_app_state(): restore the app's own data to its seeded state while
-  keeping the participant-tracking tables exactly as they are.
-- NOTICES / notice_from_args(): the fixed vocabulary of toast messages the
-  redirect-after-reset flow shows.
-"""
+"""Reset helpers shared by the instructor dashboard and the standalone console."""
 import glob
 import os
 import shutil
@@ -48,12 +28,6 @@ def clear_firmware_files(directory: str | None = None) -> int:
     return removed
 
 
-# Tables restored from seed.db by reset_app_state(). Everything else in the
-# database (flag_redemptions, participant_nicknames, lab_meta) is left alone.
-#
-# - sessions: restored too, which leaves only the fixture row planted for the
-#   predictable-session-ID exercise -- i.e. every live login expires.
-# - hardening_state: restored too, i.e. every toggle returns to vulnerable.
 APP_TABLES = (
     "users", "sessions", "emails", "meters", "readings", "bills",
     "recharges", "solar_exports", "tickets", "alarms", "hardening_state",
@@ -61,10 +35,7 @@ APP_TABLES = (
 
 
 def reset_app_state(db_path: str, seed_path: str) -> None:
-    """Restore APP_TABLES from seed.db inside one transaction, so a failure
-    leaves the live database untouched. Does not touch flag_redemptions,
-    participant_nicknames or lab_meta (so redemptions, participant IDs,
-    nicknames and the flag secret all survive)."""
+    """Restore the app's own data from seed.db, keeping progress, nicknames and flag values."""
     if not os.path.isfile(seed_path):
         raise FileNotFoundError(f"no seed.db to reset from at {seed_path}")
 
@@ -101,20 +72,13 @@ def reset_app_state(db_path: str, seed_path: str) -> None:
 
 
 def reset_lab_state(db_path: str, seed_path: str) -> None:
-    """Full wipe: swap seed.db over the live database, rotate the flag
-    secret, and remove uploaded files. The swap is a write-to-temp-file +
-    os.replace() -- a single atomic rename -- rather than an in-place copy,
-    because the app is never truly idle (the meter simulators hit the DB on
-    their own every 20-40s) and a concurrent connection must only ever see
-    the complete old file or the complete new one. The temp file lives next
-    to db_path because os.replace() is only atomic within one filesystem."""
+    """Restore everything from seed.db, rotate the flag secret and remove uploaded files."""
     from .personalize import regenerate_lab_secret
 
     if not os.path.isfile(seed_path):
         raise FileNotFoundError(f"no seed.db to reset from at {seed_path}")
 
-    # The instructor's guided-mode switch is a setting for how the session is
-    # being run, not lab state, so it is read before the swap and put back after.
+    # The guided-mode setting belongs to the session, not the lab, so it is carried across the swap.
     guided_value = None
     try:
         probe = sqlite3.connect(db_path)
@@ -157,11 +121,6 @@ def reset_lab_state(db_path: str, seed_path: str) -> None:
     clear_firmware_files()
 
 
-# Reset actions redirect back to a page with a short, fixed-vocabulary notice
-# code in the query string, rendered as a toast. Only codes in this table are
-# ever shown; the only dynamic values are a clamped integer and a short,
-# Jinja-escaped participant ID prefix -- nothing from the query string is
-# rendered as free text.
 NOTICES = {
     "lab_reset": ("success", "Lab reset to its seeded state"),
     "lab_reset_failed": ("error", "Lab reset failed -- see the container logs"),

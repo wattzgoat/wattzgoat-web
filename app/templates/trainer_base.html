@@ -9,7 +9,7 @@
 <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 {% block head_extra %}{% endblock %}
 </head>
-{# Nav link with an active state (needs the request, so it lives here rather than in _ui.html). #}
+{# Nav link that highlights the current page. #}
 {% macro nav_link(endpoint, label) -%}
 <a href="{{ url_for(endpoint) }}" class="rounded-md px-3 py-1.5 transition {% if request.endpoint == endpoint %}bg-white/10 text-white{% else %}hover:bg-white/10 hover:text-white{% endif %}">{{ label }}</a>
 {%- endmacro %}
@@ -23,20 +23,11 @@
   </a>
   <span class="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-ink">Instructor</span>
 
-  {# Next-phase item 4: the instructor-specific nav items -- Participant
-     Leaderboard, Reset Lab, WattzGOAT Portal -- plus Dashboard, live here
-     rather than in base.html since this role has no customer/admin surface
-     to share a nav with at all. #}
   <nav class="ml-4 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-gray-300">
     {{ nav_link('trainer.dashboard', 'Dashboard') }}
     {{ nav_link('trainer.leaderboard', 'Participant Leaderboard') }}
     {{ nav_link('trainer.code_examples', 'Code Examples') }}
     {% if participant_base_url %}
-    {# Context-aware by construction: this just links at the target
-       participant instance's root, and that instance's OWN index()
-       route already redirects to customer dashboard / admin dashboard
-       / login depending on the browser's session state there -- the
-       trainer process doesn't need to know or compute which applies. #}
     <a href="{{ participant_base_url }}/" class="rounded-md px-3 py-1.5 transition hover:bg-white/10 hover:text-white" target="_blank" rel="noopener">WattzGOAT Portal ↗</a>
     {% endif %}
     <span class="mx-2 hidden h-5 w-px bg-white/15 sm:inline-block" aria-hidden="true"></span>

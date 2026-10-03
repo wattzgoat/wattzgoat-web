@@ -1,5 +1,4 @@
-{# Toast (from `notice`) and the in-page confirm modal, shared by the instructor dashboard and
-   the standalone /participants console. Include once, near the end of <body>. #}
+{# Toast and confirm window shared by the instructor dashboard and the /participants console. #}
 {% if notice %}
 <div id="wg-toast" role="status"
      class="fixed top-4 right-4 z-50 max-w-sm rounded-xl shadow-lift px-4 py-3 text-sm flex items-start gap-3 {{ 'bg-green-600 text-white' if notice.kind == 'success' else 'bg-red-600 text-white' }}">
@@ -20,11 +19,6 @@
 })();
 </script>
 {% endif %}
-{# In-page confirmation for destructive actions. Replaces the browser's native
-   confirm() on purpose: browsers add a "don't allow this site to prompt you
-   again" tick box to repeated native dialogs, and ticking it silently blocks
-   every later reset. Any form with a data-confirm attribute (including rows
-   the leaderboard re-renders on each poll) goes through this. #}
 <div id="wg-confirm" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="wg-confirm-msg">
   <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-lift">
     <p id="wg-confirm-msg" class="mb-5 text-sm text-gray-800"></p>

@@ -25,4 +25,3 @@ def test_buslogic_negative_solar(alice, base_url, extract_flag_fn, redeem_flag_f
     assert resp.status_code == 200
     flag = extract_flag_fn(resp.text)
     assert redeem_flag_fn(alice, base_url, flag)
-

@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Seeds a fresh WattzGOAT database with fixture data.
-
-Usage: python scripts/seed.py --out /app/data/app.db
-Refuses to touch a database that already exists -- the entrypoint script
-relies on that to decide whether seeding is needed.
-"""
+"""Seeds a fresh database with the fixture data."""
 import argparse
 import hashlib
 import os
@@ -23,7 +18,7 @@ from fixtures import (
 
 
 def weak_hash(password: str) -> str:
-    """Deliberately weak, unsalted hash -- part of the lab, not a bug."""
+    """Unsalted password hash."""
     return hashlib.md5(password.encode()).hexdigest()
 
 
@@ -76,22 +71,12 @@ def build(conn: sqlite3.Connection) -> None:
         for email, _ in SQLI_FLAG_ACCOUNTS
     )
 
-    # SQLi teach flag: a fake, otherwise-invisible meter row owned by the
-    # meters-sync service account, with the flag as its meter_code -- a
-    # UNION targeting `meters` (the table /admin/meters already reads)
-    # surfaces it. /admin/meters's own non-injected queries exclude
-    # service-owned meters, so this never shows up by ordinary browsing.
     cur.execute(
         "INSERT INTO meters (meter_code, user_id, nickname, status, balance) "
         "VALUES (?, ?, 'internal sync placeholder', 'connected', 0)",
         (SQLI_TEACH_FLAG_VALUE, svc_meters_id),
     )
 
-    # SQLi exercise flag: a second fake, invisible meter (innocuous code,
-    # holds no flag itself) purely as an attachment point, plus a fake
-    # alarm on it whose message is the flag -- a UNION targeting `alarms`
-    # surfaces it, with meter_code displaying as the innocuous decoy, not
-    # the teach flag, so the two never appear together in one result set.
     cur.execute(
         "INSERT INTO meters (meter_code, user_id, nickname, status, balance) "
         "VALUES ('MTR-0000', ?, 'internal sync placeholder', 'connected', 0)",
@@ -103,20 +88,11 @@ def build(conn: sqlite3.Connection) -> None:
         (decoy_meter_id, SQLI_EXERCISE_FLAG_VALUE),
     )
 
-    # SQL injection bonus (usage search): a fake reading attached to the
-    # same decoy meter above. No real customer's own /usage query ever
-    # reaches it (it filters by the logged-in customer's own meter_id),
-    # so a UNION with no WHERE at all is enough to surface it alongside
-    # that customer's real readings.
     cur.execute(
         "INSERT INTO readings (meter_id, reading_kwh, source, recorded_at) VALUES (?, 0, 'correction', ?)",
         (decoy_meter_id, SQLI_BONUS_FLAG_VALUE),
     )
 
-    # Predictable-session-ID exercise account: a customer with no meter,
-    # not listed anywhere in class materials. Its session row is planted
-    # here (not issued through the normal login flow) specifically so its
-    # token is the fixed, known baseline value -- see app/flags.py.
     sid_email, sid_password, sid_name = SESSIONID_ACCOUNT
     cur.execute(
         "INSERT INTO users (email, password_hash, role, name) VALUES (?, ?, 'customer', ?)",
@@ -128,18 +104,12 @@ def build(conn: sqlite3.Connection) -> None:
         (SESSIONID_ACCOUNT_BASELINE_TOKEN, sid_user_id),
     )
 
-    # Bill rows point at the PDFs generate_bills.py already baked into the
-    # image at build time (app/bills/<meter_code>/<period>.pdf) -- nothing
-    # to generate here, just record where each customer's bill lives.
     for owner_id, meter_code, amount in zip(customer_ids, METER_CODES, BILL_AMOUNTS):
         cur.execute(
             "INSERT INTO bills (user_id, period, amount, pdf_filename) VALUES (?, ?, ?, ?)",
             (owner_id, BILL_PERIOD, amount, f"{meter_code}/{BILL_PERIOD}.pdf"),
         )
 
-    # Personalized-flag secret (see app/personalize.py) -- regenerated
-    # again on every /ops/__reset_lab__ run, this is just the starting
-    # value for a freshly seeded DB.
     cur.execute(
         "INSERT INTO lab_meta (key, value) VALUES ('flag_secret', ?)",
         (secrets.token_hex(32),),
