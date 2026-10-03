@@ -170,3 +170,27 @@ def test_reset_lab_control_moved_to_trainer(ops1_admin, base_url, trainer_base_u
 
     trainer_page = ops1_admin.get(f"{base_url}/instructor/", timeout=10)
     assert trainer_page.status_code == 404
+
+
+def test_trainer_csv_export_requires_login_and_works(trainer_session, trainer_base_url):
+    import csv
+    import io
+
+    import requests
+
+    for path in ("/instructor/export/summary.csv", "/instructor/export/detail.csv"):
+        resp = requests.get(f"{trainer_base_url}{path}", verify=False, timeout=10, allow_redirects=False)
+        assert resp.status_code in (302, 303)
+        assert "text/csv" not in resp.headers.get("Content-Type", "")
+
+    page = trainer_session.get(f"{trainer_base_url}/instructor/leaderboard", timeout=10)
+    assert "Export CSV" in page.text
+
+    summary = trainer_session.get(f"{trainer_base_url}/instructor/export/summary.csv", timeout=10)
+    assert summary.status_code == 200 and summary.headers["Content-Type"].startswith("text/csv")
+    assert "attachment" in summary.headers["Content-Disposition"]
+    assert next(csv.reader(io.StringIO(summary.content.decode("utf-8-sig"))))[:4] == ["Rank", "Participant ID", "Nickname", "Flags found"]
+
+    detail = trainer_session.get(f"{trainer_base_url}/instructor/export/detail.csv", timeout=10)
+    assert detail.status_code == 200
+    assert next(csv.reader(io.StringIO(detail.content.decode("utf-8-sig"))))[:3] == ["Participant ID", "Nickname", "Flag key"]

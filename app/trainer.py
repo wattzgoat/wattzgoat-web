@@ -43,6 +43,7 @@ from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_te
 from .code_examples import example_keys, example_payload
 from .db import get_db
 from .flags import CATALOG
+from . import export
 from . import hardening
 from . import personalize
 from . import resets
@@ -129,6 +130,18 @@ def dashboard():
         trainer_name=g.trainer["name"],
         participant_base_url=current_app.config.get("PARTICIPANT_BASE_URL", ""),
     )
+
+
+@bp.route("/export/summary.csv", methods=["GET"])
+@trainer_login_required
+def export_summary():
+    return export.summary_response()
+
+
+@bp.route("/export/detail.csv", methods=["GET"])
+@trainer_login_required
+def export_detail():
+    return export.detail_response()
 
 
 @bp.route("/code", methods=["GET"])

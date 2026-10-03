@@ -28,7 +28,7 @@ from functools import wraps
 
 from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, url_for
 
-from . import assistant, auth, personalize, resets
+from . import assistant, auth, export, personalize, resets
 from .db import get_db
 from .flags import CATALOG
 
@@ -96,6 +96,8 @@ def console():
         standings_url=url_for("standalone.api_leaderboard"),
         reset_participant_url=url_for("standalone.reset_participant_redemption"),
         checklist_url=url_for("standalone.api_participant_checklist"),
+        export_summary_url=url_for("standalone.export_summary"),
+        export_detail_url=url_for("standalone.export_detail"),
     )
 
 
@@ -135,6 +137,18 @@ def logout():
 @console_required
 def api_leaderboard():
     return jsonify({"standings": personalize.participant_standings(), "total_flags": len(CATALOG)})
+
+
+@bp.route("/export/summary.csv", methods=["GET"])
+@console_required
+def export_summary():
+    return export.summary_response()
+
+
+@bp.route("/export/detail.csv", methods=["GET"])
+@console_required
+def export_detail():
+    return export.detail_response()
 
 
 @bp.route("/api/participant_checklist", methods=["GET"])
