@@ -1,5 +1,5 @@
-"""Guided mode: an optional left-hand panel of hints for the page a
-participant is on.
+"""Guided mode: an optional hint panel, docked along the bottom of the page,
+for the page a participant is on.
 
 Whether it is OFFERED is decided per instance, never by a participant:
 
@@ -73,6 +73,8 @@ def panel():
         return None
 
     endpoint = request.endpoint
+    if endpoint == "progress.progress":
+        return None          # the Progress page is where View code lives; no panel there
     if endpoint in BEYOND_ENDPOINTS:
         scope = "beyond"
         keys = [k for k, _c, _n in flags.CATALOG if FLAG_PAGE.get(k) == BEYOND]

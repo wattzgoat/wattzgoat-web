@@ -12,6 +12,7 @@
 </head>
 {% import "_ui.html" as ui %}
 {% set guided = guided_state() %}
+{% set gp = guided_panel() %}
 {# Nav link with an active state. Defined here (not in _ui.html) because it needs
    the request, which imported macros don't get. #}
 {# The participant's own Guided mode switch, shown only where guided mode is offered
@@ -28,7 +29,7 @@
 {% macro nav_link(endpoint, label) -%}
 <a href="{{ url_for(endpoint) }}" class="rounded-md px-3 py-1.5 transition {% if request.endpoint == endpoint %}bg-white/10 text-white{% else %}hover:bg-white/10 hover:text-white{% endif %}">{{ label }}</a>
 {%- endmacro %}
-<body class="bg-canvas text-ink min-h-screen font-sans antialiased">
+<body class="bg-canvas text-ink min-h-screen font-sans antialiased{% if gp %} pb-28{% endif %}">
 <header class="sticky top-0 z-30 bg-ink/95 text-white px-6 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 shadow-lift backdrop-blur">
 <a href="{{ url_for(('admin.dashboard' if g.user['role'] == 'admin' else 'customer.dashboard') if g.user else 'auth.login') }}" class="flex items-center gap-3 hover:opacity-90">
   <svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true">
@@ -77,10 +78,11 @@
   </nav>
   {% endif %}
 </header>
-{# Optional left column for a page-wide side panel (guided mode will fill this). When a
-   page doesn't provide one, nothing is rendered and the layout is unchanged. A page can
-   also set page_wide to use the wider container without a side panel. #}
-{% set rail_html %}{% block rail %}{% set gp = guided_panel() %}{% if gp %}{% include "_guided_panel.html" %}{% endif %}{% endblock %}{% endset %}
+{# Optional left column for a page-wide side panel. When a page doesn't provide one,
+   nothing is rendered and the layout is unchanged. A page can also set page_wide to use
+   the wider container without a side panel. (Guided mode docks along the bottom instead,
+   see _guided_panel.html.) #}
+{% set rail_html %}{% block rail %}{% endblock %}{% endset %}
 {% set has_rail = rail_html|trim != '' %}
 <div class="mx-auto px-6 py-10 {% if has_rail %}max-w-6xl flex flex-col items-stretch gap-6 lg:flex-row lg:items-start lg:gap-8{% elif page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
   {% if has_rail %}<aside class="w-full shrink-0 lg:sticky lg:top-24 lg:w-72">{{ rail_html }}</aside>{% endif %}
@@ -102,6 +104,8 @@
     {% endif %}
   </div>
 </footer>
+
+{% if gp %}{% include "_guided_panel.html" %}{% endif %}
 
 <!-- Real, serious safety notice -- not part of the in-universe flavor
      content above. Shown once per browser via localStorage; a blocking

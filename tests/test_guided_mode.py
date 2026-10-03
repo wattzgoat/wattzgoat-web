@@ -16,6 +16,8 @@ import requests
 BASE_URL = os.environ.get("WATTZGOAT_BASE_URL", "https://127.0.0.1:5000")
 
 
+@pytest.mark.skipif(os.environ.get("WATTZGOAT_GUIDED_MODE", "").lower() == "true",
+                    reason="this instance was started with guided mode on")
 def test_default_instance_does_not_offer_guided_mode():
     s = requests.Session()
     s.verify = False
@@ -88,3 +90,35 @@ def test_resets_carry_the_guided_setting_over(tmp_path):
     assert value() == "1"
     resets.reset_lab_state(live, seed)
     assert value() == "1"
+
+
+@pytest.mark.skipif(os.environ.get("WATTZGOAT_GUIDED_MODE", "").lower() != "true",
+                    reason="WATTZGOAT_GUIDED_MODE not set (needs an instance started with STANDALONE=true and GUIDED_MODE=true)")
+def test_guided_bar_on_an_instance_that_offers_it():
+    def participant():
+        s = requests.Session()
+        s.verify = False
+        s.cookies.set("wg_pid", "guidedbar" + secrets.token_hex(4))
+        email = f"guided-bar-{secrets.token_hex(4)}@example.com"
+        password = "GuidedBar!2026"
+        s.post(f"{BASE_URL}/signup", data={"name": "Guided", "email": email, "password": password, "confirm_password": password}, timeout=10)
+        s.post(f"{BASE_URL}/login", data={"email": email, "password": password}, timeout=10)
+        return s
+
+    on = participant()
+    on.cookies.set("wg_guided", "1")
+    off = participant()
+
+    page = on.get(f"{BASE_URL}/usage", timeout=10).text
+    assert 'id="wg-guided-toggle"' in page
+    assert "fixed inset-x-0 bottom-0" in page and "<aside" not in page       # docked along the bottom
+    assert page.count("data-hint-card=") == 2 and 'id="wg-guided-next"' in page and page.count('<button type="button" data-dot') == 2
+    assert page.count('<div class="hidden" data-hint-card=') == 1            # one flag's hints at a time
+    assert "Show next hint" in page
+
+    # Not on for someone who never turned it on, even on the same instance.
+    assert "wg-guided-panel" not in off.get(f"{BASE_URL}/usage", timeout=10).text
+
+    # No panel on the Progress page (the switch itself is still there).
+    progress = on.get(f"{BASE_URL}/progress", timeout=10).text
+    assert "wg-guided-panel" not in progress and 'id="wg-guided-toggle"' in progress
