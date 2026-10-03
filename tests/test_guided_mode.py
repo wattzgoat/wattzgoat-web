@@ -37,7 +37,7 @@ def test_every_flag_is_mapped_and_hints_are_well_formed():
 
     keys = {key for key, _category, _name in flags.CATALOG}
     assert set(FLAG_PAGE) == keys                       # every flag belongs to a page (or "beyond")
-    assert set(HINTS) <= keys
+    assert set(HINTS) == keys                           # and every flag has its hints
     for key, hints in HINTS.items():
         assert len(hints) == 2, key                     # a nudge and a technique
         for hint in hints:
@@ -112,21 +112,26 @@ def test_guided_bar_on_an_instance_that_offers_it():
     page = on.get(f"{BASE_URL}/usage", timeout=10).text
     assert 'id="wg-guided-toggle"' in page
     assert "fixed inset-x-0 bottom-0" in page and "<aside" not in page       # docked along the bottom
-    assert page.count("data-hint-card=") == 2 and 'id="wg-guided-next"' in page
-    assert page.count('<button type="button" data-flag-tab') == 2             # one numbered tab per flag
-    assert page.count('<div class="hidden" data-hint-card=') == 1            # one flag's hints at a time
+    assert page.count("data-hint-card=") == 4 and 'id="wg-guided-next"' in page
+    assert page.count('<button type="button" data-flag-tab') == 4             # one numbered tab per flag
+    assert page.count('<div class="hidden" data-hint-card=') == 3            # one flag's hints at a time
     # Each flag says which flag it is, numbered among ALL the flags on the page.
-    assert "Flag 3 of 4" in page and "Flag 4 of 4" in page
-    assert "Flags 1 and 2 have no hints written yet." in page
+    assert all(f"Flag {n} of 4" in page for n in (1, 2, 3, 4))
+    assert "no hints written yet" not in page                                 # every flag has hints now
     # Hints move with their own buttons, separate from the flag arrows; going back is possible.
     assert "Show next hint" in page and "Previous hint" in page
-    assert page.count('<button type="button" data-hint-prev disabled') == 2
+    assert page.count('<button type="button" data-hint-prev disabled') == 4
     assert 'aria-label="Previous flag"' in page and 'aria-label="Previous hint"' not in page
     # The bar has no Turn off control (the header switch does that).
     assert "Turn off" not in page and "wg-guided-off" not in page
 
     # Not on for someone who never turned it on, even on the same instance.
     assert "wg-guided-panel" not in off.get(f"{BASE_URL}/usage", timeout=10).text
+
+    # Exercises that don't belong to one page are grouped under "Beyond the browser".
+    beyond = on.get(f"{BASE_URL}/contact", timeout=10).text
+    assert "Beyond the browser: 0 of 10 found" in beyond
+    assert beyond.count("data-hint-card=") == 10 and beyond.count('<button type="button" data-flag-tab') == 10
 
     # No panel on the Progress page (the switch itself is still there).
     progress = on.get(f"{BASE_URL}/progress", timeout=10).text

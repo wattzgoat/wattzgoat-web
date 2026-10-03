@@ -65,11 +65,10 @@ def test_one_participants_redemption_does_not_unlock_another():
     assert someone_else.get(f"{BASE_URL}/progress/code/HEADERS_TEACH", timeout=10).status_code == 403
 
 
-def test_code_endpoint_unknown_or_unwritten_flags_are_404():
+def test_code_endpoint_unknown_flags_are_404():
     s = _fresh_participant_session()
     assert s.get(f"{BASE_URL}/progress/code/NOT_A_REAL_FLAG", timeout=10).status_code == 404
-    # A real flag that doesn't have a written example yet.
-    assert s.get(f"{BASE_URL}/progress/code/SQLI_BONUS", timeout=10).status_code == 404
+    assert s.get(f"{BASE_URL}/progress/code/", timeout=10).status_code == 404
 
 
 def test_code_endpoint_requires_login():
@@ -85,20 +84,18 @@ def test_progress_page_shows_a_code_column():
 
 
 @pytest.mark.skipif(importlib.util.find_spec("flask") is None, reason="Flask not installed here, so the app package can't be imported")
-def test_every_category_has_a_complete_example():
+def test_every_flag_has_a_complete_example():
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from app import code_examples, flags
 
-    covered = set()
+    # Every one of the flags has an example, so View code is never "coming soon".
+    assert code_examples.example_keys() == flags.VALID_KEYS
     for key in code_examples.example_keys():
-        assert key in flags.VALID_KEYS
         payload = code_examples.example_payload(key)
         assert payload["why"].strip()
-        covered.add(payload["category"])
         for side in ("vulnerable", "fixed"):
             for lang, _label in code_examples.LANGUAGES:
                 snippet = payload[side][lang]
                 assert snippet["code"].strip(), (key, side, lang)
                 assert snippet["highlight"], (key, side, lang)
                 assert max(snippet["highlight"]) <= len(snippet["code"].split("\n")), (key, side, lang)
-    assert covered == {category for _key, category, _name in flags.CATALOG}

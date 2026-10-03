@@ -12,6 +12,8 @@ The site is vulnerable on purpose, so you can practise finding real security wea
 - 48 hidden weaknesses to find and exploit, from easy to hard.
 - A capture-the-flag style Progress page that tracks which ones you've found.
 - A simulated AI assistant with its own set of weaknesses to find.
+- Once you have found a flag, you can see the vulnerable code next to the fixed code, in Python, JavaScript and PHP, so you learn what caused the problem and how to fix it.
+- An optional guided mode that gives hints for the page you are on, without giving the answer away (see [Guided mode](#guided-mode)).
 - Runs as a single Docker container with no other setup. For groups, an optional instructor dashboard runs alongside it (see [Instructor mode](#instructor-mode)).
 
 ## How you learn with it
@@ -21,6 +23,8 @@ WattzGOAT works like a capture the flag (CTF) game. There are 48 flags hidden in
 The weaknesses are the kind of problems described in the OWASP Top 10, things like broken access control and injection, so what you practise here applies to real websites too.
 
 To get started, create an account or log in with one of the sample customer accounts, then look around and try things out. When you find a flag, you can enter it on the Progress page, which keeps track of the ones you have found.
+
+Once you have found a flag, select **View code** next to it on the Progress page. It shows the vulnerable code and the fixed code side by side, with the lines that changed highlighted, a short note on why the fix works, and tabs for Python, JavaScript and PHP. Each flag's code unlocks only when you have found that flag.
 
 ![Progress page](docs/screenshots/progress.png)
 
@@ -102,6 +106,7 @@ The build downloads some packages, so it needs an internet connection and takes 
 | `INSTANCE_HOST` | The IP address you will type into your browser. Use `127.0.0.1` if the browser is on the same computer. If you run WattzGOAT on another machine, use that machine's IP address, for example `192.168.1.50`. It must be an IP address, not a name. |
 | `STANDALONE` | Set to `true` when you run a single copy on its own. |
 | `STANDALONE_PASSWORD` | A password of your choice. Replace `YourPasswordHere` with your own. |
+| `GUIDED_MODE` | Optional. Set to `true`, together with `STANDALONE=true`, to let participants switch on [guided mode](#guided-mode). Leave it out otherwise. |
 
 ### Open the site
 
@@ -114,7 +119,9 @@ Your browser will warn you that the connection is not private. This is normal, b
 Instructor mode adds a second site, the instructor dashboard, that runs next to the normal site and helps you run WattzGOAT with a group. You log in to it separately, with instructor accounts you create.
 
 - **Vulnerability switches.** Turn any single vulnerability, or a whole group of them, from vulnerable to fixed and back while people watch. Showing the same page both ways is a good way to see what a fix really changes.
-- **Participant leaderboard.** A live list of everyone taking part, ranked by flags found, with their latest activity. Select **View** to see which flags a person has found and which are left, in the same order as their Progress page. Select **Reset** at the end of a person's row to clear that person's progress without touching anyone else's.
+- **Code examples.** A Code Examples page shows the vulnerable and fixed code for every vulnerability, side by side, in Python, JavaScript and PHP. Switch one vulnerability on to show it, or switch a whole group on. It is your view for teaching and never changes what participants can see: they unlock each flag's code on their own Progress page by finding the flag.
+- **Guided mode.** Offer [guided mode](#guided-mode) to participants with one switch. It is off by default and stays as you set it through every reset.
+- **Participant leaderboard.** A live list of everyone taking part, ranked by flags found, with their latest activity. Select **View** to see which flags a person has found and which are left, in the same order as their Progress page. Select **Reset** at the end of a person's row to clear that person's progress without touching anyone else's. Use **Export CSV** to download a summary of everyone's progress, or a per-flag detail file.
 - **Three ways to reset.**
 
 | Reset | What it does |
@@ -125,7 +132,7 @@ Instructor mode adds a second site, the instructor dashboard, that runs next to 
 
 ### Running a competition instead?
 
-You can skip instructor mode. If you start a single copy as in the Quick start (with `STANDALONE=true` and your `STANDALONE_PASSWORD`), it includes a hidden page at https://127.0.0.1:5000/participants. Sign in with your `STANDALONE_PASSWORD` to get the same participant leaderboard described above.
+You can skip instructor mode. If you start a single copy as in the Quick start (with `STANDALONE=true` and your `STANDALONE_PASSWORD`), it includes a hidden page at https://127.0.0.1:5000/participants. Sign in with your `STANDALONE_PASSWORD` to get the same participant leaderboard described above, including **Export CSV**. To offer guided mode there too, start the copy with `GUIDED_MODE=true` as well.
 
 ### Before you start
 
@@ -170,6 +177,30 @@ If the browser is on a different computer, use the IP address of the machine run
 ### Open the dashboard
 
 Go to https://127.0.0.1:5004 and log in with one of your instructor accounts. Everyone else uses the normal site at https://127.0.0.1:5000. Your browser will show the same security warning as before.
+
+## Guided mode
+
+Guided mode gives you hints for the page you are on. It is for when you want a nudge, and it never gives the answer away. It is off unless the person running WattzGOAT turns it on.
+
+### Turning it on
+
+- **With instructor mode.** The instructor switches on **Guided mode** on the dashboard. Each participant then sees a **Guided mode** switch in their header and chooses for themselves whether to use it. It never switches on for anyone else using the same site. It stays as the instructor set it through every reset.
+- **Running on your own.** Start the copy with `STANDALONE=true` and `GUIDED_MODE=true`. Everyone using it then sees the switch and chooses for themselves.
+- **Otherwise** guided mode is not offered at all, and there is no switch.
+
+### What you see
+
+When it is on, a bar sits along the bottom of the page, over the content, and stays there as you scroll. Use **Minimize** to tuck it down to one line.
+
+- **The headline** says how many flags are on the page and how many you have found. A page with no flags says so.
+- **Each flag you have not found** has its own card, labelled like "Flag 3 of 6". The number is that flag's place among all the flags on the page, so it matches the headline and does not change when you find another one.
+- **Each card has two hints**, shown one at a time: first a nudge about where to look, then the technique to try. Use **Show next hint** and **Previous hint** to move between them.
+- **To move between flags**, use the arrows or the numbered tabs. They are separate from the hint buttons, so moving to another flag leaves each flag's hint where you left it.
+- **When you find a flag**, its card goes away. You can still open its code from the Progress page.
+- **If your instructor has fixed a vulnerability**, its card says so and suggests confirming that it can no longer be exploited.
+- **Some exercises do not belong to a single page**: a hidden page found through the site's own files, another port, the device API, or the assistant. Their hints are under **Beyond the browser** on the Contact, Terms and Privacy pages.
+
+The Progress page has no bar. To turn guided mode off, use the switch in the header. Hints are shown one at a time to pace you, but they are not locked away.
 
 ## Everyday commands
 

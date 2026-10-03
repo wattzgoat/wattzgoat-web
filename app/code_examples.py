@@ -879,6 +879,14 @@ function runTool(array $call, array $user): string {
 }
 
 
+# Second batch: the remaining flags, kept in their own modules to keep each file readable.
+from .code_examples_more_a import ENTRIES_A as _ENTRIES_A  # noqa: E402
+from .code_examples_more_b import ENTRIES_B as _ENTRIES_B  # noqa: E402
+
+_ENTRIES.update(_ENTRIES_A)
+_ENTRIES.update(_ENTRIES_B)
+
+
 def _build():
     built = {}
     for key, entry in _ENTRIES.items():
