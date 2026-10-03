@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Firmware uploaded — WattzGOAT Admin{% endblock %}
 {% block content %}
-<div class="max-w-sm mx-auto mt-12 bg-white rounded-lg p-8 shadow-sm text-center">
+<div class="mx-auto mt-12 max-w-sm rounded-2xl bg-white p-8 text-center shadow-card ring-1 ring-black/5">
   <h1 class="text-xl font-semibold mb-2">{{ "Firmware rejected" if error else "Firmware uploaded" }}</h1>
   {% if error %}
   {# Phase 6: shown only on FILEUPLOAD_TEACH's hardened branch (see

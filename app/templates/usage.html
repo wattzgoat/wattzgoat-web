@@ -1,29 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Search usage — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-6">Search your readings</h1>
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Search your readings', 'Find readings by date or period.', 'Usage') }}
 
-<form method="get" class="flex gap-2 mb-6">
-  <input name="q" value="{{ query or '' }}" placeholder="e.g. 2026-09" class="flex-1 border rounded px-3 py-2">
-  <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm">Search</button>
+<form method="get" class="mb-6 flex flex-col gap-2 sm:flex-row">
+  <span class="relative flex-1">
+    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{{ ui.icon('chart', 18) }}</span>
+    <input name="q" value="{{ query or '' }}" placeholder="e.g. 2026-09" class="{{ ui.input_class() }} pl-10">
+  </span>
+  <button class="{{ ui.btn_class('primary') }}">Search</button>
 </form>
 
 {% if sqli_flag %}
-<div class="bg-amber-50 border border-amber-300 text-amber-900 text-sm rounded p-3 mb-4 font-mono">
-  {{ sqli_flag }}
-</div>
+<div class="mb-4">{% call ui.flag_note() %}<span class="font-mono">{{ sqli_flag }}</span>{% endcall %}</div>
 {% endif %}
 
 {% if db_error %}
 {# Raw DB error shown to the page on purpose -- improper error handling teach instance. #}
-<div class="bg-red-50 text-red-800 text-sm rounded p-3 font-mono whitespace-pre-wrap">Search failed: {{ db_error }}</div>
+<div class="whitespace-pre-wrap rounded-xl bg-red-50 p-4 font-mono text-sm text-red-800 ring-1 ring-red-200">Search failed: {{ db_error }}</div>
 {% elif results is not none %}
   {% if results %}
-  <ul class="divide-y bg-white rounded-lg shadow-sm">
+  <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-black/5">
     {% for r in results %}
-    <li class="px-4 py-3 text-sm flex justify-between">
+    <li class="flex justify-between px-5 py-3 text-sm transition hover:bg-gray-50">
       <span>{{ r['recorded_at'] }}</span>
-      <span>{{ r['reading_kwh'] }} kWh</span>
+      <span class="font-medium">{{ r['reading_kwh'] }} kWh</span>
     </li>
     {% endfor %}
   </ul>

@@ -1,21 +1,22 @@
 {% extends "base.html" %}
 {% block title %}Users — WattzGOAT Admin{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-4">Users</h1>
-<div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Users', None, 'Admin') }}
+<div class="-mt-4 overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-black/5">
 <table class="w-full text-sm">
-<thead class="bg-gray-50 text-left text-gray-500">
-<tr><th class="px-4 py-2">Name</th><th class="px-4 py-2">Email</th><th class="px-4 py-2">Role</th><th class="px-4 py-2">Created</th></tr>
+<thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+<tr><th class="px-5 py-3">Name</th><th class="px-5 py-3">Email</th><th class="px-5 py-3">Role</th><th class="px-5 py-3">Created</th></tr>
 </thead>
-<tbody class="divide-y">
+<tbody class="divide-y divide-gray-100">
 {% for u in users %}
-<tr>
-<td class="px-4 py-2 whitespace-nowrap">{{ u['name'] }}</td>
-<td class="px-4 py-2 whitespace-nowrap">{{ u['email'] }}</td>
-<td class="px-4 py-2">
-  <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-indigo-100 text-indigo-700' if u['role']=='admin' else 'bg-gray-100 text-gray-700' }}">{{ u['role'] }}</span>
+<tr class="transition hover:bg-gray-50">
+<td class="whitespace-nowrap px-5 py-3">{{ u['name'] }}</td>
+<td class="whitespace-nowrap px-5 py-3">{{ u['email'] }}</td>
+<td class="px-5 py-3">
+  <span class="{{ ui.badge('info' if u['role']=='admin' else 'neutral') }}">{{ u['role'] }}</span>
 </td>
-<td class="px-4 py-2 whitespace-nowrap text-gray-500">{{ u['created_at'] }}</td>
+<td class="whitespace-nowrap px-5 py-3 text-gray-500">{{ u['created_at'] }}</td>
 </tr>
 {% endfor %}
 </tbody>

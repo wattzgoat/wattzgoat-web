@@ -1,37 +1,38 @@
 {% extends "base.html" %}
 {% block title %}{{ meter['meter_code'] }} — WattzGOAT Admin{% endblock %}
 {% block content %}
-<a href="{{ url_for('admin.meters') }}" class="text-sm text-gray-500 hover:text-gray-900">&larr; Back to fleet</a>
-<div class="bg-white rounded-lg p-6 shadow-sm mt-3">
-  <div class="flex items-start justify-between">
+{% import "_ui.html" as ui %}
+<a href="{{ url_for('admin.meters') }}" class="inline-flex items-center gap-1 text-sm text-gray-500 transition hover:text-ink">{{ ui.icon('arrow-right', 14, 'rotate-180') }} Back to fleet</a>
+<div class="mt-3 rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5">
+  <div class="flex items-start justify-between gap-4">
     <div>
-      <h1 class="text-xl font-semibold">{{ meter['meter_code'] }}</h1>
+      <h1 class="font-mono text-xl font-semibold">{{ meter['meter_code'] }}</h1>
       <p class="text-sm text-gray-500">{{ meter['owner_name'] }} &lt;{{ meter['owner_email'] }}&gt;</p>
     </div>
-    <span class="text-xs px-2 py-1 rounded-full {{ 'bg-green-100 text-green-700' if meter['status']=='connected' else 'bg-red-100 text-red-700' }}">{{ meter['status'] }}</span>
+    <span class="{{ ui.badge('good' if meter['status']=='connected' else 'bad') }}">{{ meter['status'] }}</span>
   </div>
-  <p class="mt-4 text-lg font-semibold">{{ "{:,.2f}".format(meter['balance']) }} kWh</p>
+  <p class="mt-4 text-2xl font-bold tracking-tight">{{ "{:,.2f}".format(meter['balance']) }} <span class="text-base font-medium text-gray-500">kWh</span></p>
 
   <form method="post" action="{{ url_for('admin.disconnect_meter' if meter['status']=='connected' else 'admin.reconnect_meter', meter_id=meter['id']) }}" class="mt-4">
-    <button class="text-sm rounded px-4 py-2 {{ 'bg-red-600 text-white' if meter['status']=='connected' else 'bg-green-600 text-white' }}">
+    <button class="inline-flex items-center rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition active:translate-y-px {{ 'bg-red-600 hover:bg-red-700' if meter['status']=='connected' else 'bg-green-600 hover:bg-green-700' }}">
       {{ 'Disconnect' if meter['status']=='connected' else 'Reconnect' }}
     </button>
   </form>
 
-  <h2 class="text-sm font-semibold mt-6 mb-2">Firmware update</h2>
-  <form method="post" action="{{ url_for('admin.upload_firmware', meter_id=meter['id']) }}" enctype="multipart/form-data" class="flex gap-2 items-center">
-    <input type="file" name="firmware" required class="text-sm">
-    <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm">Upload</button>
+  <h2 class="mb-2 mt-8 text-sm font-semibold">Firmware update</h2>
+  <form method="post" action="{{ url_for('admin.upload_firmware', meter_id=meter['id']) }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
+    <input type="file" name="firmware" required class="text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-ink hover:file:bg-gray-200">
+    <button class="{{ ui.btn_class('primary') }}">Upload</button>
   </form>
-  <p class="text-xs text-gray-400 mt-1">
+  <p class="mt-2 text-xs text-gray-400">
     <a href="{{ url_for('admin.firmware_canary') }}" class="underline">View firmware canary</a>
   </p>
 
-  <h2 class="text-sm font-semibold mt-6 mb-2">Recent readings</h2>
+  <h2 class="mb-2 mt-8 text-sm font-semibold">Recent readings</h2>
   {% if readings %}
-  <ul class="text-sm divide-y border rounded">
+  <ul class="divide-y divide-gray-100 overflow-hidden rounded-xl text-sm ring-1 ring-gray-200">
     {% for r in readings %}
-    <li class="px-3 py-2 flex justify-between"><span>{{ r['recorded_at'] }}</span><span>{{ r['reading_kwh'] }} kWh ({{ r['source'] }})</span></li>
+    <li class="flex justify-between px-4 py-2.5"><span>{{ r['recorded_at'] }}</span><span>{{ r['reading_kwh'] }} kWh ({{ r['source'] }})</span></li>
     {% endfor %}
   </ul>
   {% else %}

@@ -1,38 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Admin — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-6">Operator console</h1>
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Operator console', 'The fleet at a glance.', 'Admin') }}
 {% if weakpw_flag %}
-<div class="bg-yellow-50 text-yellow-800 text-sm rounded p-3 mb-6">
+<div class="mb-6">{% call ui.flag_note() %}
   Weak passwords: {{ weakpw_flag }}
-</div>
+{% endcall %}</div>
 {% endif %}
 {% if devadmin_flag %}
-<div class="bg-yellow-50 text-yellow-800 text-sm rounded p-3 mb-6">
+<div class="mb-6">{% call ui.flag_note() %}
   Sensitive information disclosure: {{ devadmin_flag }}
-</div>
+{% endcall %}</div>
 {% endif %}
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-  <div class="bg-white rounded-lg p-4 shadow-sm">
-    <p class="text-2xl font-semibold">{{ stats.meter_count }}</p>
-    <p class="text-sm text-gray-500">meters</p>
-  </div>
-  <div class="bg-white rounded-lg p-4 shadow-sm">
-    <p class="text-2xl font-semibold">{{ stats.connected_count }}</p>
-    <p class="text-sm text-gray-500">connected</p>
-  </div>
-  <div class="bg-white rounded-lg p-4 shadow-sm">
-    <p class="text-2xl font-semibold">{{ stats.customer_count }}</p>
-    <p class="text-sm text-gray-500">customers</p>
-  </div>
-  <div class="bg-white rounded-lg p-4 shadow-sm">
-    <p class="text-2xl font-semibold">{{ stats.open_tickets }}</p>
-    <p class="text-sm text-gray-500">open tickets</p>
-  </div>
+<div class="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+  {{ ui.stat(stats.meter_count, 'meters') }}
+  {{ ui.stat(stats.connected_count, 'connected') }}
+  {{ ui.stat(stats.customer_count, 'customers') }}
+  {{ ui.stat(stats.open_tickets, 'open tickets') }}
 </div>
-<div class="flex gap-3">
-  <a href="{{ url_for('admin.meters') }}" class="bg-[#F4B41A] text-[#14181C] font-medium rounded px-4 py-2 text-sm">View meter fleet</a>
-  <a href="{{ url_for('admin.alarms') }}" class="bg-white border rounded px-4 py-2 text-sm">View alarms</a>
-  <a href="{{ url_for('admin.tickets') }}" class="bg-white border rounded px-4 py-2 text-sm">Support tickets</a>
+<div class="flex flex-wrap gap-3">
+  <a href="{{ url_for('admin.meters') }}" class="{{ ui.btn_class('accent') }}">{{ ui.icon('gauge', 16) }} View meter fleet</a>
+  <a href="{{ url_for('admin.alarms') }}" class="{{ ui.btn_class('secondary') }}">{{ ui.icon('alert', 16) }} View alarms</a>
+  <a href="{{ url_for('admin.tickets') }}" class="{{ ui.btn_class('secondary') }}">{{ ui.icon('support', 16) }} Support tickets</a>
 </div>
 {% endblock %}

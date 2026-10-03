@@ -1,15 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Diagnostics{% endblock %}
 {% block content %}
-<h1 class="text-xl font-semibold mb-1">Meter connectivity check</h1>
-<p class="text-sm text-gray-500 mb-6">Internal tool — ping a meter's gateway address.</p>
+{% import "_ui.html" as ui %}
+<div class="mx-auto max-w-2xl">
+  <h1 class="mb-1 text-xl font-semibold tracking-tight">Meter connectivity check</h1>
+  <p class="mb-6 text-sm text-gray-500">Internal tool — ping a meter's gateway address.</p>
 
-<form method="post" class="flex gap-2 mb-6">
-  <input name="host" value="{{ host }}" placeholder="e.g. 10.4.2.11" class="flex-1 border rounded px-3 py-2 font-mono text-sm">
-  <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm">Ping</button>
-</form>
+  <form method="post" class="mb-6 flex gap-2">
+    <input name="host" value="{{ host }}" placeholder="e.g. 10.4.2.11" class="{{ ui.input_class(mono=True) }} flex-1">
+    <button class="{{ ui.btn_class('primary') }}">Ping</button>
+  </form>
 
-{% if output is not none %}
-<pre class="bg-gray-900 text-gray-100 text-xs rounded-lg p-4 overflow-x-auto whitespace-pre-wrap">{{ output }}</pre>
-{% endif %}
+  {% if output is not none %}
+  <pre class="overflow-x-auto whitespace-pre-wrap rounded-2xl bg-ink p-4 text-xs text-gray-100">{{ output }}</pre>
+  {% endif %}
+</div>
 {% endblock %}

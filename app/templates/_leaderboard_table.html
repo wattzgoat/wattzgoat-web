@@ -10,13 +10,13 @@
 {% if lb_export_summary %}
 <div class="mb-3 flex flex-wrap items-center justify-end gap-2 text-sm">
   <span class="text-gray-500">Export CSV</span>
-  <a href="{{ lb_export_summary }}" class="rounded border border-gray-300 bg-white px-3 py-1 text-gray-700 hover:bg-gray-50">Summary</a>
-  <a href="{{ lb_export_detail }}" class="rounded border border-gray-300 bg-white px-3 py-1 text-gray-700 hover:bg-gray-50">Per-flag detail</a>
+  <a href="{{ lb_export_summary }}" class="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-ink ring-1 ring-gray-200 transition hover:bg-gray-50">Summary</a>
+  <a href="{{ lb_export_detail }}" class="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-ink ring-1 ring-gray-200 transition hover:bg-gray-50">Per-flag detail</a>
 </div>
 {% endif %}
-<div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+<div class="overflow-x-auto rounded-2xl bg-white shadow-card ring-1 ring-black/5">
 <table class="w-full text-sm">
-<thead class="bg-gray-50 text-left text-gray-500">
+<thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
 <tr>
   <th class="px-4 py-2 w-12">#</th>
   <th class="px-4 py-2">Participant</th>
@@ -27,7 +27,7 @@
   <th class="px-4 py-2">Redemptions</th>
 </tr>
 </thead>
-<tbody class="divide-y" id="leaderboard-rows">
+<tbody class="divide-y divide-gray-100" id="leaderboard-rows">
 <tr><td colspan="{{ 7 if lb_checklist_api else 6 }}" class="px-4 py-6 text-center text-gray-500">Loading…</td></tr>
 </tbody>
 </table>
@@ -37,17 +37,17 @@
 {# Minimal modal, hidden by default -- opened via showChecklistModal(), populated
    from lb_checklist_api, same category/name/done order the API returns (CATALOG
    order, identical to the participant-facing /progress page). #}
-<div id="checklist-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4" style="z-index: 50;">
-  <div class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto">
+<div id="checklist-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center p-4" style="z-index: 50;">
+  <div class="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-lift">
     <div class="flex items-center justify-between px-4 py-3 border-b">
       <h2 class="font-semibold text-sm" id="checklist-modal-title">Redeemed flags</h2>
       <button type="button" onclick="document.getElementById('checklist-modal').classList.add('hidden'); document.getElementById('checklist-modal').classList.remove('flex');" class="text-gray-400 hover:text-gray-600 text-sm">Close</button>
     </div>
     <table class="w-full text-sm">
-      <thead class="bg-gray-50 text-left text-gray-500">
+      <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
         <tr><th class="px-4 py-2">Category</th><th class="px-4 py-2">Name</th><th class="px-4 py-2 text-right">Status</th></tr>
       </thead>
-      <tbody class="divide-y" id="checklist-modal-rows"></tbody>
+      <tbody class="divide-y divide-gray-100" id="checklist-modal-rows"></tbody>
     </table>
   </div>
 </div>
@@ -113,7 +113,7 @@
         return;
       }
       rows.innerHTML = data.standings.map(function (p, i) {
-        return '<tr>' +
+        return '<tr class="transition hover:bg-gray-50">' +
           '<td class="px-4 py-2 text-gray-400">' + (i + 1) + '</td>' +
           '<td class="px-4 py-2">' + esc(p.display) + '</td>' +
           '<td class="px-4 py-2 font-mono text-xs">' + esc(p.participant_id) + '</td>' +
@@ -121,14 +121,14 @@
           '<td class="px-4 py-2 text-xs text-gray-500">' + fmtTime(p.last_activity) + '</td>' +
           {% if lb_checklist_api %}
           '<td class="px-4 py-2">' +
-            '<button type="button" onclick="showChecklistModal(\'' + esc(p.participant_id) + '\', \'' + esc(p.display).replace(/'/g, "\\'") + '\')" class="text-xs text-blue-600 hover:text-blue-800 underline decoration-dotted">View</button>' +
+            '<button type="button" onclick="showChecklistModal(\'' + esc(p.participant_id) + '\', \'' + esc(p.display).replace(/'/g, "\\'") + '\')" class="text-xs font-semibold text-ink underline decoration-gray-300 transition hover:decoration-ink">View</button>' +
           '</td>' +
           {% endif %}
           '<td class="px-4 py-2">' +
             '<form method="post" data-confirm="Clear all redemptions for this participant? Their nickname is left as it is." action="{{ lb_reset }}">' +
               '<input type="hidden" name="participant_id" value="' + esc(p.participant_id) + '">' +
               '<input type="hidden" name="next" value="leaderboard">' +
-              '<button type="submit" class="text-xs text-red-600 hover:text-red-800 underline decoration-dotted">Reset</button>' +
+              '<button type="submit" class="text-xs font-semibold text-red-600 underline decoration-red-200 transition hover:text-red-800 hover:decoration-red-400">Reset</button>' +
             '</form>' +
           '</td>' +
           '</tr>';

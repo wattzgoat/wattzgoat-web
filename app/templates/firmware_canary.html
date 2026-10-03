@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Firmware canary — WattzGOAT Admin{% endblock %}
 {% block content %}
-<div class="max-w-md mx-auto mt-12 bg-white rounded-lg p-6 shadow-sm">
-  <h1 class="text-lg font-semibold mb-3">Firmware canary</h1>
-  <p class="text-xs text-gray-500 mb-3">A small file outside any meter's own firmware folder. If a firmware upload ever lands here instead, something walked out of its intended directory.</p>
-  <pre class="text-sm bg-gray-50 border rounded p-3 whitespace-pre-wrap break-words">{{ content }}</pre>
+<div class="mx-auto mt-12 max-w-md rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5">
+  <h1 class="mb-3 text-lg font-semibold tracking-tight">Firmware canary</h1>
+  <p class="mb-3 text-xs text-gray-500">A small file outside any meter's own firmware folder. If a firmware upload ever lands here instead, something walked out of its intended directory.</p>
+  <pre class="whitespace-pre-wrap break-words rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm">{{ content }}</pre>
 </div>
 {% endblock %}

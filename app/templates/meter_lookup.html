@@ -1,14 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Meter Lookup — WattzGOAT Field Tools{% endblock %}
 {% block content %}
-<div class="max-w-md mx-auto mt-8 bg-white rounded-lg p-6 shadow-sm">
-  <h1 class="text-xl font-semibold mb-1">Field meter lookup</h1>
-  <p class="text-sm text-gray-500 mb-6">For technicians on-site. No login required — enter a meter code to confirm installation details.</p>
-  <form id="lookup-form" class="flex gap-2 mb-4">
-    <input id="code" name="code" placeholder="e.g. MTR-1002" class="flex-1 border rounded px-3 py-2 text-sm">
-    <button class="bg-[#14181C] text-white rounded px-4 py-2 text-sm">Look up</button>
+{% import "_ui.html" as ui %}
+<div class="mx-auto mt-4 max-w-md rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5">
+  <span class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-accent/20 text-ink">{{ ui.icon('gauge', 22) }}</span>
+  <h1 class="mb-1 text-xl font-semibold tracking-tight">Field meter lookup</h1>
+  <p class="mb-6 text-sm text-gray-500">For technicians on-site. No login required — enter a meter code to confirm installation details.</p>
+  <form id="lookup-form" class="mb-4 flex gap-2">
+    <input id="code" name="code" placeholder="e.g. MTR-1002" class="{{ ui.input_class() }} flex-1">
+    <button class="{{ ui.btn_class('primary') }}">Look up</button>
   </form>
-  <div id="result" class="text-sm hidden bg-gray-50 rounded p-4"></div>
+  <div id="result" class="text-sm hidden bg-gray-50 rounded-xl p-4"></div>
   <div id="error" class="text-sm text-red-600 hidden"></div>
 </div>
 <script>

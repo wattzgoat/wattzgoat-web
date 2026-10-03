@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Index of {{ rel_path }} — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-lg font-semibold mb-4 font-mono">Index of {{ rel_path }}</h1>
-<div class="bg-white rounded-lg shadow-sm p-4">
-  <ul class="font-mono text-sm space-y-1">
+<h1 class="mb-4 font-mono text-lg font-semibold">Index of {{ rel_path }}</h1>
+<div class="rounded-2xl bg-white p-5 shadow-card ring-1 ring-black/5">
+  <ul class="space-y-1 font-mono text-sm">
     <li><a href="{{ url_for('customer.download_bill', path=parent) }}" class="text-blue-700 underline">../</a></li>
     {% for entry in entries %}
     <li>

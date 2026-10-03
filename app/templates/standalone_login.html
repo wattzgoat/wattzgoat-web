@@ -1,17 +1,18 @@
 {% extends "standalone_base.html" %}
 {% block title %}Instructor sign-in — WattzGOAT{% endblock %}
 {% block content %}
-<div class="max-w-sm mx-auto bg-white rounded-lg p-8 shadow-sm">
-  <h1 class="text-sm uppercase tracking-wide text-gray-500 mb-6">Participants console</h1>
+{% import "_ui.html" as ui %}
+<div class="mx-auto mt-8 w-full max-w-sm rounded-2xl bg-white p-8 shadow-card ring-1 ring-black/5">
+  <h1 class="mb-6 text-xs font-semibold uppercase tracking-widest text-accent-700">Participants console</h1>
   {% if error %}
-  <p class="text-red-600 text-sm mb-3">{{ error }}</p>
+  <div class="mb-4">{% call ui.alert('error') %}{{ error }}{% endcall %}</div>
   {% endif %}
   <form method="post" action="{{ url_for('standalone.login') }}" class="space-y-4">
     <div>
-      <label class="block text-sm mb-1" for="password">Password</label>
-      <input id="password" name="password" type="password" required autofocus class="w-full border rounded px-3 py-2">
+      <label class="mb-1.5 block text-sm font-medium text-ink-700" for="password">Password</label>
+      <input id="password" name="password" type="password" required autofocus class="{{ ui.input_class() }}">
     </div>
-    <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Sign in</button>
+    <button class="{{ ui.btn_class('primary', full=True) }}">Sign in</button>
   </form>
 </div>
 {% endblock %}

@@ -1,17 +1,13 @@
 {% extends "trainer_base.html" %}
 {% block title %}Code examples — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-2">Code examples</h1>
-<p class="text-sm text-gray-500 mb-6">
-  Switch any vulnerability on to show its vulnerable and fixed code side by side right below it, or switch
-  a whole category on with the switch next to its name. This is only your view for teaching: it never
-  changes what participants can see. They unlock a flag's code on their Progress page by redeeming that flag.
-</p>
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Code examples', "Switch any vulnerability on to show its vulnerable and fixed code side by side right below it, or switch a whole category on with the switch next to its name. This is only your view for teaching: it never changes what participants can see. They unlock a flag's code on their Progress page by redeeming that flag.", 'Instructor') }}
 <div class="space-y-6 mb-10">
 {% for category, items in grouped_catalog.items() %}
-  <div class="bg-white rounded-lg shadow-sm p-4" data-category-card="{{ category }}">
+  <div class="rounded-2xl bg-white p-5 shadow-card ring-1 ring-black/5" data-category-card="{{ category }}">
     <div class="flex items-center justify-between mb-3">
-      <h3 class="font-medium text-sm text-gray-700">{{ category }}</h3>
+      <h3 class="text-sm font-semibold text-ink-700">{{ category }}</h3>
       <label class="relative inline-flex items-center cursor-pointer gap-2">
         <span class="text-xs text-gray-400">Show all</span>
         <input type="checkbox" class="sr-only peer" data-category-key="{{ category }}" onchange="toggleCategoryCode(this)">
@@ -19,7 +15,7 @@
         <div class="absolute right-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:-translate-x-4"></div>
       </label>
     </div>
-    <div class="divide-y">
+    <div class="divide-y divide-gray-100">
     {% for item in items %}
       <div class="py-2 text-sm">
         <div class="flex items-center justify-between">
@@ -34,7 +30,7 @@
             <div class="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-4"></div>
           </label>
         </div>
-        <div class="hidden mt-4 mb-2 rounded-xl bg-gray-50 p-4" data-code-panel="{{ item.key }}"></div>
+        <div class="hidden mt-4 mb-2 rounded-xl bg-gray-50 p-4 ring-1 ring-gray-200" data-code-panel="{{ item.key }}"></div>
       </div>
     {% endfor %}
     </div>

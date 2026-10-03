@@ -1,18 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Recharge — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-2">Recharge balance</h1>
-<p class="text-sm text-gray-600 mb-6">
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Recharge balance', None, 'Prepaid energy') }}
+<p class="-mt-5 mb-6 max-w-2xl text-sm text-gray-600">
   Your balance is prepaid energy, measured in kWh. Energy is sold at
   <strong>${{ "%.2f"|format(rate) }} per kWh</strong> &mdash; you pay in dollars and the equivalent kWh are added to your balance.
 </p>
 
 {% if error %}
-<div class="bg-red-50 text-red-700 text-sm rounded p-3 mb-6">{{ error }}</div>
+<div class="mb-6">{% call ui.alert('error') %}{{ error }}{% endcall %}</div>
 {% endif %}
 
 {% if credited is defined %}
-<div class="bg-green-50 text-green-800 text-sm rounded p-3 mb-6">
+<div class="mb-6 rounded-xl bg-green-50 p-4 text-sm text-green-800 ring-1 ring-green-200">
   You paid {{ "-" if paid < 0 else "" }}${{ "%.2f"|format(paid|abs) }} &rarr; {{ "{:,.2f}".format(credited) }} kWh added at ${{ "%.2f"|format(rate) }}/kWh.
   New balance: {{ "{:,.2f}".format(meter['balance']) }} kWh
   {% if buslogic_flag %}
@@ -27,16 +28,16 @@
 </div>
 {% endif %}
 
-<div class="max-w-sm bg-white rounded-lg p-6 shadow-sm">
+<div class="max-w-sm rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5">
   {% if meter %}
-  <p class="text-sm text-gray-500 mb-4">{{ meter['nickname'] }} · current balance {{ "{:,.2f}".format(meter['balance']) }} kWh</p>
+  <p class="mb-4 text-sm text-gray-500">{{ meter['nickname'] }} · current balance {{ "{:,.2f}".format(meter['balance']) }} kWh</p>
   <form method="post" class="space-y-4">
     <div>
-      <label class="block text-sm mb-1">Amount to pay ($)</label>
-      <input name="amount_paid" type="text" step="0.01" min="0" required class="w-full border rounded px-3 py-2">
-      <p id="recharge-preview" class="text-xs text-gray-500 mt-1 h-4"></p>
+      <label class="mb-1.5 block text-sm font-medium text-ink-700">Amount to pay ($)</label>
+      <input name="amount_paid" type="text" step="0.01" min="0" required class="{{ ui.input_class() }}">
+      <p id="recharge-preview" class="mt-1 h-4 text-xs text-gray-500"></p>
     </div>
-    <button id="confirm-recharge" class="w-full bg-[#F4B41A] text-[#14181C] rounded py-2 font-medium">Confirm recharge</button>
+    <button id="confirm-recharge" class="{{ ui.btn_class('accent', full=True) }}">Confirm recharge</button>
   </form>
   <!-- Deliberately OUTSIDE the <form> above, so it never rides along
        with a normal submission -- a hint for anyone reading the page

@@ -4,11 +4,12 @@
 <meta name="wg-ctx" content="{{ sxss_meta_flag or '' }}">
 {% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-4">Support tickets</h1>
-<div class="space-y-4">
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Support tickets', None, 'Admin') }}
+<div class="-mt-4 space-y-4">
 {% for t in tickets %}
-<div class="bg-white rounded-lg p-5 shadow-sm">
-  <div class="flex items-start justify-between mb-2">
+<div class="rounded-2xl bg-white p-5 shadow-card ring-1 ring-black/5">
+  <div class="mb-2 flex items-start justify-between gap-3">
     {# |safe on purpose -- stored XSS exercise instance (the customer's
        own /support view escapes normally). Phase 6: SXSS_EXERCISE
        hardened escapes both fields, matching normal Jinja autoescape. #}
@@ -17,9 +18,9 @@
     {% else %}
     <h2 class="font-semibold">{{ t['subject']|safe }}</h2>
     {% endif %}
-    <span class="text-xs px-2 py-0.5 rounded-full {{ 'bg-yellow-100 text-yellow-700' if t['status']=='open' else 'bg-gray-100 text-gray-600' }}">{{ t['status'] }}</span>
+    <span class="{{ ui.badge('warn' if t['status']=='open' else 'neutral') }}">{{ t['status'] }}</span>
   </div>
-  <p class="text-xs text-gray-500 mb-3">{{ t['customer_name'] }} &lt;{{ t['customer_email'] }}&gt; · {{ t['created_at'] }}</p>
+  <p class="mb-3 text-xs text-gray-500">{{ t['customer_name'] }} &lt;{{ t['customer_email'] }}&gt; · {{ t['created_at'] }}</p>
   {% if is_hardened('SXSS_EXERCISE') %}
   <div class="text-sm text-gray-700">{{ t['description'] }}</div>
   {% else %}

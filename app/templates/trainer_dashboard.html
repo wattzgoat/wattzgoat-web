@@ -1,25 +1,26 @@
 {% extends "trainer_base.html" %}
 {% block title %}Instructor dashboard — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-6">Instructor dashboard</h1>
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Instructor dashboard', 'Run the lab: fix vulnerabilities live, offer guided mode, and watch progress.', 'Instructor') }}
 
-<div class="grid grid-cols-3 gap-4 mb-8">
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <div class="text-xs text-gray-500 uppercase tracking-wide">Flags hardened</div>
-    <div class="text-2xl font-semibold mt-1"><span id="hardened-count">–</span> / {{ total_flags }}</div>
+<div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+  <div class="rounded-2xl bg-white p-5 shadow-card ring-1 ring-black/5">
+    <div class="text-xs uppercase tracking-wide text-gray-500">Flags hardened</div>
+    <div class="mt-1 text-2xl font-bold tracking-tight"><span id="hardened-count">–</span> / {{ total_flags }}</div>
   </div>
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <div class="text-xs text-gray-500 uppercase tracking-wide">Total redemptions</div>
-    <div class="text-2xl font-semibold mt-1"><span id="total-redemptions">–</span></div>
+  <div class="rounded-2xl bg-white p-5 shadow-card ring-1 ring-black/5">
+    <div class="text-xs uppercase tracking-wide text-gray-500">Total redemptions</div>
+    <div class="mt-1 text-2xl font-bold tracking-tight"><span id="total-redemptions">–</span></div>
   </div>
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <div class="text-xs text-gray-500 uppercase tracking-wide">Active participants</div>
-    <div class="text-2xl font-semibold mt-1"><span id="participant-count">–</span></div>
+  <div class="rounded-2xl bg-white p-5 shadow-card ring-1 ring-black/5">
+    <div class="text-xs uppercase tracking-wide text-gray-500">Active participants</div>
+    <div class="mt-1 text-2xl font-bold tracking-tight"><span id="participant-count">–</span></div>
   </div>
 </div>
 
-<h2 class="text-lg font-semibold mb-3">Guided mode</h2>
-<div class="bg-white rounded-lg shadow-sm p-4 mb-8 flex items-center justify-between gap-6">
+<h2 class="mb-3 text-lg font-semibold tracking-tight">Guided mode</h2>
+<div class="mb-8 flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-card ring-1 ring-black/5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
   <p class="text-sm text-gray-500">
     Offer guided mode to participants. When this is on, a Guided mode switch appears in each participant's
     header, and anyone who turns it on gets a hint panel for the page they are on. Each participant
@@ -34,16 +35,16 @@
   </label>
 </div>
 
-<h2 class="text-lg font-semibold mb-3">Hardening toggles</h2>
+<h2 class="mb-3 text-lg font-semibold tracking-tight">Hardening toggles</h2>
 <p class="text-sm text-gray-500 mb-4">
   Flip any flag to its hardened branch live, or flip an entire category at once with the switch
   next to its name -- takes effect on the next request, no restart needed.
 </p>
 <div class="space-y-6 mb-10">
 {% for category, items in grouped_catalog.items() %}
-  <div class="bg-white rounded-lg shadow-sm p-4">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="font-medium text-sm text-gray-700">{{ category }}</h3>
+  <div class="rounded-2xl bg-white p-5 shadow-card ring-1 ring-black/5">
+    <div class="mb-3 flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-ink-700">{{ category }}</h3>
       <label class="relative inline-flex items-center cursor-pointer gap-2">
         <span class="text-xs text-gray-400">Harden all</span>
         <input type="checkbox" class="sr-only peer" data-category-key="{{ category }}" onchange="toggleCategory(this)">
@@ -51,9 +52,9 @@
         <div class="absolute right-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:-translate-x-4"></div>
       </label>
     </div>
-    <div class="divide-y">
+    <div class="divide-y divide-gray-100">
     {% for item in items %}
-      <div class="flex items-center justify-between py-2 text-sm">
+      <div class="flex items-center justify-between py-2.5 text-sm">
         <div class="flex items-center gap-2">
           <span>{{ item.name }}</span>
           <span class="font-mono text-xs text-gray-400">{{ item.key }}</span>

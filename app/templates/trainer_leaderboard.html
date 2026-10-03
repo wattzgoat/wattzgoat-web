@@ -1,11 +1,8 @@
 {% extends "trainer_base.html" %}
 {% block title %}Participant Leaderboard — WattzGOAT Instructor{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-2">Participant Leaderboard</h1>
-<p class="text-sm text-gray-500 mb-6">
-  Live participant progress standings, by flags redeemed. Shown nickname-first where a participant
-  has set one, with their participant ID as a small parenthetical, plus the full ID in its own column.
-</p>
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Participant Leaderboard', 'Live participant progress standings, by flags redeemed. Shown nickname-first where a participant has set one, with their participant ID as a small parenthetical, plus the full ID in its own column.', 'Instructor') }}
 
 {% with lb_api=url_for('trainer.api_leaderboard'), lb_reset=url_for('trainer.reset_participant_redemption'), lb_total=total_flags, lb_checklist_api=url_for('trainer.api_participant_checklist'), lb_export_summary=url_for('trainer.export_summary'), lb_export_detail=url_for('trainer.export_detail') %}
 {% include "_leaderboard_table.html" %}

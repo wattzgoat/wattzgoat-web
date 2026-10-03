@@ -72,3 +72,27 @@ inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm fon
   {% if subtitle %}<p class="mt-2 max-w-2xl text-gray-600">{{ subtitle }}</p>{% endif %}
 </div>
 {%- endmacro %}
+
+{# Shared bits for the app pages (customer, admin, instructor). #}
+{% macro input_class(mono=False) -%}
+w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm placeholder-gray-400 transition focus:border-ink focus:outline-none focus:ring-2 focus:ring-accent/60{% if mono %} font-mono{% endif %}
+{%- endmacro %}
+
+{% macro badge(kind='neutral') -%}
+inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {% if kind == 'good' %}bg-green-100 text-green-700{% elif kind == 'bad' %}bg-red-100 text-red-700{% elif kind == 'warn' %}bg-yellow-100 text-yellow-700{% elif kind == 'info' %}bg-indigo-100 text-indigo-700{% else %}bg-gray-100 text-gray-600{% endif %}
+{%- endmacro %}
+
+{# A flag shown to the participant when an exercise pays off. Wording stays with each page. #}
+{% macro flag_note(label=None) -%}
+<div class="flex gap-3 rounded-xl bg-accent-100 p-3 text-sm text-ink ring-1 ring-accent/40" role="note">
+  <span class="mt-0.5 shrink-0 text-accent-700">{{ icon('flag', 18) }}</span>
+  <div class="min-w-0 break-words">{{ caller() }}</div>
+</div>
+{%- endmacro %}
+
+{% macro stat(value, label) -%}
+<div class="rounded-2xl bg-white p-5 shadow-card ring-1 ring-black/5">
+  <p class="text-2xl font-bold tracking-tight">{{ value }}</p>
+  <p class="mt-1 text-sm text-gray-500">{{ label }}</p>
+</div>
+{%- endmacro %}

@@ -1,45 +1,47 @@
 {% extends "base.html" %}
 {% block title %}Account — WattzGOAT{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-semibold mb-6">Account settings</h1>
+{% import "_ui.html" as ui %}
+{{ ui.page_header('Account settings', 'Your details and password.', 'Account') }}
 
-<div class="max-w-md bg-white rounded-lg p-6 shadow-sm mb-6">
+<div class="mb-6 max-w-md rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5">
+  <h2 class="mb-4 text-lg font-semibold tracking-tight">Your details</h2>
   <div id="status" class="text-sm mb-4 hidden"></div>
   <form id="account-form" class="space-y-4">
     <div>
-      <label class="block text-sm mb-1">Full name</label>
-      <input name="name" value="{{ user['name'] }}" class="w-full border rounded px-3 py-2">
+      <label class="mb-1.5 block text-sm font-medium text-ink-700">Full name</label>
+      <input name="name" value="{{ user['name'] }}" class="{{ ui.input_class() }}">
     </div>
     <div>
-      <label class="block text-sm mb-1">Email</label>
-      <input value="{{ user['email'] }}" disabled class="w-full border rounded px-3 py-2 bg-gray-50 text-gray-500">
+      <label class="mb-1.5 block text-sm font-medium text-ink-700">Email</label>
+      <input value="{{ user['email'] }}" disabled class="{{ ui.input_class() }} bg-gray-50 text-gray-500">
     </div>
     <div>
-      <label class="block text-sm mb-1">Phone</label>
-      <input name="phone" value="{{ user['phone'] or '' }}" placeholder="(555) 555-0100" class="w-full border rounded px-3 py-2">
+      <label class="mb-1.5 block text-sm font-medium text-ink-700">Phone</label>
+      <input name="phone" value="{{ user['phone'] or '' }}" placeholder="(555) 555-0100" class="{{ ui.input_class() }}">
     </div>
     <div>
-      <label class="block text-sm mb-1">Service address</label>
-      <input name="address_service" value="{{ user['address_service'] or '' }}" class="w-full border rounded px-3 py-2">
+      <label class="mb-1.5 block text-sm font-medium text-ink-700">Service address</label>
+      <input name="address_service" value="{{ user['address_service'] or '' }}" class="{{ ui.input_class() }}">
     </div>
     <div>
-      <label class="block text-sm mb-1">Billing address</label>
-      <input name="address_billing" value="{{ user['address_billing'] or '' }}" class="w-full border rounded px-3 py-2">
+      <label class="mb-1.5 block text-sm font-medium text-ink-700">Billing address</label>
+      <input name="address_billing" value="{{ user['address_billing'] or '' }}" class="{{ ui.input_class() }}">
     </div>
     <input type="hidden" name="billing_rate" value="{{ user['billing_rate'] }}">
     <input type="hidden" name="role" value="{{ user['role'] }}">
     <input type="hidden" name="account_email" value="{{ user['email'] }}">
-    <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Save changes</button>
+    <button class="{{ ui.btn_class('primary', full=True) }}">Save changes</button>
   </form>
 </div>
 
-<div class="max-w-md bg-white rounded-lg p-6 shadow-sm">
-  <h2 class="text-lg font-semibold mb-4">Change password</h2>
+<div class="max-w-md rounded-2xl bg-white p-6 shadow-card ring-1 ring-black/5">
+  <h2 class="mb-4 text-lg font-semibold tracking-tight">Change password</h2>
   {% if error %}
   {# Phase 6: shown only on WEAKPW_CHANGE's hardened branch (see
      customer.py:change_password()) -- the vulnerable branch never sets
      this, and the password is never written when it's shown. #}
-  <div class="bg-red-50 text-red-800 text-sm rounded p-3 mb-4">{{ error }}</div>
+  <div class="mb-4">{% call ui.alert('error') %}{{ error }}{% endcall %}</div>
   {% endif %}
   {% if password_changed %}
   <p class="text-green-700 text-sm mb-3">Password updated.</p>
@@ -63,19 +65,19 @@
     {# Phase 6: PWCHANGE_TEACH hardened -- the current-password field this
        form always should have had. #}
     <div>
-      <label class="block text-sm mb-1">Current password</label>
-      <input name="current_password" type="password" required class="w-full border rounded px-3 py-2">
+      <label class="mb-1.5 block text-sm font-medium text-ink-700">Current password</label>
+      <input name="current_password" type="password" required class="{{ ui.input_class() }}">
     </div>
     {% endif %}
     <div>
-      <label class="block text-sm mb-1">New password</label>
-      <input name="new_password" type="password" required class="w-full border rounded px-3 py-2">
+      <label class="mb-1.5 block text-sm font-medium text-ink-700">New password</label>
+      <input name="new_password" type="password" required class="{{ ui.input_class() }}">
     </div>
     <div>
-      <label class="block text-sm mb-1">Confirm new password</label>
-      <input name="confirm_new_password" type="password" required class="w-full border rounded px-3 py-2">
+      <label class="mb-1.5 block text-sm font-medium text-ink-700">Confirm new password</label>
+      <input name="confirm_new_password" type="password" required class="{{ ui.input_class() }}">
     </div>
-    <button class="w-full bg-[#14181C] text-white rounded py-2 font-medium">Update password</button>
+    <button class="{{ ui.btn_class('primary', full=True) }}">Update password</button>
   </form>
 </div>
 
