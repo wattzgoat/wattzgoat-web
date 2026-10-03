@@ -5,7 +5,7 @@ from flask import Flask, Response, g, redirect, request, send_from_directory, ur
 
 from . import db as db_module
 from . import flags as flags_module
-from . import hardening
+from . import guided, hardening
 
 
 def _truthy_env(name: str) -> bool:
@@ -94,6 +94,8 @@ def create_app() -> Flask:
     # Next-phase item 6: participant nickname display, read by
     # base.html's identity chip and nickname-prompt trigger.
     app.jinja_env.globals["participant_display"] = current_participant_display
+    app.jinja_env.globals["guided_state"] = guided.state
+    app.jinja_env.globals["guided_panel"] = guided.panel
     app.jinja_env.globals["participant_has_nickname"] = current_participant_has_nickname
 
     if os.path.exists(app.config["DB_PATH"]):
@@ -128,6 +130,9 @@ def create_app() -> Flask:
         else:
             from .standalone import bp as standalone_bp
             app.config["STANDALONE_PASSWORD"] = password
+            # Guided mode is only ever offered on a standalone instance when asked for
+            # explicitly (see app/guided.py); paired instances use the instructor's switch.
+            app.config["GUIDED_MODE"] = _truthy_env("GUIDED_MODE")
             app.register_blueprint(standalone_bp)
             app.logger.warning("STANDALONE=true -- hidden /participants console is ENABLED on this instance.")
 

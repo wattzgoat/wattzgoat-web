@@ -194,3 +194,24 @@ def test_trainer_csv_export_requires_login_and_works(trainer_session, trainer_ba
     detail = trainer_session.get(f"{trainer_base_url}/instructor/export/detail.csv", timeout=10)
     assert detail.status_code == 200
     assert next(csv.reader(io.StringIO(detail.content.decode("utf-8-sig"))))[:3] == ["Participant ID", "Nickname", "Flag key"]
+
+
+def test_trainer_guided_mode_switch(trainer_session, trainer_base_url):
+    import requests
+
+    anon = requests.post(f"{trainer_base_url}/instructor/api/guided_mode", data={"enabled": "1"}, verify=False,
+                         timeout=10, allow_redirects=False)
+    assert anon.status_code in (302, 303)
+
+    page = trainer_session.get(f"{trainer_base_url}/instructor/", timeout=10)
+    assert 'id="guided-mode-switch"' in page.text
+
+    assert trainer_session.post(f"{trainer_base_url}/instructor/api/guided_mode", data={"enabled": "maybe"}, timeout=10).status_code == 400
+    try:
+        on = trainer_session.post(f"{trainer_base_url}/instructor/api/guided_mode", data={"enabled": "1"}, timeout=10)
+        assert on.status_code == 200 and on.json() == {"enabled": True}
+        assert trainer_session.get(f"{trainer_base_url}/instructor/api/summary", timeout=10).json()["guided_mode_enabled"] is True
+    finally:
+        # Off is the default; leave the shared instance the way the rest of the suite expects it.
+        trainer_session.post(f"{trainer_base_url}/instructor/api/guided_mode", data={"enabled": "0"}, timeout=10)
+    assert trainer_session.get(f"{trainer_base_url}/instructor/api/summary", timeout=10).json()["guided_mode_enabled"] is False

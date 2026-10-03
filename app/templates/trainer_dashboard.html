@@ -18,6 +18,22 @@
   </div>
 </div>
 
+<h2 class="text-lg font-semibold mb-3">Guided mode</h2>
+<div class="bg-white rounded-lg shadow-sm p-4 mb-8 flex items-center justify-between gap-6">
+  <p class="text-sm text-gray-500">
+    Offer guided mode to participants. When this is on, a Guided mode switch appears in each participant's
+    header, and anyone who turns it on gets a hint panel for the page they are on. Each participant
+    chooses for themselves, so it never switches on for anyone else. Off by default, and it stays as you
+    set it through every reset.
+  </p>
+  <label class="relative inline-flex shrink-0 items-center cursor-pointer gap-2">
+    <span class="text-xs text-gray-400">Offer to participants</span>
+    <input type="checkbox" class="sr-only peer" id="guided-mode-switch" {% if guided_enabled %}checked{% endif %} onchange="toggleGuided(this)">
+    <div class="w-9 h-5 bg-gray-200 peer-checked:bg-green-600 rounded-full transition-colors"></div>
+    <div class="absolute right-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:-translate-x-4"></div>
+  </label>
+</div>
+
 <h2 class="text-lg font-semibold mb-3">Hardening toggles</h2>
 <p class="text-sm text-gray-500 mb-4">
   Flip any flag to its hardened branch live, or flip an entire category at once with the switch
@@ -85,6 +101,10 @@
           input.checked = isHardened;
         }
       });
+      const guidedSwitch = document.getElementById('guided-mode-switch');
+      if (guidedSwitch && document.activeElement !== guidedSwitch) {
+        guidedSwitch.checked = !!data.guided_mode_enabled;
+      }
       document.getElementById('hardened-count').textContent = hardenedCount;
       document.getElementById('total-redemptions').textContent = data.total_redemptions;
       document.getElementById('participant-count').textContent = data.participants.length;
@@ -126,6 +146,14 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'flag_key=' + encodeURIComponent(key) + '&hardened=' + (hardened ? '1' : '0'),
+    }).then(function () { refresh(); });
+  };
+
+  window.toggleGuided = function (input) {
+    fetch("{{ url_for('trainer.api_guided_mode') }}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'enabled=' + (input.checked ? '1' : '0'),
     }).then(function () { refresh(); });
   };
 

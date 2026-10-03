@@ -44,6 +44,7 @@ from .code_examples import example_keys, example_payload
 from .db import get_db
 from .flags import CATALOG
 from . import export
+from . import guided
 from . import hardening
 from . import personalize
 from . import resets
@@ -127,6 +128,7 @@ def dashboard():
         grouped_catalog=_catalog_grouped(),
         categories=list(_catalog_grouped().keys()),
         total_flags=len(CATALOG),
+        guided_enabled=guided.setting_enabled(),
         trainer_name=g.trainer["name"],
         participant_base_url=current_app.config.get("PARTICIPANT_BASE_URL", ""),
     )
@@ -225,7 +227,26 @@ def api_summary():
         "total_redemptions": total_redemptions,
         "total_flags": len(CATALOG),
         "hardening_mode_all": hardening.FORCE_ALL,
+        "guided_mode_enabled": guided.setting_enabled(),
     })
+
+
+@bp.route("/api/guided_mode", methods=["POST"])
+@trainer_login_required
+def api_guided_mode():
+    """Switch guided mode on or off for participants on every instance that
+    shares this data. On only OFFERS it: each participant still chooses
+    whether to turn it on in their own browser."""
+    if hardening.FORCE_ALL:
+        abort(404)
+    raw = request.form.get("enabled")
+    if raw is None:
+        raw = (request.get_json(silent=True) or {}).get("enabled")
+    if str(raw).lower() not in ("1", "0", "true", "false"):
+        abort(400, "enabled must be 1 or 0")
+    enabled = str(raw).lower() in ("1", "true")
+    guided.set_setting(enabled)
+    return jsonify({"enabled": enabled})
 
 
 @bp.route("/api/toggle_flag", methods=["POST"])

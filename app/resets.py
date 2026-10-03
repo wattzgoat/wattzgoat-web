@@ -25,6 +25,8 @@ import shutil
 import sqlite3
 import tempfile
 
+from .guidance import GUIDED_META_KEY
+
 
 def firmware_dir() -> str:
     explicit = os.environ.get("FIRMWARE_DIR")
@@ -111,6 +113,19 @@ def reset_lab_state(db_path: str, seed_path: str) -> None:
     if not os.path.isfile(seed_path):
         raise FileNotFoundError(f"no seed.db to reset from at {seed_path}")
 
+    # The instructor's guided-mode switch is a setting for how the session is
+    # being run, not lab state, so it is read before the swap and put back after.
+    guided_value = None
+    try:
+        probe = sqlite3.connect(db_path)
+        try:
+            row = probe.execute("SELECT value FROM lab_meta WHERE key = ?", (GUIDED_META_KEY,)).fetchone()
+            guided_value = row[0] if row else None
+        finally:
+            probe.close()
+    except sqlite3.Error:
+        guided_value = None
+
     db_dir = os.path.dirname(db_path) or "."
     fd, tmp_path = tempfile.mkstemp(prefix=".app_db_reset_", dir=db_dir)
     try:
@@ -130,6 +145,12 @@ def reset_lab_state(db_path: str, seed_path: str) -> None:
     fresh_conn = sqlite3.connect(db_path)
     try:
         regenerate_lab_secret(fresh_conn)
+        if guided_value is not None:
+            fresh_conn.execute(
+                "INSERT INTO lab_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (GUIDED_META_KEY, guided_value),
+            )
+            fresh_conn.commit()
     finally:
         fresh_conn.close()
 

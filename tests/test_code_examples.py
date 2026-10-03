@@ -15,15 +15,20 @@ import pytest
 import requests
 
 BASE_URL = os.environ.get("WATTZGOAT_BASE_URL", "https://127.0.0.1:5000")
-ALICE = ("alice.smith@example.com", "alice123")
 
 
 def _fresh_participant_session():
+    """A brand-new participant on a brand-new account. Not a seeded account: the
+    rest of the suite changes some of those passwords partway through."""
     s = requests.Session()
     s.verify = False
     s.cookies.set("wg_pid", "codeex" + secrets.token_hex(5))
-    resp = s.post(f"{BASE_URL}/login", data={"email": ALICE[0], "password": ALICE[1]}, timeout=10)
+    email = f"codeex-{secrets.token_hex(4)}@example.com"
+    password = "CodeExamples!2026"
+    s.post(f"{BASE_URL}/signup", data={"name": "Code Examples", "email": email, "password": password, "confirm_password": password}, timeout=10)
+    resp = s.post(f"{BASE_URL}/login", data={"email": email, "password": password}, timeout=10)
     assert resp.status_code in (200, 302)
+    assert "wgs_session" in s.cookies.get_dict()
     return s
 
 

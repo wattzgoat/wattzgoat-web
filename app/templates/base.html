@@ -11,8 +11,20 @@
 {% block head_extra %}{% endblock %}
 </head>
 {% import "_ui.html" as ui %}
+{% set guided = guided_state() %}
 {# Nav link with an active state. Defined here (not in _ui.html) because it needs
    the request, which imported macros don't get. #}
+{# The participant's own Guided mode switch, shown only where guided mode is offered
+   (see app/guided.py). It sets a cookie in this browser, so it never affects anyone else
+   using the same instance. #}
+{% macro guided_switch() -%}
+{% if guided.available %}
+<button type="button" id="wg-guided-toggle" role="switch" aria-checked="{{ 'true' if guided.on else 'false' }}" title="Hints for the page you are on" class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-gray-200 transition hover:bg-white/20 hover:text-white">
+  <span>Guided mode</span>
+  <span class="relative inline-block h-4 w-7 rounded-full transition-colors {% if guided.on %}bg-accent{% else %}bg-gray-500{% endif %}"><span class="absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white transition-transform {% if guided.on %}translate-x-3{% endif %}"></span></span>
+</button>
+{% endif %}
+{%- endmacro %}
 {% macro nav_link(endpoint, label) -%}
 <a href="{{ url_for(endpoint) }}" class="rounded-md px-3 py-1.5 transition {% if request.endpoint == endpoint %}bg-white/10 text-white{% else %}hover:bg-white/10 hover:text-white{% endif %}">{{ label }}</a>
 {%- endmacro %}
@@ -47,6 +59,7 @@
   </nav>
   <div class="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-400">
     <span>{{ today_utc() }} (UTC)</span>
+    {{ guided_switch() }}
     <span title="Your participant nickname — click to change">
       <button type="button" id="wg-identity-chip" class="rounded-full bg-white/10 px-3 py-1 text-gray-200 transition hover:bg-white/20 hover:text-white">{{ participant_display() }}</button>
     </span>
@@ -59,6 +72,7 @@
   <nav class="ml-auto flex flex-wrap items-center gap-1 text-sm text-gray-300">
     {{ nav_link('leaderboard.leaderboard_page', 'Solar Leaderboard') }}
     {{ nav_link('pages.contact', 'Contact') }}
+    {{ guided_switch() }}
     <button type="button" id="wg-identity-chip" class="ml-2 rounded-full bg-white/10 px-3 py-1 text-gray-200 transition hover:bg-white/20 hover:text-white" title="Your participant nickname — click to change">{{ participant_display() }}</button>
   </nav>
   {% endif %}
@@ -66,10 +80,10 @@
 {# Optional left column for a page-wide side panel (guided mode will fill this). When a
    page doesn't provide one, nothing is rendered and the layout is unchanged. A page can
    also set page_wide to use the wider container without a side panel. #}
-{% set rail_html %}{% block rail %}{% endblock %}{% endset %}
+{% set rail_html %}{% block rail %}{% set gp = guided_panel() %}{% if gp %}{% include "_guided_panel.html" %}{% endif %}{% endblock %}{% endset %}
 {% set has_rail = rail_html|trim != '' %}
-<div class="mx-auto px-6 py-10 {% if has_rail %}max-w-6xl flex items-start gap-8{% elif page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
-  {% if has_rail %}<aside class="sticky top-24 hidden w-72 shrink-0 lg:block">{{ rail_html }}</aside>{% endif %}
+<div class="mx-auto px-6 py-10 {% if has_rail %}max-w-6xl flex flex-col items-stretch gap-6 lg:flex-row lg:items-start lg:gap-8{% elif page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
+  {% if has_rail %}<aside class="w-full shrink-0 lg:sticky lg:top-24 lg:w-72">{{ rail_html }}</aside>{% endif %}
   <main class="min-w-0 flex-1">
 {% block content %}{% endblock %}
   </main>
@@ -270,6 +284,19 @@
   }
 })();
 </script>
+{% if guided.available %}
+<script>
+(function () {
+  var toggle = document.getElementById('wg-guided-toggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', function () {
+    var turningOn = toggle.getAttribute('aria-checked') !== 'true';
+    document.cookie = 'wg_guided=' + (turningOn ? '1' : '0') + '; path=/; max-age=31536000; SameSite=Lax';
+    window.location.reload();
+  });
+})();
+</script>
+{% endif %}
 {% if g.user %}
 {% include "_assistant_widget.html" %}
 {% endif %}
