@@ -112,9 +112,18 @@ def test_guided_bar_on_an_instance_that_offers_it():
     page = on.get(f"{BASE_URL}/usage", timeout=10).text
     assert 'id="wg-guided-toggle"' in page
     assert "fixed inset-x-0 bottom-0" in page and "<aside" not in page       # docked along the bottom
-    assert page.count("data-hint-card=") == 2 and 'id="wg-guided-next"' in page and page.count('<button type="button" data-dot') == 2
+    assert page.count("data-hint-card=") == 2 and 'id="wg-guided-next"' in page
+    assert page.count('<button type="button" data-flag-tab') == 2             # one numbered tab per flag
     assert page.count('<div class="hidden" data-hint-card=') == 1            # one flag's hints at a time
-    assert "Show next hint" in page
+    # Each flag says which flag it is, numbered among ALL the flags on the page.
+    assert "Flag 3 of 4" in page and "Flag 4 of 4" in page
+    assert "Flags 1 and 2 have no hints written yet." in page
+    # Hints move with their own buttons, separate from the flag arrows; going back is possible.
+    assert "Show next hint" in page and "Previous hint" in page
+    assert page.count('<button type="button" data-hint-prev disabled') == 2
+    assert 'aria-label="Previous flag"' in page and 'aria-label="Previous hint"' not in page
+    # The bar has no Turn off control (the header switch does that).
+    assert "Turn off" not in page and "wg-guided-off" not in page
 
     # Not on for someone who never turned it on, even on the same instance.
     assert "wg-guided-panel" not in off.get(f"{BASE_URL}/usage", timeout=10).text

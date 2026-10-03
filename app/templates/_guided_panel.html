@@ -1,9 +1,11 @@
 {# Guided mode panel (see app/guided.py). Docked along the bottom of the page, over
-   the content, and kept there as the page scrolls. Shows ONE flag's hints at a time,
-   with a carousel (arrows and dots) to move between the flags still to find on this
-   page. Expects gp. Cards carry an opaque id, not the flag key, so the page doesn't
-   spell out which vulnerability a hint is about. Hints are paced, not locked: the
-   second one simply starts out hidden. #}
+   the content, and kept there as the page scrolls. Shows ONE flag's hints at a time.
+   Two separate controls: the arrows and numbered tabs move between FLAGS, and the
+   Previous hint / Show next hint buttons at the bottom of a flag's card move between
+   that flag's HINTS. Each flag is labelled "Flag N of M" with N counted among all the
+   flags on the page, so the number matches the headline and never changes when another
+   flag is solved. Cards carry an opaque id, not the flag key, so the page doesn't spell
+   out which vulnerability a hint is about. Expects gp. #}
 {% import "_ui.html" as ui %}
 {% set has_body = gp.cards or gp.scope == 'beyond' or gp.unhinted %}
 <section id="wg-guided-panel" class="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-4 pr-24 sm:px-24" aria-label="Guided mode">
@@ -16,7 +18,6 @@
         {% else %}This page: {{ gp.found }} of {{ gp.total }} flags found{% endif %}
       </p>
       {% if has_body %}<button type="button" id="wg-guided-min" aria-expanded="true" class="text-xs text-gray-500 underline transition hover:text-ink">Minimize</button>{% endif %}
-      <button type="button" id="wg-guided-off" class="text-xs text-gray-400 underline transition hover:text-ink">Turn off</button>
     </div>
 
     {% if has_body %}
@@ -28,42 +29,46 @@
       {% if gp.cards %}
       <div class="flex items-center gap-3">
         {% if gp.cards|length > 1 %}
-        <button type="button" id="wg-guided-prev" aria-label="Previous flag" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-gray-600 ring-1 ring-gray-200 transition hover:bg-gray-50 hover:text-ink">{{ ui.icon('arrow-right', 16, 'rotate-180') }}</button>
+        <button type="button" id="wg-guided-prev" aria-label="Previous flag" title="Previous flag" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-gray-600 ring-1 ring-gray-200 transition hover:bg-gray-50 hover:text-ink">{{ ui.icon('arrow-right', 16, 'rotate-180') }}</button>
         {% endif %}
         <div class="min-w-0 flex-1">
           {% for card in gp.cards %}
           <div{% if not loop.first %} class="hidden"{% endif %} data-hint-card="{{ card.id }}" data-hint-total="{{ card.hints|length }}">
+            <p class="text-sm font-semibold">Flag {{ card.number }} of {{ gp.total }}</p>
             {% if card.fixed %}
-            <p class="text-sm font-medium">Your instructor has fixed this one</p>
+            <p class="mt-1 text-sm font-medium">Your instructor has fixed this one</p>
             <p class="mt-1 text-sm text-gray-600">Try to confirm it can no longer be exploited.</p>
             {% else %}
-            <p class="text-sm font-medium">Something to find here</p>
             {% for hint in card.hints %}
             <p class="mt-2 text-sm text-gray-600{% if not loop.first %} hidden{% endif %}" data-hint="{{ loop.index }}">{{ hint }}</p>
             {% endfor %}
-            <div class="mt-3 flex items-center justify-between gap-3">
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
               <span class="text-xs text-gray-400" data-hint-status>Hint 1 of {{ card.hints|length }}</span>
-              <button type="button" data-hint-next class="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-ink ring-1 ring-gray-200 transition hover:bg-gray-100">Show next hint</button>
+              <span class="flex items-center gap-2">
+                <button type="button" data-hint-prev disabled class="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-ink ring-1 ring-gray-200 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white">Previous hint</button>
+                <button type="button" data-hint-next class="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-ink ring-1 ring-gray-200 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white">Show next hint</button>
+              </span>
             </div>
             {% endif %}
           </div>
           {% endfor %}
         </div>
         {% if gp.cards|length > 1 %}
-        <button type="button" id="wg-guided-next" aria-label="Next flag" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-gray-600 ring-1 ring-gray-200 transition hover:bg-gray-50 hover:text-ink">{{ ui.icon('arrow-right', 16) }}</button>
+        <button type="button" id="wg-guided-next" aria-label="Next flag" title="Next flag" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-gray-600 ring-1 ring-gray-200 transition hover:bg-gray-50 hover:text-ink">{{ ui.icon('arrow-right', 16) }}</button>
         {% endif %}
       </div>
       {% if gp.cards|length > 1 %}
-      <div class="mt-3 flex justify-center gap-2" role="tablist" aria-label="Flags on this page">
+      <div class="mt-3 flex items-center justify-center gap-2" role="tablist" aria-label="Flags on this page">
+        <span class="text-xs text-gray-400">Flag</span>
         {% for card in gp.cards %}
-        <button type="button" data-dot aria-label="Show flag {{ loop.index }} of {{ gp.cards|length }}" class="h-2 w-2 rounded-full transition {% if loop.first %}bg-ink{% else %}bg-gray-300{% endif %}"></button>
+        <button type="button" data-flag-tab role="tab" aria-label="Show flag {{ card.number }} of {{ gp.total }}" class="inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-semibold transition {% if loop.first %}bg-ink text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">{{ card.number }}</button>
         {% endfor %}
       </div>
       {% endif %}
       {% endif %}
 
       {% if gp.unhinted %}
-      <p class="{% if gp.cards %}mt-3 {% endif %}text-xs text-gray-400">{% if gp.unhinted == 1 %}1 more flag here has{% else %}{{ gp.unhinted }} more flags here have{% endif %} no hints written yet.</p>
+      <p class="{% if gp.cards %}mt-3 {% endif %}text-xs text-gray-400">{{ gp.unhinted_text }} no hints written yet.</p>
       {% endif %}
     </div>
     {% endif %}
@@ -74,7 +79,7 @@
   var panel = document.getElementById('wg-guided-panel');
   if (!panel) return;
   var cards = [].slice.call(panel.querySelectorAll('[data-hint-card]'));
-  var dots = [].slice.call(panel.querySelectorAll('[data-dot]'));
+  var tabs = [].slice.call(panel.querySelectorAll('[data-flag-tab]'));
   var body = document.getElementById('wg-guided-body');
 
   // Keep the end of the page reachable: the bar floats over the content, so the
@@ -84,30 +89,30 @@
   window.addEventListener('resize', fit);
   fit();
 
-  // --- hints: one at a time, remembered in this browser ---
+  // --- hints: one at a time, with a way back. Which hint a flag is on is
+  // remembered in this browser. ---
   function read(id) { try { return parseInt(localStorage.getItem('wg_hints_' + id), 10) || 1; } catch (e) { return 1; } }
   function write(id, n) { try { localStorage.setItem('wg_hints_' + id, String(n)); } catch (e) {} }
   cards.forEach(function (card) {
     var id = card.getAttribute('data-hint-card');
     var total = parseInt(card.getAttribute('data-hint-total'), 10);
-    var button = card.querySelector('[data-hint-next]');
-    if (!button) return;
+    var prevHint = card.querySelector('[data-hint-prev]');
+    var nextHint = card.querySelector('[data-hint-next]');
+    if (!prevHint || !nextHint) return;
     var status = card.querySelector('[data-hint-status]');
     function show(n) {
       card.querySelectorAll('[data-hint]').forEach(function (p) {
-        p.classList.toggle('hidden', parseInt(p.getAttribute('data-hint'), 10) > n);
+        p.classList.toggle('hidden', parseInt(p.getAttribute('data-hint'), 10) !== n);
       });
       status.textContent = 'Hint ' + n + ' of ' + total;
-      if (n >= total) button.classList.add('hidden');
+      prevHint.disabled = n <= 1;
+      nextHint.disabled = n >= total;
       fit();
     }
     var shown = Math.min(Math.max(read(id), 1), total);
     show(shown);
-    button.addEventListener('click', function () {
-      shown = Math.min(shown + 1, total);
-      write(id, shown);
-      show(shown);
-    });
+    nextHint.addEventListener('click', function () { shown = Math.min(shown + 1, total); write(id, shown); show(shown); });
+    prevHint.addEventListener('click', function () { shown = Math.max(shown - 1, 1); write(id, shown); show(shown); });
   });
 
   // --- carousel: move between the flags still to find on this page ---
@@ -115,9 +120,13 @@
   function showCard(i) {
     current = ((i % cards.length) + cards.length) % cards.length;
     cards.forEach(function (card, idx) { card.classList.toggle('hidden', idx !== current); });
-    dots.forEach(function (dot, idx) {
-      dot.classList.toggle('bg-ink', idx === current);
-      dot.classList.toggle('bg-gray-300', idx !== current);
+    tabs.forEach(function (tab, idx) {
+      var on = idx === current;
+      tab.classList.toggle('bg-ink', on);
+      tab.classList.toggle('text-white', on);
+      tab.classList.toggle('bg-gray-100', !on);
+      tab.classList.toggle('text-gray-600', !on);
+      tab.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     fit();
   }
@@ -125,7 +134,7 @@
   var next = document.getElementById('wg-guided-next');
   if (prev) prev.addEventListener('click', function () { showCard(current - 1); });
   if (next) next.addEventListener('click', function () { showCard(current + 1); });
-  dots.forEach(function (dot, idx) { dot.addEventListener('click', function () { showCard(idx); }); });
+  tabs.forEach(function (tab, idx) { tab.addEventListener('click', function () { showCard(idx); }); });
 
   // --- minimize / expand, remembered in this browser ---
   var min = document.getElementById('wg-guided-min');
@@ -142,11 +151,5 @@
     if (saved === '1') setMinimized(true);
     min.addEventListener('click', function () { setMinimized(min.getAttribute('aria-expanded') === 'true'); });
   }
-
-  var off = document.getElementById('wg-guided-off');
-  if (off) off.addEventListener('click', function () {
-    document.cookie = 'wg_guided=0; path=/; max-age=31536000; SameSite=Lax';
-    window.location.reload();
-  });
 })();
 </script>

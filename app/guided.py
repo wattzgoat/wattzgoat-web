@@ -60,6 +60,17 @@ def state():
     return SimpleNamespace(available=available, on=available and request.cookies.get(COOKIE) == "1")
 
 
+def _flag_list(numbers) -> str:
+    """'Flag 3 has', 'Flags 3 and 6 have', 'Flags 2, 3 and 6 have' -- for the
+    line about flags that don't have hints written yet."""
+    if not numbers:
+        return ""
+    labels = [str(n) for n in numbers]
+    if len(labels) == 1:
+        return f"Flag {labels[0]} has"
+    return f"Flags {', '.join(labels[:-1])} and {labels[-1]} have"
+
+
 def _opaque(flag_key: str) -> str:
     """A stable id for a hint card that doesn't spell out which flag it is."""
     return hashlib.sha1(flag_key.encode()).hexdigest()[:8]
@@ -82,7 +93,7 @@ def panel():
         scope = "page"
         keys = [k for k, _c, _n in flags.CATALOG if endpoint and FLAG_PAGE.get(k) == endpoint]
 
-    result = {"scope": scope, "total": len(keys), "found": 0, "cards": [], "unhinted": 0}
+    result = {"scope": scope, "total": len(keys), "found": 0, "cards": [], "unhinted": 0, "unhinted_text": ""}
     if not keys:
         return result
 
@@ -92,14 +103,20 @@ def panel():
             "SELECT flag_key FROM flag_redemptions WHERE participant_id = ?", (g.participant_id,)
         ).fetchall()
     }
-    for key in keys:
+    # Flags are numbered by their place among ALL the flags on the page, in
+    # catalog order, so a number never changes when another flag is solved
+    # and always lines up with the "N of M" in the headline.
+    unhinted_numbers = []
+    for number, key in enumerate(keys, start=1):
         if key in redeemed:
             result["found"] += 1          # solved: counted, but its hints are gone
             continue
         if hardening.is_hardened(key):
-            result["cards"].append({"id": _opaque(key), "fixed": True, "hints": []})
+            result["cards"].append({"id": _opaque(key), "number": number, "fixed": True, "hints": []})
         elif key in HINTS:
-            result["cards"].append({"id": _opaque(key), "fixed": False, "hints": list(HINTS[key])})
+            result["cards"].append({"id": _opaque(key), "number": number, "fixed": False, "hints": list(HINTS[key])})
         else:
-            result["unhinted"] += 1
+            unhinted_numbers.append(number)
+    result["unhinted"] = len(unhinted_numbers)
+    result["unhinted_text"] = _flag_list(unhinted_numbers)
     return result
