@@ -35,3 +35,12 @@ def test_solar_credit_is_converted_to_kwh(alice, base_url):
     assert resp.status_code == 200
     assert "$12.00 credit" in resp.text                # 100 * 0.12
     assert "42.86 kWh added" in resp.text              # 12 / 0.28
+
+
+def test_flag_words_are_unique_neutral_tokens():
+    from app import personalize
+
+    for words in (personalize._ADJECTIVES, personalize._NOUNS):
+        assert len(words) >= 64
+        assert len(set(words)) == len(words)
+        assert all(re.fullmatch(r"[A-Z]+(_[A-Z]+)*", w) for w in words)
