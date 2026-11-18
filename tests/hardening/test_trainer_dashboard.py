@@ -42,7 +42,7 @@ def test_trainer_login_required(trainer_base_url):
 def test_dashboard_loads_with_all_toggles(trainer_session, trainer_base_url):
     resp = trainer_session.get(f"{trainer_base_url}/instructor/", timeout=10)
     assert resp.status_code == 200
-    assert resp.text.count("data-flag-key=") == 48
+    assert resp.text.count("data-flag-key=") == 49
     assert "/ops/__set_hardening__" not in resp.text
 
 

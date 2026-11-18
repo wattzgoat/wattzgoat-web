@@ -19,6 +19,7 @@ from . import hardening
 
 bp = Blueprint("customer", __name__)
 
+USAGE_RESULT_LIMIT = 200
 RECHARGE_RATE = 0.28    # $ per kWh credited on a normal top-up
 SOLAR_CREDIT_RATE = 0.12  # $ credited per kWh of claimed solar export
 BILLS_DIR = os.path.join(os.path.dirname(__file__), "bills")
@@ -285,6 +286,7 @@ def usage():
 
     db = get_db()
     sqli_flag = None
+    total_results = 0
     if hardening.is_hardened(flags.SQLI_BONUS) or hardening.is_hardened(flags.SQLI_BOOLEAN_BONUS):
         sql = "SELECT reading_kwh, source, recorded_at FROM readings WHERE meter_id = ? AND recorded_at LIKE ?"
         params = (meter_id, f"%{query}%")
@@ -302,6 +304,8 @@ def usage():
                 sqli_flag = get_flag(flags.SQLI_BONUS, g.participant_id)
             else:
                 sqli_flag = get_flag(flags.SQLI_BOOLEAN_BONUS, g.participant_id)
+        total_results = len(results)
+        results = results[:USAGE_RESULT_LIMIT]
     except sqlite3.OperationalError as e:
         results = None
         if hardening.is_hardened(flags.ERRHANDLING_TEACH):
@@ -311,7 +315,8 @@ def usage():
 
     query_display = escape(query) if hardening.is_hardened(flags.RXSS_TEACH) else query
     return render_template(
-        "usage.html", query=query_display, results=results, db_error=db_error, sqli_flag=sqli_flag
+        "usage.html", query=query_display, results=results, db_error=db_error, sqli_flag=sqli_flag,
+        total_results=total_results, result_limit=USAGE_RESULT_LIMIT,
     )
 
 

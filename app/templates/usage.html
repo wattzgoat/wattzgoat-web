@@ -20,6 +20,9 @@
 <div class="whitespace-pre-wrap rounded-xl bg-red-50 p-4 font-mono text-sm text-red-800 ring-1 ring-red-200">Search failed: {{ db_error }}</div>
 {% elif results is not none %}
   {% if results %}
+  {% if total_results > result_limit %}
+  <p class="mb-2 text-sm text-gray-500">Showing the first {{ result_limit }} of {{ total_results }} matching readings.</p>
+  {% endif %}
   <ul class="divide-y divide-gray-100 overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-black/5">
     {% for r in results %}
     <li class="flex justify-between px-5 py-3 text-sm transition hover:bg-gray-50">

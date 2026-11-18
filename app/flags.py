@@ -42,6 +42,7 @@ FILEUPLOAD_EXERCISE = "FILEUPLOAD_EXERCISE"
 ACCOUNT_IDOR_BONUS = "ACCOUNT_IDOR_BONUS"
 HEADERS_CLICKJACK = "HEADERS_CLICKJACK"
 SQLI_BOOLEAN_BONUS = "SQLI_BOOLEAN_BONUS"
+SQLI_BOOLEAN_EXERCISE = "SQLI_BOOLEAN_EXERCISE"
 
 # Category 15 -- Bonus: Simulated AI Assistant. See app/assistant.py.
 ASSISTANT_SYSPROMPT_LEAK = "ASSISTANT_SYSPROMPT_LEAK"
@@ -58,6 +59,7 @@ CATALOG = [
     (SQLI_EXERCISE, "SQL injection", "Alarm search"),
     (SQLI_BONUS, "SQL injection", "Usage search"),
     (SQLI_BOOLEAN_BONUS, "SQL injection", "Usage search"),
+    (SQLI_BOOLEAN_EXERCISE, "SQL injection", "Alarm search"),
     (RXSS_TEACH, "Reflected XSS", "Usage search"),
     (RXSS_EXERCISE, "Reflected XSS", "Password reset"),
     (SXSS_TEACH, "Stored XSS", "Meter nickname"),
@@ -103,8 +105,8 @@ CATALOG = [
 
 VALID_KEYS = {key for key, _, _ in CATALOG}
 
-assert len(CATALOG) == 48
-assert len(VALID_KEYS) == 48, "flag keys must be unique"
+assert len(CATALOG) == 49
+assert len(VALID_KEYS) == 49, "flag keys must be unique"
 
 REMEDIATION = {
     HEADERS_TEACH: "Set X-Frame-Options / a CSP frame-ancestors directive on every response.",
@@ -114,6 +116,7 @@ REMEDIATION = {
     SQLI_EXERCISE: "Same fix as the meter search -- parameterize, don't concatenate.",
     SQLI_BONUS: "The same raw-interpolation pattern needs fixing everywhere it's reused, not just once.",
     SQLI_BOOLEAN_BONUS: "Parameterize the query -- a boolean-based OR bypass is exactly as fixed by that as a UNION is.",
+    SQLI_BOOLEAN_EXERCISE: "Parameterize the alarm search as well -- the same fix closes the boolean bypass and the UNION.",
     RXSS_TEACH: "HTML-escape all user-controlled output; never trust it in a rendered response.",
     RXSS_EXERCISE: "Escape user input even in \"not found\" / error messages -- they're output too.",
     SXSS_TEACH: "Never render stored user input with |safe (or equivalent) -- escape by default.",
@@ -165,3 +168,4 @@ DEVADMIN_ACCOUNT_EMAIL = "devadmin@example.com"
 SQLI_TEACH_SENTINEL = "__WG_SENTINEL_SQLI_TEACH__"
 SQLI_EXERCISE_SENTINEL = "__WG_SENTINEL_SQLI_EXERCISE__"
 SQLI_BONUS_SENTINEL = "__WG_SENTINEL_SQLI_BONUS__"
+SQLI_BOOLEAN_EXERCISE_SENTINEL = "__WG_SENTINEL_SQLI_BOOLEAN_EXERCISE__"

@@ -9,7 +9,7 @@ The site is vulnerable on purpose, so you can practise finding real security wea
 ## Key features
 
 - A full customer portal (signup, meter dashboard, recharge, solar export, bills, support tickets) plus an admin side, so there's a realistic amount of surface to explore, not just a single vulnerable form.
-- 48 hidden weaknesses to find and exploit, from easy to hard.
+- 49 hidden weaknesses to find and exploit, from easy to hard.
 - A capture-the-flag style Progress page that tracks which ones you've found.
 - A simulated AI assistant with its own set of weaknesses to find.
 - Once you have found a flag, you can see the vulnerable code next to the fixed code, in Python, JavaScript and PHP, so you learn what caused the problem and how to fix it.
@@ -18,7 +18,7 @@ The site is vulnerable on purpose, so you can practise finding real security wea
 
 ## How you learn with it
 
-WattzGOAT works like a capture the flag (CTF) game. There are 48 flags hidden in the site. You get a flag by finding a weakness and using it. Five of the 48 are bonus flags about a simulated AI assistant.
+WattzGOAT works like a capture the flag (CTF) game. There are 49 flags hidden in the site. You get a flag by finding a weakness and using it. Five of the 49 are bonus flags about a simulated AI assistant.
 
 The weaknesses are the kind of problems described in the OWASP Top 10, things like broken access control and injection, so what you practise here applies to real websites too.
 

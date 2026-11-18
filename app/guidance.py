@@ -15,6 +15,7 @@ FLAG_PAGE = {
     "SQLI_EXERCISE": "admin.alarms",
     "SQLI_BONUS": "customer.usage",
     "SQLI_BOOLEAN_BONUS": "customer.usage",
+    "SQLI_BOOLEAN_EXERCISE": "admin.alarms",
     "RXSS_TEACH": "customer.usage",
     "RXSS_EXERCISE": "auth.forgot_password",
     "SXSS_TEACH": "customer.dashboard",
@@ -66,7 +67,7 @@ HINTS = {
     ),
     "SQLI_TEACH": (
         "That search box talks to the database. Before you try anything clever, find out what happens when you type something it wasn't expecting.",
-        "Try a single quote on its own. If the page complains, your input is being pasted into the database's question. From there, look up how UNION lets you add extra rows to a query's answer, and work out how many columns this one returns.",
+        "Try a single quote on its own. If the page complains, your input is being pasted into the database's question. From there, look up how UNION lets you add extra rows to a query's answer, and work out how many columns this one returns. Once the columns line up, remember that SQLite lists its own tables in a table called sqlite_master.",
     ),
     "RXSS_TEACH": (
         "Search for something that doesn't exist and watch how the page repeats your words back to you. Anywhere a page echoes your input, ask whether it treats it as plain text or as part of its own code.",
@@ -150,6 +151,10 @@ HINTS.update({
     "SQLI_BOOLEAN_BONUS": (
         "There is an easier way into the same search than adding rows: make the question always true instead.",
         "Try ending your search with a quote followed by a condition that is true for every row, then comment out the rest of the query. How the query ends decides whether this works.",
+    ),
+    "SQLI_BOOLEAN_EXERCISE": (
+        "The alarms page doesn't list everything in its table. Look at how the search text ends up inside the query, and think about which part of the query decides what you are allowed to see.",
+        "End your search with a quote, add a condition that is always true, then comment out the rest of the query so nothing after your input can filter rows again. Adding rows with UNION is not what this flag is looking for.",
     ),
     "RXSS_EXERCISE": (
         "Even a 'not found' message is output. Ask for a password reset for an address that doesn't exist and see whether the page repeats what you typed.",

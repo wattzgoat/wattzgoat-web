@@ -9,6 +9,8 @@ from .personalize import get_flag
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
+MAX_SIMULATED_READINGS = 500
+
 ACCOUNT_PATCHABLE_FIELDS = {"name", "phone", "address_service", "address_billing", "billing_rate", "role"}
 
 
@@ -119,6 +121,11 @@ def telemetry():
     db.execute(
         "INSERT INTO readings (meter_id, reading_kwh, source) VALUES (?, ?, 'simulator')",
         (meter["id"], reading_kwh),
+    )
+    db.execute(
+        "DELETE FROM readings WHERE meter_id = ? AND source = 'simulator' AND id NOT IN "
+        "(SELECT id FROM readings WHERE meter_id = ? AND source = 'simulator' ORDER BY id DESC LIMIT ?)",
+        (meter["id"], meter["id"], MAX_SIMULATED_READINGS),
     )
     db.commit()
 

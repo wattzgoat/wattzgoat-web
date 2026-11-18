@@ -96,7 +96,7 @@ def test_console_csv_export_contents_and_formula_safety(base_url):
     rows = list(csv.reader(io.StringIO(summary.content.decode("utf-8-sig"))))
     assert rows[0] == ["Rank", "Participant ID", "Nickname", "Flags found", "Total flags", "First activity (UTC)", "Last activity (UTC)"]
     mine = [r for r in rows[1:] if r[1] == pid]
-    assert len(mine) == 1 and mine[0][3] == "1" and mine[0][4] == "48"
+    assert len(mine) == 1 and mine[0][3] == "1" and mine[0][4] == "49"
     assert mine[0][2] == "'" + nickname     # a leading minus would otherwise read as a formula
 
     detail = s.get(f"{base_url}/participants/export/detail.csv", timeout=10)

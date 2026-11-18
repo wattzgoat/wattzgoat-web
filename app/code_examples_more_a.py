@@ -230,6 +230,56 @@ $rows = $stmt->fetchAll();
 ''',
         },
     },
+    "SQLI_BOOLEAN_EXERCISE": {
+        "why": "The alarms list hides internal records with a condition at the front of the query. Because the search text is pasted into the middle of it, an always-true condition followed by a comment throws away everything after it, including that hiding rule. Parameterizing keeps the rule in force, whatever the user types.",
+        "vulnerable": {
+            "python": r'''
+query = request.args.get("q", "")
+!!sql = ("SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id "
+!!       f"WHERE alarms.type != 'internal' AND alarms.type LIKE '%{query}%' "
+!!       f"OR alarms.type != 'internal' AND alarms.message LIKE '%{query}%'")
+# q = ' OR '1'='1' --   becomes:   ... LIKE '%' OR '1'='1' --%' OR ...
+rows = db.execute(sql).fetchall()
+''',
+            "javascript": r'''
+const q = req.query.q || "";
+!!const sql = "SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id " +
+!!  `WHERE alarms.type != 'internal' AND alarms.type LIKE '%${q}%' ` +
+!!  `OR alarms.type != 'internal' AND alarms.message LIKE '%${q}%'`;
+// q = ' OR '1'='1' --   becomes:   ... LIKE '%' OR '1'='1' --%' OR ...
+const rows = db.prepare(sql).all();
+''',
+            "php": r'''
+$q = $_GET['q'] ?? '';
+!!$sql = "SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id "
+!!     . "WHERE alarms.type != 'internal' AND alarms.type LIKE '%$q%' "
+!!     . "OR alarms.type != 'internal' AND alarms.message LIKE '%$q%'";
+// $q = ' OR '1'='1' --   becomes:   ... LIKE '%' OR '1'='1' --%' OR ...
+$rows = $pdo->query($sql)->fetchAll();
+''',
+        },
+        "fixed": {
+            "python": r'''
+query = request.args.get("q", "")
+!!sql = ("SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id "
+!!       "WHERE alarms.type != 'internal' AND (alarms.type LIKE ? OR alarms.message LIKE ?)")
+!!rows = db.execute(sql, (f"%{query}%", f"%{query}%")).fetchall()
+''',
+            "javascript": r'''
+const q = req.query.q || "";
+!!const sql = "SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id " +
+!!  "WHERE alarms.type != 'internal' AND (alarms.type LIKE ? OR alarms.message LIKE ?)";
+!!const rows = db.prepare(sql).all(`%${q}%`, `%${q}%`);
+''',
+            "php": r'''
+$q = $_GET['q'] ?? '';
+!!$stmt = $pdo->prepare("SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id "
+!!     . "WHERE alarms.type != 'internal' AND (alarms.type LIKE ? OR alarms.message LIKE ?)");
+!!$stmt->execute(["%$q%", "%$q%"]);
+$rows = $stmt->fetchAll();
+''',
+        },
+    },
     "RXSS_EXERCISE": {
         "why": "Even an error message is output. Repeating what the user typed back inside a 'not found' message, without escaping it, runs any script they put there. Escape everything you print, including the messages around the main page.",
         "vulnerable": {
