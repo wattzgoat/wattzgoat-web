@@ -3,9 +3,9 @@
 {% block content %}
 {% import "_ui.html" as ui %}
 {{ ui.page_header('Alarms & events', None, 'Admin') }}
-{% for note in (sqli_flag, sqli_boolean_flag) if note %}
-<div class="-mt-4 mb-4">{% call ui.flag_note() %}<span class="font-mono">{{ note }}</span>{% endcall %}</div>
-{% endfor %}
+{% if sqli_flag %}
+<div class="-mt-4 mb-4">{% call ui.flag_note() %}<span class="font-mono">{{ sqli_flag }}</span>{% endcall %}</div>
+{% endif %}
 <form method="get" class="-mt-4 mb-6 flex flex-col gap-2 sm:flex-row">
   <span class="relative flex-1">
     <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">{{ ui.icon('alert', 18) }}</span>

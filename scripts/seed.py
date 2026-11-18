@@ -13,8 +13,7 @@ from fixtures import (
     ADMINS, ALARM_SEEDS, BILL_AMOUNTS, BILL_PERIOD, CUSTOMERS,
     CUSTOMER_CREATED_HOURS_AGO, METER_BALANCES, METER_CODES, METER_NICKNAMES,
     SESSIONID_ACCOUNT, SESSIONID_ACCOUNT_BASELINE_TOKEN, SQLI_BONUS_FLAG_VALUE,
-    SQLI_BOOLEAN_EXERCISE_FLAG_VALUE, SQLI_EXERCISE_FLAG_VALUE, SQLI_FLAG_ACCOUNTS,
-    SQLI_TEACH_FLAG_VALUE,
+    SQLI_EXERCISE_FLAG_VALUE, SQLI_FLAG_ACCOUNTS, SQLI_TEACH_FLAG_VALUE,
 )
 
 
@@ -61,11 +60,6 @@ def build(conn: sqlite3.Connection) -> None:
             "INSERT INTO alarms (meter_id, type, message) VALUES (?, ?, ?)",
             (meter_ids[meter_offset], alarm_type, message),
         )
-
-    cur.execute(
-        "INSERT INTO alarms (meter_id, type, message) VALUES (?, 'internal', ?)",
-        (meter_ids[1], SQLI_BOOLEAN_EXERCISE_FLAG_VALUE),
-    )
 
     for email, service_name in SQLI_FLAG_ACCOUNTS:
         cur.execute(

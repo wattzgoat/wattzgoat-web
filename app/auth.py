@@ -8,7 +8,7 @@ from collections import defaultdict
 from datetime import datetime
 from functools import wraps
 
-from flask import Blueprint, g, redirect, render_template, request, url_for
+from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 from markupsafe import escape
 
 from . import flags
@@ -194,16 +194,28 @@ def login():
             plaintext_flag=get_flag(flags.PLAINTEXT_TEACH, g.participant_id),
         ), 429
 
-    user = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+    password_hash = weak_hash(password)
+    if hardening.is_hardened(flags.SQLI_AUTH_BYPASS):
+        user = db.execute(
+            "SELECT * FROM users WHERE email = ? AND password_hash = ?", (email, password_hash)
+        ).fetchone()
+    else:
+        try:
+            user = db.execute(
+                f"SELECT * FROM users WHERE email = '{email}' AND password_hash = '{password_hash}'"
+            ).fetchone()
+        except sqlite3.OperationalError:
+            user = None
+    known_user = db.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone()
 
-    if user is None or user["password_hash"] != weak_hash(password):
+    if user is None:
         _login_attempts[email] += 1
         ratelimit_flag = (
             get_flag(flags.RATELIMIT_TEACH, g.participant_id)
             if _login_attempts[email] >= RATE_LIMIT_THRESHOLD and not hardening.is_hardened(flags.RATELIMIT_TEACH)
             else None
         )
-        error = "Invalid username" if user is None else "Invalid password"
+        error = "Invalid password" if known_user else "Invalid username"
         already_redeemed = db.execute(
             "SELECT 1 FROM flag_redemptions WHERE flag_key = ? AND participant_id = ?",
             (flags.ERRHANDLING_EXERCISE, g.participant_id),
@@ -217,6 +229,8 @@ def login():
         ), 401
 
     _login_attempts.pop(email, None)
+    if user["password_hash"] != password_hash:
+        flash(get_flag(flags.SQLI_AUTH_BYPASS, g.participant_id))
     token = issue_session_token()
     db.execute("INSERT INTO sessions (token, user_id) VALUES (?, ?)", (token, user["id"]))
     db.execute(

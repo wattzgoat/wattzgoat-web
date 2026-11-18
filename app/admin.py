@@ -189,37 +189,43 @@ def reconnect_meter(meter_id):
 def alarms():
     query = request.args.get("q", "")
     db = get_db()
-    base = (
-        "SELECT alarms.*, meters.meter_code FROM alarms "
-        "JOIN meters ON meters.id = alarms.meter_id "
-        "JOIN users ON users.id = meters.user_id AND users.role != 'service' "
-    )
-    visible = "alarms.type != 'internal'"
-    if not query:
-        rows = db.execute(f"{base}WHERE {visible} ORDER BY alarms.created_at DESC").fetchall()
-    elif hardening.is_hardened(flags.SQLI_EXERCISE) or hardening.is_hardened(flags.SQLI_BOOLEAN_EXERCISE):
-        sql = f"{base}WHERE {visible} AND (alarms.type LIKE ? OR alarms.message LIKE ?)"
-        rows = db.execute(sql, (f"%{query}%", f"%{query}%")).fetchall()
+    if hardening.is_hardened(flags.SQLI_EXERCISE):
+        if query:
+            sql = (
+                "SELECT alarms.*, meters.meter_code FROM alarms "
+                "JOIN meters ON meters.id = alarms.meter_id "
+                "JOIN users ON users.id = meters.user_id AND users.role != 'service' "
+                "WHERE alarms.type LIKE ? OR alarms.message LIKE ?"
+            )
+            rows = db.execute(sql, (f"%{query}%", f"%{query}%")).fetchall()
+        else:
+            sql = (
+                "SELECT alarms.*, meters.meter_code FROM alarms "
+                "JOIN meters ON meters.id = alarms.meter_id "
+                "JOIN users ON users.id = meters.user_id AND users.role != 'service' "
+                "ORDER BY alarms.created_at DESC"
+            )
+            rows = db.execute(sql).fetchall()
     else:
-        sql = (
-            f"{base}WHERE {visible} AND alarms.type LIKE '%{query}%' "
-            f"OR {visible} AND alarms.message LIKE '%{query}%'"
-        )
+        if query:
+            sql = (
+                "SELECT alarms.*, meters.meter_code FROM alarms "
+                "JOIN meters ON meters.id = alarms.meter_id "
+                "JOIN users ON users.id = meters.user_id AND users.role != 'service' "
+                f"WHERE alarms.type LIKE '%{query}%' OR alarms.message LIKE '%{query}%'"
+            )
+        else:
+            sql = (
+                "SELECT alarms.*, meters.meter_code FROM alarms "
+                "JOIN meters ON meters.id = alarms.meter_id "
+                "JOIN users ON users.id = meters.user_id AND users.role != 'service' "
+                "ORDER BY alarms.created_at DESC"
+            )
         rows = db.execute(sql).fetchall()
     sqli_flag = None
     if rows and any(flags.SQLI_EXERCISE_SENTINEL in str(value) for row in rows for value in tuple(row)):
         sqli_flag = get_flag(flags.SQLI_EXERCISE, g.participant_id)
-    if (
-        rows
-        and "union" not in query.lower()
-        and any(flags.SQLI_BOOLEAN_EXERCISE_SENTINEL in str(value) for row in rows for value in tuple(row))
-    ):
-        sqli_boolean_flag = get_flag(flags.SQLI_BOOLEAN_EXERCISE, g.participant_id)
-    else:
-        sqli_boolean_flag = None
-    return render_template(
-        "admin_alarms.html", alarms=rows, query=query, sqli_flag=sqli_flag, sqli_boolean_flag=sqli_boolean_flag
-    )
+    return render_template("admin_alarms.html", alarms=rows, query=query, sqli_flag=sqli_flag)
 
 
 @bp.route("/users")

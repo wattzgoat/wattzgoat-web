@@ -42,7 +42,7 @@ FILEUPLOAD_EXERCISE = "FILEUPLOAD_EXERCISE"
 ACCOUNT_IDOR_BONUS = "ACCOUNT_IDOR_BONUS"
 HEADERS_CLICKJACK = "HEADERS_CLICKJACK"
 SQLI_BOOLEAN_BONUS = "SQLI_BOOLEAN_BONUS"
-SQLI_BOOLEAN_EXERCISE = "SQLI_BOOLEAN_EXERCISE"
+SQLI_AUTH_BYPASS = "SQLI_AUTH_BYPASS"
 
 # Category 15 -- Bonus: Simulated AI Assistant. See app/assistant.py.
 ASSISTANT_SYSPROMPT_LEAK = "ASSISTANT_SYSPROMPT_LEAK"
@@ -59,7 +59,7 @@ CATALOG = [
     (SQLI_EXERCISE, "SQL injection", "Alarm search"),
     (SQLI_BONUS, "SQL injection", "Usage search"),
     (SQLI_BOOLEAN_BONUS, "SQL injection", "Usage search"),
-    (SQLI_BOOLEAN_EXERCISE, "SQL injection", "Alarm search"),
+    (SQLI_AUTH_BYPASS, "SQL injection", "Login"),
     (RXSS_TEACH, "Reflected XSS", "Usage search"),
     (RXSS_EXERCISE, "Reflected XSS", "Password reset"),
     (SXSS_TEACH, "Stored XSS", "Meter nickname"),
@@ -116,7 +116,7 @@ REMEDIATION = {
     SQLI_EXERCISE: "Same fix as the meter search -- parameterize, don't concatenate.",
     SQLI_BONUS: "The same raw-interpolation pattern needs fixing everywhere it's reused, not just once.",
     SQLI_BOOLEAN_BONUS: "Parameterize the query -- a boolean-based OR bypass is exactly as fixed by that as a UNION is.",
-    SQLI_BOOLEAN_EXERCISE: "Parameterize the alarm search as well -- the same fix closes the boolean bypass and the UNION.",
+    SQLI_AUTH_BYPASS: "Look the account up with a parameterized query, and never let the password check be part of text the user can edit.",
     RXSS_TEACH: "HTML-escape all user-controlled output; never trust it in a rendered response.",
     RXSS_EXERCISE: "Escape user input even in \"not found\" / error messages -- they're output too.",
     SXSS_TEACH: "Never render stored user input with |safe (or equivalent) -- escape by default.",
@@ -168,4 +168,3 @@ DEVADMIN_ACCOUNT_EMAIL = "devadmin@example.com"
 SQLI_TEACH_SENTINEL = "__WG_SENTINEL_SQLI_TEACH__"
 SQLI_EXERCISE_SENTINEL = "__WG_SENTINEL_SQLI_EXERCISE__"
 SQLI_BONUS_SENTINEL = "__WG_SENTINEL_SQLI_BONUS__"
-SQLI_BOOLEAN_EXERCISE_SENTINEL = "__WG_SENTINEL_SQLI_BOOLEAN_EXERCISE__"

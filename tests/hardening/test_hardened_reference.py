@@ -43,15 +43,16 @@ def test_sqli_teach_no_flag(hardened_base_url):
     assert "FLAG{" not in resp.text
 
 
-def test_sqli_alarms_no_flag(hardened_base_url):
-    s = _login(hardened_base_url, "ops1@example.com", "changeme")
-    for payload in (
-        "' OR '1'='1' -- ",
-        "zzz' UNION SELECT id,meter_id,type,message,created_at,0 FROM alarms--",
-    ):
-        resp = s.get(f"{hardened_base_url}/admin/alarms", params={"q": payload}, timeout=10)
-        assert resp.status_code == 200
-        assert "FLAG{" not in resp.text
+def test_sqli_login_bypass_blocked(hardened_base_url):
+    s = requests.Session()
+    s.verify = False
+    resp = s.post(
+        f"{hardened_base_url}/login",
+        data={"email": "ops1@example.com'--", "password": "wrong"},
+        timeout=10,
+    )
+    assert resp.status_code == 401
+    assert "wgs_session" not in s.cookies.get_dict()
 
 
 def test_rxss_teach_no_flag(hardened_base_url):

@@ -230,53 +230,46 @@ $rows = $stmt->fetchAll();
 ''',
         },
     },
-    "SQLI_BOOLEAN_EXERCISE": {
-        "why": "The alarms list hides internal records with a condition at the front of the query. Because the search text is pasted into the middle of it, an always-true condition followed by a comment throws away everything after it, including that hiding rule. Parameterizing keeps the rule in force, whatever the user types.",
+    "SQLI_AUTH_BYPASS": {
+        "why": "The password check is part of the same query text as the email, so an email ending in a quote and a comment removes it. Look the account up with a parameterized query, and compare the password separately, so nothing the user types can change what the check means.",
         "vulnerable": {
             "python": r'''
-query = request.args.get("q", "")
-!!sql = ("SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id "
-!!       f"WHERE alarms.type != 'internal' AND alarms.type LIKE '%{query}%' "
-!!       f"OR alarms.type != 'internal' AND alarms.message LIKE '%{query}%'")
-# q = ' OR '1'='1' --   becomes:   ... LIKE '%' OR '1'='1' --%' OR ...
-rows = db.execute(sql).fetchall()
+email = request.form["email"]
+!!sql = f"SELECT * FROM users WHERE email = '{email}' AND password_hash = '{weak_hash(password)}'"
+# email = ops1@example.com'--   becomes:   ... WHERE email = 'ops1@example.com'--' AND password_hash = '...'
+user = db.execute(sql).fetchone()
 ''',
             "javascript": r'''
-const q = req.query.q || "";
-!!const sql = "SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id " +
-!!  `WHERE alarms.type != 'internal' AND alarms.type LIKE '%${q}%' ` +
-!!  `OR alarms.type != 'internal' AND alarms.message LIKE '%${q}%'`;
-// q = ' OR '1'='1' --   becomes:   ... LIKE '%' OR '1'='1' --%' OR ...
-const rows = db.prepare(sql).all();
+const email = req.body.email;
+!!const sql = `SELECT * FROM users WHERE email = '${email}' AND password_hash = '${weakHash(password)}'`;
+// email = ops1@example.com'--   becomes:   ... WHERE email = 'ops1@example.com'--' AND password_hash = '...'
+const user = db.prepare(sql).get();
 ''',
             "php": r'''
-$q = $_GET['q'] ?? '';
-!!$sql = "SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id "
-!!     . "WHERE alarms.type != 'internal' AND alarms.type LIKE '%$q%' "
-!!     . "OR alarms.type != 'internal' AND alarms.message LIKE '%$q%'";
-// $q = ' OR '1'='1' --   becomes:   ... LIKE '%' OR '1'='1' --%' OR ...
-$rows = $pdo->query($sql)->fetchAll();
+$email = $_POST['email'];
+!!$sql = "SELECT * FROM users WHERE email = '$email' AND password_hash = '" . weak_hash($password) . "'";
+// $email = ops1@example.com'--   becomes:   ... WHERE email = 'ops1@example.com'--' AND password_hash = '...'
+$user = $pdo->query($sql)->fetch();
 ''',
         },
         "fixed": {
             "python": r'''
-query = request.args.get("q", "")
-!!sql = ("SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id "
-!!       "WHERE alarms.type != 'internal' AND (alarms.type LIKE ? OR alarms.message LIKE ?)")
-!!rows = db.execute(sql, (f"%{query}%", f"%{query}%")).fetchall()
+email = request.form["email"]
+!!user = db.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+!!if user is None or user["password_hash"] != weak_hash(password):
+!!    return "Invalid login", 401
 ''',
             "javascript": r'''
-const q = req.query.q || "";
-!!const sql = "SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id " +
-!!  "WHERE alarms.type != 'internal' AND (alarms.type LIKE ? OR alarms.message LIKE ?)";
-!!const rows = db.prepare(sql).all(`%${q}%`, `%${q}%`);
+const email = req.body.email;
+!!const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+!!if (!user || user.password_hash !== weakHash(password)) return res.status(401).send("Invalid login");
 ''',
             "php": r'''
-$q = $_GET['q'] ?? '';
-!!$stmt = $pdo->prepare("SELECT alarms.*, meters.meter_code FROM alarms JOIN meters ON meters.id = alarms.meter_id "
-!!     . "WHERE alarms.type != 'internal' AND (alarms.type LIKE ? OR alarms.message LIKE ?)");
-!!$stmt->execute(["%$q%", "%$q%"]);
-$rows = $stmt->fetchAll();
+$email = $_POST['email'];
+!!$stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+!!$stmt->execute([$email]);
+!!$user = $stmt->fetch();
+if (!$user || $user['password_hash'] !== weak_hash($password)) { http_response_code(401); exit; }
 ''',
         },
     },

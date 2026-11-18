@@ -75,6 +75,9 @@
 </header>
 <div class="mx-auto px-6 py-10 {% if page_wide %}max-w-6xl{% else %}max-w-4xl{% endif %}">
   <main class="min-w-0">
+{% for note in get_flashed_messages() %}
+<div class="mb-4">{% call ui.flag_note() %}<span class="font-mono">{{ note }}</span>{% endcall %}</div>
+{% endfor %}
 {% block content %}{% endblock %}
   </main>
 </div>

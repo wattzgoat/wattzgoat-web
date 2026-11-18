@@ -15,7 +15,7 @@ FLAG_PAGE = {
     "SQLI_EXERCISE": "admin.alarms",
     "SQLI_BONUS": "customer.usage",
     "SQLI_BOOLEAN_BONUS": "customer.usage",
-    "SQLI_BOOLEAN_EXERCISE": "admin.alarms",
+    "SQLI_AUTH_BYPASS": "auth.login",
     "RXSS_TEACH": "customer.usage",
     "RXSS_EXERCISE": "auth.forgot_password",
     "SXSS_TEACH": "customer.dashboard",
@@ -152,9 +152,9 @@ HINTS.update({
         "There is an easier way into the same search than adding rows: make the question always true instead.",
         "Try ending your search with a quote followed by a condition that is true for every row, then comment out the rest of the query. How the query ends decides whether this works.",
     ),
-    "SQLI_BOOLEAN_EXERCISE": (
-        "The alarms page doesn't list everything in its table. Look at how the search text ends up inside the query, and think about which part of the query decides what you are allowed to see.",
-        "End your search with a quote, add a condition that is always true, then comment out the rest of the query so nothing after your input can filter rows again. Adding rows with UNION is not what this flag is looking for.",
+    "SQLI_AUTH_BYPASS": (
+        "A login form asks the database one question: is there an account with this email and this password? Think about what happens to that question if the email you type contains a quote.",
+        "Type an existing admin email followed by a quote and two dashes, and anything in the password box. Everything after the dashes is thrown away, including the password check. Look at which account you end up signed in as.",
     ),
     "RXSS_EXERCISE": (
         "Even a 'not found' message is output. Ask for a password reset for an address that doesn't exist and see whether the page repeats what you typed.",
