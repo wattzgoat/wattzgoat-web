@@ -1,5 +1,13 @@
 """Conversions between dollars and kWh on the recharge and solar pages."""
+import os
 import re
+import sys
+
+# test_flag_words_are_unique_neutral_tokens below imports the app package
+# directly (white-box, no HTTP involved) -- pytest only puts tests/ itself
+# on sys.path (no repo-root conftest.py / pyproject.toml does that for us),
+# so the repo root needs adding explicitly for 'from app import ...' to resolve.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 def _balance(session, base_url):
