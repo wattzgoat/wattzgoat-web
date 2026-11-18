@@ -1,4 +1,7 @@
 pytest==8.3.3
-requests==2.32.3
 pypdf==5.0.1
-pyjwt==2.9.0
+# requests and PyJWT are already pinned in requirements.txt (installed
+# alongside this file in CI); pinning them again here with different
+# versions made pip's resolver fail outright when both files are
+# installed in one command, so this file only pins what requirements.txt
+# does not already provide.
